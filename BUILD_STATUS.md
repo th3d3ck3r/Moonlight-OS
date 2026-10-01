@@ -1,6 +1,6 @@
 # Build status
 
-Status: **image build not yet completed**
+Status: **automatic builds paused for full v0.1 audit**
 
 Validated before the first CI image build:
 
@@ -17,5 +17,9 @@ Validated before the first CI image build:
 - DualSense speaker/microphone/headset audio endpoints suppressed without disabling controller HID.
 - Red-on-black diagnostics/settings console added with Wi-Fi and Bluetooth helpers.
 - v0.1 keeps Git/GCC/DKMS/kernel headers and source trees for hardware debugging; 16 GB USB target.
+- Explicit X11 development headers and Mesa EGL/GL development headers are included so Moonlight's X11/EGL accelerated paths are compiled deliberately.
+- Raw-image inspection requires the fallback Apple-friendly removable EFI path `EFI/BOOT/BOOTX64.EFI`.
+- OVMF boot gate uses a copy-on-write overlay and requires a multi-user serial success marker before artifact compression/upload.
+- Hardware verifier rejects llvmpipe/softpipe software OpenGL rendering.
 
-The GitHub Actions image build is the next gate. Real i915/VA-API, BCM4350, Bluetooth, audio, controller, and streaming behavior must be validated on the actual MacBook; QEMU cannot prove those hardware-specific items.
+After the paused static audit is complete, one manual GitHub Actions image build is the next gate. Real i915/VA-API, BCM4350, Bluetooth, audio, controller, and streaming behavior must be validated on the actual MacBook; QEMU cannot prove those hardware-specific items.
