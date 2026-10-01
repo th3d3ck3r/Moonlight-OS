@@ -25,6 +25,8 @@ LMC_ARGS=(
   --project="Moonlight-OS"
   --releasever=44
   --volid="MOONLIGHT_OS"
+  --ram=4096
+  --vcpus=2
 )
 if [[ ! -e /dev/kvm ]]; then
   LMC_ARGS+=(--no-kvm)
