@@ -504,9 +504,30 @@ cd /usr/local/src
 git clone https://github.com/davidjo/snd_hda_macbookpro.git snd_hda_macbookpro
 cd snd_hda_macbookpro
 git checkout --detach 89b22ff90b86468b186706861dd18663562defa7
+
 KVER="$(ls -1 /usr/lib/modules | sort -V | tail -1)"
-ln -sfn "$PWD" /usr/src/snd_hda_macbookpro-0.1
-dkms install -c dkms.conf --force -m snd_hda_macbookpro/0.1 -k "$KVER"
+[[ -n "$KVER" ]]
+if [[ ! -d "/usr/src/kernels/$KVER" ]]; then
+  dnf -y install "kernel-devel-$KVER"
+fi
+
+rm -rf /usr/src/snd_hda_macbookpro-1.0
+mkdir -p /usr/src/snd_hda_macbookpro-1.0
+cp -a . /usr/src/snd_hda_macbookpro-1.0/
+cat > /usr/src/snd_hda_macbookpro-1.0/dkms.conf <<'DKMSCONF'
+PACKAGE_NAME="snd_hda_macbookpro"
+PACKAGE_VERSION="1.0"
+PRE_BUILD="install.cirrus.driver.sh -k $kernelver --dkms"
+MAKE="make KERNELRELEASE=${kernelver} CFLAGS_MODULE='-DAPPLE_PINSENSE_FIXUP -DAPPLE_CODECS -DCONFIG_SND_HDA_RECONFIG=1 -Wno-unused-variable -Wno-unused-function -Wno-error -Wno-incompatible-pointer-types'"
+BUILT_MODULE_NAME[0]="snd-hda-codec-cs8409"
+BUILT_MODULE_LOCATION[0]="build/hda/codecs/cirrus"
+DEST_MODULE_LOCATION[0]="/updates/dkms"
+AUTOINSTALL="yes"
+DKMSCONF
+
+dkms remove -m snd_hda_macbookpro -v 1.0 --all 2>/dev/null || true
+dkms add -m snd_hda_macbookpro -v 1.0
+dkms install -m snd_hda_macbookpro -v 1.0 -k "$KVER" --force --verbose
 depmod -a "$KVER"
 
 cat > /usr/local/bin/moonlight-session <<'SESSION'
