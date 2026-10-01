@@ -76,7 +76,7 @@ libva-utils
 libva-intel-driver
 libva-intel-media-driver
 ffmpeg-libs
-SDL2
+sdl2-compat
 SDL2_ttf
 opus
 libplacebo
@@ -107,7 +107,7 @@ kernel-devel
 kernel-headers
 pkgconf-pkg-config
 openssl-devel
-SDL2-devel
+sdl2-compat-devel
 SDL2_ttf-devel
 ffmpeg-devel
 libva-devel
