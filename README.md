@@ -145,7 +145,7 @@ The appliance is designed to run from USB without installing to the internal SSD
 
 **Kernel updates:** this image does not auto-update the kernel. Build a new image when changing kernels so the MacBook audio module stays aligned.
 
-## 🧪 Validation — four passes before flashing
+## 🧪 Automated UEFI preflight — four validation passes
 
 1. **Repository checks:** shell/Kickstart validation, embedded helpers, source pins, and configuration checks.
 2. **Fedora checks:** package dependencies, accelerated client configuration, exact-kernel Cirrus compilation, and SBC/AAC plugins.
@@ -185,6 +185,7 @@ The development image stays **under 14,000 MiB raw** while retaining Git, GCC, D
 ## 📚 Project notes
 
 - [Build status](BUILD_STATUS.md)
+- [Feature compatibility and efficient build gates](docs/FEATURE_REVIEW_GATES.md)
 - [Hardware and streaming test plan](docs/TEST_PLAN.md)
 - [Planned host stats overlay and dashboard button](docs/HOST_OVERLAY_PLAN.md) — follow-up after physical boot validation
 - [Liquid Glass–inspired GUI plan](docs/LIQUID_GLASS_GUI_PLAN.md) — cohesive client and appliance settings redesign

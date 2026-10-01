@@ -4,6 +4,10 @@ Status: separate design/implementation proposal, not implemented.
 Prepared October 1, 2026. Begin after physical USB boot and basic streaming validation.
 Related but independently staged: [host stats overlay and dashboard plan](HOST_OVERLAY_PLAN.md).
 
+## Required compatibility and usage gates
+
+Follow [Shared compatibility and efficient build gates](FEATURE_REVIEW_GATES.md). Preserve all existing hardware/input/audio/network policies and settings. The GUI must offer a tested basic/opaque escape route and independent tty2 recovery. Graphical first boot must not require network, host APIs or a browser to emit the genuine boot marker. These are future implementation gates, not completed runtime tests.
+
 ## Goal
 
 Make every Moonlight-OS-owned graphical surface feel like one product: clear hierarchy, consistent controls, a restrained glass material, predictable navigation, and readable settings. Use Liquid Glass as visual inspiration, implemented in Qt/SDL on Linux rather than Apple's proprietary material.
@@ -109,7 +113,7 @@ After physical boot succeeds, capture current screens and latency/resource measu
 Build tokens/components, migrate CocoOS theme/dialogs/home and all standard Qt Quick Controls, then apply the same system to fallback Moonlight. Preserve backend behavior and settings keys. Audit every popup and English string.
 
 ### Stage 2 — graphical system settings
-Replace normal-use shell menus with GUI pages while retaining their recovery versions. Integrate networking, Bluetooth, AirPods/audio, DualSense, diagnostics and graphical first boot. Display changes require explicit Apply plus timed automatic revert if unconfirmed.
+Replace normal-use shell menus with GUI pages while retaining their recovery versions. Integrate networking, Bluetooth, AirPods/audio, DualSense, diagnostics and graphical first boot. Display changes require explicit Apply plus timed automatic revert if unconfirmed. Preserve NetworkManager power-saving/roaming policy, AirPods playback-only profiles, DualSense audio suppression, saved pairing and all original streaming shortcuts. Back up/version any settings migration; never reset settings as a theming shortcut.
 
 ### Stage 3 — optional host features
 Connect the separate host telemetry/dashboard work when it is implemented. Reuse the same settings rows, dialogs, trust UI and status states; style the native overlay within its measured budget.

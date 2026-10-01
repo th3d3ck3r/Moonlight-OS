@@ -3,6 +3,10 @@
 Status: planned, not implemented. Prepared October 1, 2026.
 Start implementation after the current USB image boots on MacBookPro14,1 and passes basic GPU/input/network/streaming checks. Keep the validated v0.1 artifact as the baseline.
 
+## Required compatibility and usage gates
+
+Follow [Shared compatibility and efficient build gates](FEATURE_REVIEW_GATES.md) before implementation/build. Existing hardware, input bindings, persistent settings and standard-host streaming are required invariants; telemetry and the browser are optional and fail independently. Preserve the original fallback/recovery path.
+
 ## Verified source findings
 
 Inspected these exact revisions:
@@ -33,7 +37,7 @@ Renderers currently recognize only debug and status overlays; the EGL renderer a
 
 ### Toggleable stats
 
-Use the existing native streaming overlay, with modes **Off → Client → Host → Both**. Preserve ordinary Off/Client toggling when host stats are not configured. Provide a mode selector in each client's settings, and reuse existing stats keyboard/controller actions to cycle available modes after configuration. Display the actual binding in help; do not introduce conflicting Start-long-press or quit combinations.
+Use the existing native streaming overlay, with modes **Off / Client / Host / Both** selectable from settings. Preserve existing client-stats keyboard/controller actions and their Off/Client behavior unchanged. Add a separate configurable host-stats toggle only after checking keyboard/controller conflicts, with clear help and debounce/release handling. Do not repurpose Start-long-press, quit, mouse-mode or original stats combinations.
 
 Initial host panel:
 
