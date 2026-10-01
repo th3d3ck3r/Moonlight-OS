@@ -1,0 +1,15 @@
+# Build inputs pinned 2026-10-01
+FEDORA_RELEASE=44
+FEDORA_COMPOSE=1.7
+FEDORA_ISO=Fedora-Everything-netinst-x86_64-44-1.7.iso
+FEDORA_ISO_SHA256=bd285201494dd0ba09b54d05ac707de1401668b8512a573edb5922dcf9d7067e
+FEDORA_ISO_URL=https://download.fedoraproject.org/pub/fedora/linux/releases/44/Everything/x86_64/iso/Fedora-Everything-netinst-x86_64-44-1.7.iso
+
+COCOOS_REPO=https://github.com/Djingerr/CocoOS.git
+COCOOS_COMMIT=8c22132f1ce4146c0d6bff812f6fc8f724fe0101
+
+MOONLIGHT_REPO=https://github.com/moonlight-stream/moonlight-qt.git
+MOONLIGHT_COMMIT=8369d1a0e11b999d4d1598f62ca5f6dea49602fb
+
+AUDIO_REPO=https://github.com/davidjo/snd_hda_macbookpro.git
+AUDIO_COMMIT=89b22ff90b86468b186706861dd18663562defa7
