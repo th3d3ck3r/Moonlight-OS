@@ -120,6 +120,10 @@ AirPods Pro 2 are treated as **playback-only A2DP devices**. HSP/HFP headset/mic
 
 Normal streaming should not require a shell. Press `Ctrl+Alt+F2` for the red-on-black recovery/settings console; it automatically opens `moonlight-settings`, which provides Wi-Fi, Bluetooth, AirPods Pro 2, DualSense, diagnostics, and client selection. On a first boot with no saved network, the appliance invokes the Wi-Fi helper automatically before starting X11.
 
+## Fedora 44 installer note
+
+Fedora 44 base installer media contains an older `igt-gpu-tools 2.2` build with a stale libproc2 dependency. Moonlight-OS installs the current IGT package from Fedora updates during post-install instead, preserving `intel_gpu_top` GPU/video telemetry without allowing that base-media packaging bug to block Anaconda.
+
 ## Hardware verification
 
 Run:
