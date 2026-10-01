@@ -1,6 +1,5 @@
 #version=DEVEL
-text
-reboot
+shutdown
 lang en_US.UTF-8
 keyboard us
 timezone America/New_York --utc
