@@ -47,6 +47,7 @@ need_line "  push:" "$AUDIT_WORKFLOW"
 
 # Source pins.
 need_line "FEDORA_RELEASE=44" "$LOCK"
+need_line "INSTALLER_KERNEL=6.19.10-300.fc44.x86_64" "$LOCK"
 grep -Eq '^COCOOS_COMMIT=[0-9a-f]{40}$' "$LOCK"
 grep -Eq '^MOONLIGHT_COMMIT=[0-9a-f]{40}$' "$LOCK"
 grep -Eq '^AUDIO_COMMIT=[0-9a-f]{40}$' "$LOCK"
@@ -139,9 +140,9 @@ for pkg in pipewire pipewire-pulseaudio wireplumber alsa-utils dkms kernel-devel
   need_pkg "$pkg"
 done
 need_text "snd_hda_macbookpro" "$KS"
-need_text "dkms add -m snd_hda_macbookpro -v 1.0" "$KS"
-need_text "dkms install -m snd_hda_macbookpro -v 1.0" "$KS"
-need_text "Wno-incompatible-pointer-types" "$KS"
+need_text 'dkms install -c "$PWD/dkms.conf" --force -m snd_hda_macbookpro -v 0.1 -k "$KVER" --verbose' "$KS"
+need_text "snd_hda_macbookpro DKMS make.log" "$KS"
+need_text "/usr/src/snd_hda_macbookpro-0.1" "$KS"
 
 # Power / USB-C / storage accessibility.
 for pkg in brightnessctl upower thermald; do
@@ -192,6 +193,9 @@ need_text "MOONLIGHT_OS_BOOT_OK" "$ROOT/scripts/test-ovmf.sh"
 need_text "qcow2" "$ROOT/scripts/test-ovmf.sh"
 need_text "OVMF_CODE.fd" "$ROOT/scripts/test-ovmf.sh"
 need_text "ksvalidator" "$ROOT/scripts/audit-packages.sh"
+need_text "Exact pinned installer-kernel DKMS audit" "$ROOT/scripts/audit-packages.sh"
+need_text 'kernel-devel-$INSTALLER_KERNEL' "$ROOT/scripts/audit-packages.sh"
+need_text 'dkms install -c "$driver/dkms.conf"' "$ROOT/scripts/audit-packages.sh"
 
 # Documentation matches v0.1.
 need_text "16 GB" "$README"
