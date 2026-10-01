@@ -17,7 +17,7 @@ repo --name=rpmfusion-nonfree-updates --baseurl="https://download1.rpmfusion.org
 zerombr
 clearpart --all --initlabel --disklabel=gpt
 part /boot/efi --fstype=efi --size=512
-part /boot --fstype=ext4 --size=768
+part /boot --fstype=ext4 --size=1024
 part / --fstype=xfs --size=11000 --grow
 bootloader --timeout=1 --append="quiet rd.driver.pre=i915 mem_sleep_default=s2idle pcie_port_pm=off console=tty0 console=ttyS0,115200n8 systemd.show_status=true"
 
@@ -61,7 +61,6 @@ xset
 mesa-demos
 glx-utils
 vulkan-tools
-igt-gpu-tools
 brightnessctl
 upower
 thermald
@@ -139,6 +138,12 @@ TARGET="MacBookPro14,1"
 HOST_TARGET="Vibepollo/Sunshine"
 FEDORA="44"
 META
+
+# Fedora 44 base media contains a known-broken igt-gpu-tools 2.2 build
+# requiring libproc2.so.0. Install the fixed/current package from updates here.
+dnf -y --refresh install igt-gpu-tools
+command -v intel_gpu_top >/dev/null
+rpm -q igt-gpu-tools
 
 install -d /etc/NetworkManager/conf.d /etc/modprobe.d
 cat > /etc/NetworkManager/conf.d/99-moonlight-wifi.conf <<'NM'
@@ -557,7 +562,7 @@ cd cocoos
 git checkout --detach 8c22132f1ce4146c0d6bff812f6fc8f724fe0101
 git submodule update --init --recursive
 qmake6 "CONFIG+=embedded" moonlight-qt.pro
-make release -j"$(nproc)"
+make release -j2
 install -m 0755 app/moonlight /usr/local/libexec/moonlight-os/cocoos
 strip /usr/local/libexec/moonlight-os/cocoos || true
 
@@ -567,7 +572,7 @@ cd moonlight-qt
 git checkout --detach 8369d1a0e11b999d4d1598f62ca5f6dea49602fb
 git submodule update --init --recursive
 qmake6 moonlight-qt.pro
-make release -j"$(nproc)"
+make release -j2
 install -m 0755 app/moonlight /usr/local/libexec/moonlight-os/moonlight
 strip /usr/local/libexec/moonlight-os/moonlight || true
 
