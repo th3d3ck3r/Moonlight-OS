@@ -91,6 +91,7 @@ iproute
 procps-ng
 util-linux
 cloud-utils-growpart
+xfsprogs
 zram-generator-defaults
 openssh-server
 rsync
@@ -104,6 +105,7 @@ patch
 dkms
 kernel-devel
 kernel-headers
+kmod
 pkgconf-pkg-config
 openssl
 openssl-devel
