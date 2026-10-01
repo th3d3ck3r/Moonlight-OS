@@ -28,3 +28,13 @@ jobs:
         run: |
           docker run --rm -v "$PWD:/workspace:ro" -w /workspace fedora:44 \
             bash ./scripts/audit-packages.sh
+
+
+  audio:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fedora 44 Cirrus audio compile audit
+        run: |
+          docker run --rm -v "$PWD:/workspace:ro" -w /workspace fedora:44 \
+            bash ./scripts/audit-audio.sh
