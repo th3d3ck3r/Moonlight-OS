@@ -82,6 +82,10 @@ test -f "$work/root/home/moonlight/.config/wireplumber/wireplumber.conf.d/52-dis
 
 # Require the hardware-specific runtime payload, not merely package metadata.
 test -f "$work/root/usr/lib64/dri/iHD_drv_video.so"
+for codec in sbc aac; do
+  test -s "$work/root/usr/lib64/spa-0.2/bluez5/libspa-codec-bluez5-$codec.so"
+  echo "Installed Bluetooth codec plugin verified: $codec"
+done
 # Resolve executable symlinks inside the guest, not against the build host.
 chroot "$work/root" /bin/bash -ec '
   export PATH=/usr/sbin:/usr/bin:/sbin:/bin

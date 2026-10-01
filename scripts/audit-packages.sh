@@ -44,6 +44,11 @@ dnf -y --refresh install igt-gpu-tools
 rpm -q igt-gpu-tools
 command -v intel_gpu_top >/dev/null
 
+for codec in sbc aac; do
+  test -s /usr/lib64/spa-0.2/bluez5/libspa-codec-bluez5-$codec.so
+  echo "Bluetooth codec plugin verified: $codec"
+done
+
 # Probe the exact compile-time capabilities selected by the pinned Moonlight tree.
 for pc in   openssl   sdl2   SDL2_ttf   libavcodec   libavutil   libswscale   libva   libva-x11   libva-drm   vdpau   libdrm   libplacebo   x11   egl   opus; do
   if ! pkg-config --exists "$pc"; then
