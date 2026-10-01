@@ -108,7 +108,7 @@ need_text "wifi.powersave=2" "$KS"
 need_text "options brcmfmac roamoff=1" "$KS"
 
 # DualSense.
-for pkg in steam-devices joystick-support linuxconsoletools SDL2; do
+for pkg in steam-devices joystick-support linuxconsoletools sdl2-compat; do
   need_pkg "$pkg"
 done
 need_text "hid_playstation" "$KS"
@@ -153,7 +153,7 @@ need_text "internal NVMe controller visible" "$KS"
 # Moonlight/CocoOS build stack.
 for pkg in \
   ffmpeg-libs ffmpeg-devel libplacebo libplacebo-devel openssl-devel \
-  SDL2-devel SDL2_ttf-devel libva-devel libvdpau-devel opus-devel \
+  sdl2-compat-devel SDL2_ttf-devel libva-devel libvdpau-devel opus-devel \
   pulseaudio-libs-devel alsa-lib-devel libdrm-devel \
   qt6-qtbase-gui qt6-qtbase-devel qt6-qtdeclarative qt6-qtdeclarative-devel \
   qt6-qtsvg qt6-qtsvg-devel qt6-qtwebsockets qt6-qtwebsockets-devel \
