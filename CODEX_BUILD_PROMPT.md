@@ -1,3 +1,11 @@
+# Repository requirement
+
+This project already has a GitHub repository:
+
+`https://github.com/th3d3ck3r/Moonlight-OS`
+
+Work directly in this existing repository. Do **not** create a throwaway local project, alternate repository, or detached replacement. Inspect the current `main` branch before editing, preserve existing work and history, and commit all build, driver, test, documentation, CI, and image-generation fixes back to this repository.
+
 # Codex build/fix prompt
 
 Work directly in `th3d3ck3r/Moonlight-OS`. This is a real reproducible appliance image project, not a throwaway script.
