@@ -1,102 +1,90 @@
+<div align="center">
+
 # 🌙 Moonlight-OS
+### Your MacBook. A dedicated streaming console. 🎮
 
-A controller-friendly Fedora development appliance for turning a **2017 13-inch non-Touch-Bar MacBook Pro (MacBookPro14,1)** into a dedicated Moonlight client for a **Vibepollo / Sunshine-compatible host**.
+**Fedora 44 · CocoOS + Moonlight · Intel x86_64 · Native UEFI**
 
-## v0.1 build status — 2026-10-01
+A controller-friendly USB appliance for the **2017 13-inch non-Touch-Bar MacBook Pro — MacBookPro14,1**, connecting to **Vibepollo / Sunshine-compatible hosts**.
 
-**The image is built and CI validated.** [Build #40](https://github.com/th3d3ck3r/Moonlight-OS/actions/runs/36919007483) completed a fresh Fedora installation, compiled both pinned clients and Cirrus audio, passed read-only image inspection, and passed the QEMU/OVMF `MOONLIGHT_OS_BOOT_OK` gate. All five jobs in [audit #67](https://github.com/th3d3ck3r/Moonlight-OS/actions/runs/36919007320) passed.
+**[⬇️ Download](https://github.com/th3d3ck3r/Moonlight-OS/actions/runs/36919007483/artifacts/11193175513) · [🚀 Setup](#quick-start) · [✨ Features](#features) · [🩺 Troubleshooting](#troubleshooting) · [🧪 Test plan](docs/TEST_PLAN.md)**
 
-[Download the validated image and checksum](https://github.com/th3d3ck3r/Moonlight-OS/actions/runs/36919007483/artifacts/11193175513) (GitHub Actions ZIP, about 3.3 GiB). It contains `moonlight-os-mbp14-1.raw.xz` and `moonlight-os-mbp14-1.raw.xz.sha256`. The raw image is **12.24 GiB / 13,147,045,888 bytes**, below the 14,000 MiB limit. This artifact is retained until **October 15, 2026**; a manual workflow run produces a fresh build.
+</div>
 
-**Physical MacBook validation remains required.** CI proves generic x86_64 UEFI boot and the installed software/driver payload. It does not prove real Iris Plus hardware decoding, Apple SPI input, BCM4350 networking, Cirrus playback, AirPods latency/codec negotiation, DualSense behavior, or streaming against your host. Follow [`docs/TEST_PLAN.md`](docs/TEST_PLAN.md) after flashing.
+---
 
+## ✅ v0.1 — built, inspected, boot validated
 
-The normal boot path is deliberately short:
+**Validated on October 1, 2026.** [Fresh build #40](https://github.com/th3d3ck3r/Moonlight-OS/actions/runs/36919007483) installed Fedora, compiled both pinned clients and Cirrus audio, passed read-only image inspection, and booted through QEMU/OVMF with `MOONLIGHT_OS_BOOT_OK`. All five jobs in the [final repository audit #68](https://github.com/th3d3ck3r/Moonlight-OS/actions/runs/36923967450) passed.
 
-```text
-Apple EFI → Fedora 44 → NetworkManager → Xorg → CocoOS → Vibepollo/Sunshine
-                                           ↘ upstream Moonlight fallback
-```
+| 📦 Download details | Value |
+| --- | --- |
+| Artifact | [moonlight-os-mbp14-1](https://github.com/th3d3ck3r/Moonlight-OS/actions/runs/36919007483/artifacts/11193175513) |
+| ZIP contents | `moonlight-os-mbp14-1.raw.xz` + `moonlight-os-mbp14-1.raw.xz.sha256` |
+| Download size | About **3.3 GiB** |
+| Uncompressed image | **12.24 GiB / 13,147,045,888 bytes** |
+| USB requirement | **16 GB or larger** |
+| Artifact expires | **October 15, 2026** — run the build workflow for a fresh artifact |
 
-## Design targets
+> 🧪 **Physical MacBook testing is still required.** OVMF proves generic x86_64 UEFI boot. It does not confirm real Intel GPU decoding, Apple keyboard/trackpad, Wi-Fi, Bluetooth, internal audio, AirPods latency, DualSense behavior, or end-to-end streaming. The drivers and tools are installed; verify their behavior using the [hardware test plan](docs/TEST_PLAN.md).
 
-- Boot from a **16 GB-or-larger USB drive** without touching the internal SSD. v0.1 intentionally keeps build/debug tooling; the later appliance release will be smaller.
-- Native x86_64 UEFI boot for the MacBookPro14,1.
-- Intel Iris Plus 640 via the kernel `i915` driver.
-- VA-API hardware decode for H.264/HEVC.
-- Broadcom BCM4350 Wi-Fi and Bluetooth using the in-kernel drivers/firmware path.
-- Wi-Fi power saving disabled to reduce latency spikes.
-- **PS5 DualSense support over USB and Bluetooth** via `hid-playstation`, BlueZ, Fedora's SDL2 compatibility layer, joystick udev rules, and controller diagnostics.
-- Internal audio through the MacBook-specific Cirrus CS8409/CS42L83 driver.
-- X11 with no desktop environment and no compositor.
-- CocoOS as the console UI, with pinned upstream Moonlight as a recovery/reference client.
-- Persistent Wi-Fi, Bluetooth, pairing, and Moonlight/CocoOS settings.
-- Target idle memory below 2 GB; 8 GB RAM is comfortably sufficient.
+<a id="features"></a>
 
-## Why two Moonlight clients?
+## ✨ What's inside
 
-CocoOS is a Moonlight-Qt fork with a controller-first console interface. Its current UI is still moving quickly, so Moonlight-OS also installs a pinned upstream Moonlight build. If CocoOS exits repeatedly, the launcher falls back to upstream Moonlight automatically.
+| Feature | Included configuration |
+| --- | --- |
+| 🎮 Console interface | **CocoOS** controller-first UI, with pinned upstream **Moonlight** as a fallback/reference client |
+| ⚡ Intel acceleration | Kernel `i915`, Intel VA-API H.264/HEVC decode stack, Mesa, and GPU diagnostics for Iris Plus 640 |
+| 🖥️ Lean graphics session | Native **X11**, with no desktop environment or compositor |
+| 📶 Wi-Fi setup | NetworkManager, guided first-boot connection, saved networks, and Wi-Fi power saving disabled |
+| ⌨️ Input support | Apple SPI keyboard/trackpad modules, libinput, and USB/Bluetooth mouse and keyboard tooling |
+| 🕹️ DualSense | USB/Bluetooth input via `hid-playstation`, pairing helper, joystick rules, and diagnostics |
+| 🔇 Controller audio policy | DualSense USB speaker, microphone, and headset endpoints disabled while retaining input |
+| 🎧 AirPods Pro 2 | Playback-only **A2DP**, SBC/SBC-XQ/AAC codec configuration, and **Low Latency / Quality** preference selection |
+| 🔊 Internal audio | Pinned third-party Cirrus CS8409/CS42L83 driver built for the installed kernel |
+| 🛠️ Guided settings | Wi-Fi, Bluetooth, AirPods, controllers, diagnostics, and client selection from tty2 |
+| 💾 Persistent setup | Wi-Fi, Bluetooth, pairing, and client settings saved on the USB; first-boot XFS root growth |
+| 🌡️ Diagnostics | Hardware verifier, VA-API checks, `intel_gpu_top`, input tools, and thermal management |
+| 🔒 Reproducible builds | Pinned upstream commits and Fedora installer checksum in [SOURCES.lock](SOURCES.lock) |
 
-The default client can be changed from a console with:
+**Boot flow:** Apple EFI → Fedora 44 → NetworkManager → Xorg → CocoOS → your streaming host.
 
-```bash
-sudo moonlight-os-client cocoos
-sudo moonlight-os-client moonlight
-```
+CocoOS is a Moonlight-Qt fork whose interface is still evolving. After repeated client failures, the launcher falls back to upstream Moonlight. You can also select either client manually.
 
-## Building the image
+**Performance targets:** idle memory below 2 GB and a low-latency streaming session. These are targets, not measured physical-hardware results. An 8 GB MacBook is the intended class of device.
 
-The GitHub Actions workflow builds a UEFI-partitioned development disk image using Fedora's `livemedia-creator` and OVMF. v0.1 is allowed to grow to **under 14,000 MiB raw** so it fits a normal 16 GB USB while retaining Git, GCC, DKMS, kernel headers, source trees, and diagnostic tooling.
+<a id="quick-start"></a>
 
-For a fresh CI build, open the **Build Moonlight-OS image** Actions workflow, choose **Run workflow**, and select `main`. Manual builds install from scratch and do not depend on temporary recovery artifacts.
+## 🚀 Quick start
 
-Locally, build from a Fedora 44 x86_64 host with virtualization available:
+### 1. Download and verify 🔍
 
-```bash
-sudo dnf install -y lorax-lmc-virt qemu-kvm qemu-img edk2-ovmf curl xz util-linux xfsprogs e2fsprogs dosfstools pykickstart
-sudo ./scripts/build-image.sh
-```
+[Download the validated GitHub Actions ZIP](https://github.com/th3d3ck3r/Moonlight-OS/actions/runs/36919007483/artifacts/11193175513), then unzip it. GitHub may require you to sign in.
 
-Output:
-
-```text
-out/moonlight-os-mbp14-1.raw.xz
-out/moonlight-os-mbp14-1.raw.xz.sha256
-```
-
-## Automated UEFI preflight
-
-A build is not considered flashable merely because Fedora produced a raw disk. Before compression/upload, Moonlight-OS:
-
-1. inspects the GPT partitions and mounts them read-only;
-2. requires the removable-media path `EFI/BOOT/BOOTX64.EFI` plus Fedora EFI files;
-3. verifies CocoOS, upstream Moonlight, settings/diagnostic helpers, and Bluetooth policies are present;
-4. boots a copy-on-write overlay of the raw image under QEMU/OVMF;
-5. requires the guest to reach multi-user boot and emit `MOONLIGHT_OS_BOOT_OK` over the serial console.
-
-The OVMF test does not modify the release raw image and does not prove Mac-specific hardware. It proves the generic x86_64 UEFI boot path before the image is flashed to the MacBook.
-
-## Flashing
-
-Unzip the download and verify its compressed-image checksum in the same directory before flashing:
+Run the checksum command in the directory containing both downloaded files:
 
 ```bash
 # Linux
 sha256sum -c moonlight-os-mbp14-1.raw.xz.sha256
+
 # macOS
 shasum -a 256 -c moonlight-os-mbp14-1.raw.xz.sha256
 ```
 
+**Continue only if verification reports OK.**
 
-**This erases the destination USB. Double-check the device name.**
+### 2. Flash the USB 💾
 
-Linux:
+> ⚠️ **Flashing erases the entire destination drive.** Replace the example device with your USB's actual device name. Verify its identity and capacity first; do not select the internal SSD.
+
+**Linux** — inspect disks with `lsblk`, unmount the USB's mounted partitions, then:
 
 ```bash
 xzcat moonlight-os-mbp14-1.raw.xz | sudo dd of=/dev/sdX bs=16M status=progress conv=fsync
 ```
 
-macOS:
+**macOS** — these commands require `xzcat` to be installed:
 
 ```bash
 diskutil list
@@ -105,69 +93,111 @@ xzcat moonlight-os-mbp14-1.raw.xz | sudo dd of=/dev/rdiskN bs=16m
 diskutil eject /dev/diskN
 ```
 
-On the MacBook, hold **Option (⌥)** at power-on and choose **EFI Boot**.
+### 3. Boot and connect 📶
 
-## First boot
+1. Insert the USB into the target MacBook.
+2. Hold **Option (⌥)** at power-on and select **EFI Boot**.
+3. If no network is saved, use the Wi-Fi helper's **Connect** option, powered by `nmtui-connect`.
+4. Once networking is configured, the appliance starts CocoOS. Add/discover your host and complete its pairing flow.
+5. Start with **1080p60, H.264, hardware decoding, V-Sync, and frame pacing enabled**. Compare HEVC and network options after confirming a stable stream.
 
-If no saved network is available, the appliance opens the Moonlight-OS Wi-Fi helper on tty1; its Connect option uses `nmtui-connect`. After the connection is saved, subsequent boots launch straight into CocoOS.
+The appliance is designed to run from USB without installing to the internal SSD. Saved settings survive reboots.
 
-If Bluetooth is missing immediately after switching from macOS, the BCM4350C0 may still have macOS' UART baud rate retained. Shut down and perform the standard SMC reset once, then boot Moonlight-OS again.
+## 🎛️ Everyday controls
 
-Useful consoles:
+| Shortcut / command | Purpose |
+| --- | --- |
+| **Ctrl+Alt+F1** | Return to the appliance session |
+| **Ctrl+Alt+F2** | Open the black-and-red settings/recovery console |
+| `moonlight-settings` | Launch the guided settings menu manually |
+| `sudo moonlight-os-client cocoos` | Select CocoOS |
+| `sudo moonlight-os-client moonlight` | Select upstream Moonlight |
+| `sudo moonlight-os-verify` | Inspect hardware, graphics, networking, audio, input, clients, and memory |
+| `dualsense-check` | Inspect controller support |
+| `dualsense-pair` | Start guided Bluetooth controller pairing |
 
-- `Ctrl+Alt+F1` — appliance session
-- `Ctrl+Alt+F2` — diagnostic login console (black background / red text)
+**DualSense pairing:** hold **CREATE + PS** until the light bar flashes rapidly, then use the pairing helper. The USB audio endpoints are suppressed; actual haptics and other controller features depend on the client and host.
 
-The local user is `moonlight`. It has passwordless sudo in this diagnostic v1 image. Do not expose SSH to untrusted networks; SSH is disabled by default.
+**AirPods Pro 2:** pair through the settings menu and choose **Low Latency** or **Quality** preference. HSP/HFP microphone/headset roles are disabled. This preference does **not** guarantee a particular codec or latency; confirm negotiation and playback on your hardware.
 
-Normal use should not require a command line. If you intentionally enter a recovery/debug shell, Moonlight-OS defaults to a **black background with red text**.
+**Local diagnostic user:** `moonlight`, with passwordless sudo in this development image. SSH is disabled by default. Normal boot and streaming should not require shell commands.
 
-DualSense audio behavior: the controller's **speaker, microphone, and headset audio endpoints are disabled** on USB. The controller remains fully available through `hid-playstation` for normal input and supported haptics/features. Bluetooth DualSense is HID-only on mainline Linux, so no controller audio device is exposed there.
+<a id="troubleshooting"></a>
 
-DualSense helpers:
+## 🩺 Known limitations & troubleshooting
+
+| Symptom / limitation | What to check or do |
+| --- | --- |
+| Bluetooth missing after switching from macOS | BCM4350C0 may retain macOS' UART baud rate. Shut down, perform the standard SMC reset for this MacBook once, and retry. |
+| Wi-Fi missing or unstable | Open tty2 settings and run `sudo moonlight-os-verify`. BCM4350 firmware/driver behavior still needs physical validation; compare a supported Ethernet adapter if available. |
+| Black screen, slow decode, or stutter | Compare upstream Moonlight with CocoOS. Start at 1080p60/H.264; inspect VA-API and the performance overlay. Run the verifier and observe video-engine activity with `intel_gpu_top`. |
+| CocoOS exits repeatedly | The launcher provides upstream Moonlight fallback. Select it explicitly from settings if needed. |
+| Internal speakers unavailable | Check the Cirrus module and PipeWire sink with the verifier. The driver is third-party and tied to the pinned kernel. |
+| AirPods delay or unexpected codec | Check the active A2DP configuration and compare the two preferences. Actual latency depends on Bluetooth conditions and negotiated codec. Microphone mode is intentionally unavailable. |
+| DualSense speaker/mic absent | Expected policy on USB. Controller audio is disabled; verify controller input separately. |
+| Keyboard, trackpad, or controller misbehaves | Use the verifier and [input test checklist](docs/TEST_PLAN.md). Installed modules alone do not prove real-device operation. |
+| Root expansion fails | First-boot growth must succeed or explicitly report NOCHANGE; other failures remain retryable. Inspect `journalctl -u moonlight-os-grow-root.service` from tty2. |
+| Image download expired | Run **Build Moonlight-OS image → Run workflow → main** to produce a fresh validated artifact. |
+| FaceTime camera unavailable | Intentionally omitted; its separate driver/firmware path is outside this streaming appliance. |
+| Optional CocoOS Companion features | Not required or claimed. Standard Sunshine/GameStream-compatible discovery, pairing, app listing, streaming, and input are the baseline. |
+
+**Fixed during this build:** container partition probing, read-only inspection mount order, Fedora OVMF firmware discovery, and first-boot root partition-number detection. Root growth now has real GPT/XFS expansion, NOCHANGE, and failure/retry audit coverage.
+
+**Kernel updates:** this image does not auto-update the kernel. Build a new image when changing kernels so the MacBook audio module stays aligned.
+
+## 🧪 Validation — four passes before flashing
+
+1. **Repository checks:** shell/Kickstart validation, embedded helpers, source pins, and configuration checks.
+2. **Fedora checks:** package dependencies, accelerated client configuration, exact-kernel Cirrus compilation, and SBC/AAC plugins.
+3. **Installed-image inspection:** GPT/EFI/boot/XFS layout, removable-media bootloader, both clients, settings helpers, policies, and hardware modules.
+4. **Boot check:** QEMU/OVMF boots a copy-on-write overlay and requires `MOONLIGHT_OS_BOOT_OK` before compression and upload.
+
+The overlay preserves the release raw image. The root-growth audit also checks actual partition/filesystem expansion, unchanged EFI/boot partitions, NOCHANGE handling, and retry after failure.
+
+**Next: real hardware.** Follow [docs/TEST_PLAN.md](docs/TEST_PLAN.md) for GPU decode, Apple input, networking, audio, AirPods, controller behavior, and sustained streams. Compare CocoOS/upstream Moonlight and Wi-Fi/Ethernet using the performance overlay.
+
+## 🏗️ Build your own image
+
+### GitHub Actions
+
+Open **Actions → Build Moonlight-OS image → Run workflow**, select `main`, and run it. Manual builds install from scratch and do not depend on temporary recovery artifacts. A successful run uploads the compressed image and checksum.
+
+### Fedora 44 x86_64 host
+
+Use a Fedora 44 host with virtualization available:
 
 ```bash
-dualsense-check
-dualsense-pair
+sudo dnf install -y lorax-lmc-virt qemu-kvm qemu-img edk2-ovmf curl xz util-linux xfsprogs e2fsprogs dosfstools pykickstart
+sudo ./scripts/build-image.sh
 ```
 
-For Bluetooth pairing, hold **CREATE + PS** until the light bar flashes rapidly, then use the pairing helper.
+Outputs:
 
-## AirPods Pro 2
-
-AirPods Pro 2 are treated as **playback-only A2DP devices**. HSP/HFP headset/microphone roles are disabled. WirePlumber is configured with the documented `bluetooth.profile-preference = "latency"` setting and A2DP codecs `sbc`, `sbc_xq`, and `aac`. The settings menu can switch between **Low Latency** and **Quality** preference without enabling microphone mode.
-
-## Network and Bluetooth menu
-
-Normal streaming should not require a shell. Press `Ctrl+Alt+F2` for the red-on-black recovery/settings console; it automatically opens `moonlight-settings`, which provides Wi-Fi, Bluetooth, AirPods Pro 2, DualSense, diagnostics, and client selection. On a first boot with no saved network, the appliance invokes the Wi-Fi helper automatically before starting X11.
-
-## Fedora 44 installer note
-
-Fedora 44 base installer media contains an older `igt-gpu-tools 2.2` build with a stale libproc2 dependency. Moonlight-OS installs the current IGT package from Fedora updates during post-install instead, preserving `intel_gpu_top` GPU/video telemetry without allowing that base-media packaging bug to block Anaconda.
-
-## Hardware verification
-
-Run:
-
-```bash
-sudo moonlight-os-verify
+```text
+out/moonlight-os-mbp14-1.raw.xz
+out/moonlight-os-mbp14-1.raw.xz.sha256
 ```
 
-It checks the model identifier, i915, DRM render nodes, VA-API profiles, Wi-Fi, Bluetooth, audio, controller devices, X11 components, both clients, and memory use.
+The development image stays **under 14,000 MiB raw** while retaining Git, GCC, DKMS, kernel headers, source trees, and diagnostic tools. A smaller appliance image is a future goal.
 
-For streaming, start with **1080p60 + H.264 + hardware decoding + V-Sync/frame pacing enabled**. Then compare HEVC, Wi-Fi vs Ethernet, and CocoOS vs upstream Moonlight using Moonlight's performance overlay.
+**Fedora installer workaround:** Fedora 44 base media includes an older `igt-gpu-tools 2.2` build with a stale libproc2 dependency. Moonlight-OS installs current IGT from Fedora updates during post-install, preserving GPU telemetry without blocking Anaconda.
 
-## Source locks
+## 📚 Project notes
 
-See [`SOURCES.lock`](SOURCES.lock). Build-critical upstream commits and the Fedora installer checksum are pinned so a future branch update cannot silently change the image.
+- [Build status](BUILD_STATUS.md)
+- [Hardware and streaming test plan](docs/TEST_PLAN.md)
+- [Pinned sources](SOURCES.lock)
+- [Third-party software](docs/THIRD_PARTY.md)
 
-## Important v1 limitations
+## ⚖️ License
 
-- The FaceTime camera is intentionally omitted; it is irrelevant to streaming and requires another third-party driver/firmware path.
-- Internal audio uses a third-party MacBook driver pinned in `SOURCES.lock`.
-- The image does not auto-update the kernel. That is intentional: the prebuilt MacBook audio module is tied to the installed kernel. Build a new Moonlight-OS image when moving kernels.
-- CocoOS' optional host Companion features are not required. Vibepollo is treated as a standard Sunshine/GameStream-compatible server, so ordinary Moonlight discovery, pairing, app listing, streaming, and input remain the baseline.
+Moonlight-OS build scripts are **GPL-3.0**. Included third-party software retains its upstream license, including Moonlight-Qt/CocoOS (GPL-3.0). See [docs/THIRD_PARTY.md](docs/THIRD_PARTY.md).
 
-## License
+---
 
-Moonlight-OS build scripts are GPL-3.0. The image incorporates or builds third-party software under each upstream project's license, including Moonlight-Qt/CocoOS (GPL-3.0). See `docs/THIRD_PARTY.md`.
+<div align="center">
+
+**🌙 Boot. Pair. Play.**  
+Built for a dedicated streaming setup — with the diagnostics to keep improving it.
+
+</div>
