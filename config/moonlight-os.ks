@@ -19,7 +19,7 @@ clearpart --all --initlabel --disklabel=gpt
 part /boot/efi --fstype=efi --size=512
 part /boot --fstype=ext4 --size=768
 part / --fstype=xfs --size=11000 --grow
-bootloader --timeout=1 --append="quiet rd.driver.pre=i915 mem_sleep_default=s2idle pcie_port_pm=off"
+bootloader --timeout=1 --append="quiet rd.driver.pre=i915 mem_sleep_default=s2idle pcie_port_pm=off console=tty0 console=ttyS0,115200n8 systemd.show_status=true"
 
 rootpw --lock
 user --name=moonlight --groups=wheel,video,input,audio --lock
