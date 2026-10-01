@@ -62,5 +62,9 @@ fi
 bash "$ROOT/scripts/inspect-image.sh" "$OUT/moonlight-os-mbp14-1.raw"
 bash "$ROOT/scripts/test-ovmf.sh" "$OUT/moonlight-os-mbp14-1.raw"
 
-xz -T0 -9e "$OUT/moonlight-os-mbp14-1.raw"
+# Read-only inspection and the qcow2 boot overlay leave recovered raw data unchanged.
+# Retain its verified archive instead of recompressing the same image.
+if [[ "$MODE" != --validate-only || ! -f "$OUT/moonlight-os-mbp14-1.raw.xz" ]]; then
+  xz -T0 -9e "$OUT/moonlight-os-mbp14-1.raw"
+fi
 (cd "$OUT" && sha256sum moonlight-os-mbp14-1.raw.xz > moonlight-os-mbp14-1.raw.xz.sha256)

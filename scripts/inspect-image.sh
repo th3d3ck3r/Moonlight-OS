@@ -53,8 +53,9 @@ done < <(lsblk -lnpo NAME,TYPE "$loop")
 [[ -b "$root" ]]
 
 mount -o ro,norecovery "$root" "$work/root"
-mkdir -p "$work/root/boot" "$work/root/boot/efi"
+test -d "$work/root/boot"
 mount -o ro,noload "$boot" "$work/root/boot"
+test -d "$work/root/boot/efi"
 mount -o ro "$esp" "$work/root/boot/efi"
 
 test -f "$work/root/boot/efi/EFI/BOOT/BOOTX64.EFI"

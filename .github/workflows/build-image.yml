@@ -44,7 +44,7 @@ jobs:
           run-id: ${{ steps.mode.outputs.run_id }}
       - name: Decompress recovered image
         if: steps.mode.outputs.run_id != ''
-        run: xz -d out/moonlight-os-mbp14-1.raw.xz
+        run: xz -dk out/moonlight-os-mbp14-1.raw.xz
       - name: Enable KVM when available
         run: |
           if [ -e /dev/kvm ]; then
@@ -69,7 +69,7 @@ jobs:
       - name: Preserve installed image after a validation failure
         if: failure()
         run: |
-          if [ -f out/moonlight-os-mbp14-1.raw ] && [ -f out/build-inputs.sha256 ]; then
+          if [ -f out/moonlight-os-mbp14-1.raw ] && [ -f out/build-inputs.sha256 ] && [ ! -f out/moonlight-os-mbp14-1.raw.xz ]; then
             sudo xz -T2 -1 out/moonlight-os-mbp14-1.raw
           fi
       - name: Upload unvalidated recovery image
