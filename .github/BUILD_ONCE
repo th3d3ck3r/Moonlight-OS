@@ -1,2 +1,3 @@
-Moonlight-OS v0.1 controlled image build after audit #51 passed
-2026-10-01: image gate diagnostics, read-only inspection, Fedora OVMF preflight, recovery checkpoints.
+REVALIDATE_RUN_ID=36903647579
+Moonlight-OS v0.1 targeted image inspection/OVMF recovery after audit #53 passed.
+Reuse the completed Fedora installation; source input checksums must match.
