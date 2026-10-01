@@ -19,7 +19,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Static validation
-        run: ./scripts/validate.sh
+        run: bash ./scripts/validate.sh
 
   build:
     needs: validate
@@ -40,7 +40,7 @@ jobs:
             -v "$PWD:/workspace" -w /workspace \
             fedora:44 bash -euxo pipefail -c '
               dnf -y install lorax-lmc-virt qemu-kvm edk2-ovmf curl xz util-linux findutils &&
-              ./scripts/build-image.sh
+              bash ./scripts/build-image.sh
             '
       - name: Upload image artifact
         uses: actions/upload-artifact@v4
