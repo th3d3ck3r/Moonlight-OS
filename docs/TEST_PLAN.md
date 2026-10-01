@@ -11,6 +11,8 @@ Require:
 - CocoOS, upstream Moonlight, settings/diagnostic helpers, and audio policies are present in the installed root.
 - QEMU/OVMF boots the raw image and the guest emits `MOONLIGHT_OS_BOOT_OK` after reaching the multi-user boot path.
 - The OVMF test uses a qcow2 overlay so the release raw image remains unchanged.
+- The first-boot root expansion service must either grow the XFS root partition or explicitly detect NOCHANGE; other failures must remain retryable.
+- Installed-image inspection must find i915, Apple SPI, brcmfmac, hid-playstation, Intel iHD VA-API, and the built Cirrus CS8409 module for the pinned kernel.
 
 ## Gate 1: boot and platform
 
