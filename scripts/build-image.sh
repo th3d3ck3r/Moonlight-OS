@@ -47,5 +47,8 @@ if (( SIZE > MAX )); then
   exit 1
 fi
 
+bash "$ROOT/scripts/inspect-image.sh" "$OUT/moonlight-os-mbp14-1.raw"
+bash "$ROOT/scripts/test-ovmf.sh" "$OUT/moonlight-os-mbp14-1.raw"
+
 xz -T0 -9e "$OUT/moonlight-os-mbp14-1.raw"
 sha256sum "$OUT/moonlight-os-mbp14-1.raw.xz" > "$OUT/moonlight-os-mbp14-1.raw.xz.sha256"
