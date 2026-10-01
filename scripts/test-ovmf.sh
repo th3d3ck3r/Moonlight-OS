@@ -70,12 +70,14 @@ if [[ "$ok" -ne 1 ]]; then
   wait "$qemu_pid" 2>/dev/null || true
   diag_dir="$(dirname "$(realpath "$RAW")")"
   diag_log="$diag_dir/boot-diagnostic.log"
-  qemu-system-x86_64 -machine "q35,accel=$accel" -cpu "$cpu" -m 2048 -smp 2 \\
-    -kernel "$diag_dir/diagnostic-kernel" -initrd "$diag_dir/diagnostic-initrd" \\
-    -append "root=UUID=$(cat "$diag_dir/diagnostic-root-uuid") rw console=ttyS0,115200n8 systemd.journald.forward_to_console=1" \\
-    -drive "if=virtio,format=qcow2,file=$work/overlay.qcow2" \\
-    -display none -serial "file:$diag_log" -monitor none -net none -no-reboot \\
-    >"$diag_dir/boot-diagnostic-qemu.log" 2>&1 &
+  diag_args=(
+    -machine "q35,accel=$accel" -cpu "$cpu" -m 2048 -smp 2
+    -kernel "$diag_dir/diagnostic-kernel" -initrd "$diag_dir/diagnostic-initrd"
+    -append "root=UUID=$(cat "$diag_dir/diagnostic-root-uuid") rw console=ttyS0,115200n8 systemd.journald.forward_to_console=1"
+    -drive "if=virtio,format=qcow2,file=$work/overlay.qcow2"
+    -display none -serial "file:$diag_log" -monitor none -net none -no-reboot
+  )
+  qemu-system-x86_64 "${diag_args[@]}" >"$diag_dir/boot-diagnostic-qemu.log" 2>&1 &
   qemu_pid=$!
   for _ in $(seq 1 60); do
     kill -0 "$qemu_pid" 2>/dev/null || break
