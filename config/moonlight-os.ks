@@ -717,6 +717,32 @@ WantedBy=multi-user.target
 GROWSVC
 systemctl enable moonlight-os-grow-root.service
 
+cat > /usr/local/sbin/moonlight-os-boot-marker <<'BOOTMARK'
+#!/usr/bin/env bash
+set -eu
+marker="MOONLIGHT_OS_BOOT_OK"
+printf '%s\n' "$marker" > /run/moonlight-os-boot-ok
+if [[ -w /dev/ttyS0 ]]; then
+  printf '%s\n' "$marker" > /dev/ttyS0
+fi
+BOOTMARK
+chmod 0755 /usr/local/sbin/moonlight-os-boot-marker
+
+cat > /etc/systemd/system/moonlight-os-boot-marker.service <<'BOOTMARKSVC'
+[Unit]
+Description=Moonlight-OS boot verification marker
+After=local-fs.target NetworkManager.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/moonlight-os-boot-marker
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target
+BOOTMARKSVC
+systemctl enable moonlight-os-boot-marker.service
+
 install -d /etc/systemd/system/getty@tty1.service.d
 cat > /etc/systemd/system/getty@tty1.service.d/autologin.conf <<'GETTY'
 [Service]
