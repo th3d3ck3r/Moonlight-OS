@@ -1,3 +1,3 @@
-REVALIDATE_RUN_ID=36911733081
-Moonlight-OS targeted first-boot journal collection after audit #61 passed.
-Keep the OVMF gate strict; failed root-growth output is required before the next payload fix.
+REVALIDATE_RUN_ID=36914593089
+Moonlight-OS root-growth journal recovery after audit #63 passed.
+Diagnostic QEMU options use an argument array; OVMF failure still fails the release gate.
