@@ -20,6 +20,7 @@ Run `sudo moonlight-os-verify` and require:
 - DualSense is detected over USB with `hid-playstation`.
 - Pair a DualSense over Bluetooth and confirm it reconnects after reboot.
 - Run `dualsense-check` and confirm no driver/tool failures.
+- Connect DualSense over USB and confirm its speaker/microphone audio card is **absent from PipeWire**, while controller input still works.
 
 ## Gate 2b: recovery console
 
