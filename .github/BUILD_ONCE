@@ -1,3 +1,2 @@
-Moonlight-OS v0.1 controlled image build after audit #49 passed
-2026-10-01: Cirrus GCC16 fix validated on 6.19.10-300.fc44.x86_64
-Require installed payload inspection and OVMF MOONLIGHT_OS_BOOT_OK before upload.
+Moonlight-OS v0.1 controlled image build after audit #51 passed
+2026-10-01: image gate diagnostics, read-only inspection, Fedora OVMF preflight, recovery checkpoints.
