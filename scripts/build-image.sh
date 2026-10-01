@@ -31,7 +31,11 @@ if [[ ! -e /dev/kvm ]]; then
   LMC_ARGS+=(--no-kvm)
 fi
 
-sudo livemedia-creator "${LMC_ARGS[@]}"
+if (( EUID == 0 )); then
+  livemedia-creator "${LMC_ARGS[@]}"
+else
+  sudo livemedia-creator "${LMC_ARGS[@]}"
+fi
 RAW=$(find "$OUT/lmc" -maxdepth 2 -type f -name 'moonlight-os-mbp14-1.raw' -print -quit)
 [[ -n "$RAW" && -f "$RAW" ]]
 mv "$RAW" "$OUT/moonlight-os-mbp14-1.raw"
