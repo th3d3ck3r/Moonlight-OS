@@ -14,7 +14,6 @@ fi
 printf '%s  %s\n' "$FEDORA_ISO_SHA256" "$ISO" | sha256sum -c -
 
 rm -rf "$OUT/lmc" "$OUT/moonlight-os-mbp14-1.raw" "$OUT/moonlight-os-mbp14-1.raw.xz"*
-mkdir -p "$OUT/lmc"
 
 LMC_ARGS=(
   --make-disk
