@@ -125,6 +125,15 @@ grep -q '^kernel-devel$' "$KS"
 grep -q '^kernel-headers$' "$KS"
 grep -q 'v0.1 is intentionally a development/debug image' "$KS"
 
+# Kickstart structure: exactly one %packages section and one %post section.
+[[ "$(grep -c '^%packages' "$KS")" -eq 1 ]]
+[[ "$(grep -c '^%post' "$KS")" -eq 1 ]]
+[[ "$(grep -c '^%end! grep -Eq "grep -q '.*grep -q|Static validation passed.*\$KS" "$KS" "$ROOT/scripts/validate.sh"
+grep -q '^echo "Static validation passed\."$' "$ROOT/scripts/validate.sh"
+
+echo "Static validation passed."
+ "$KS")" -eq 2 ]]
+
 # Guard against accidental text-replacement corruption.
 ! grep -Eq "grep -q '.*grep -q|Static validation passed.*\$KS" "$KS" "$ROOT/scripts/validate.sh"
 grep -q '^echo "Static validation passed\."$' "$ROOT/scripts/validate.sh"
