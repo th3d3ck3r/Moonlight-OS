@@ -755,9 +755,12 @@ set -euo pipefail
 root_src=$(findmnt -n -o SOURCE /)
 root_real=$(readlink -f "$root_src")
 part=$(basename "$root_real")
-disk=$(lsblk -n -o PKNAME "$root_real" | head -n1)
-num=$(lsblk -n -o PARTN "$root_real" | head -n1)
-[[ -n "$disk" && -n "$num" ]]
+sysnode=$(readlink -f "/sys/class/block/$part")
+[[ -b "$root_real" && -r "$sysnode/partition" ]]
+disk=$(basename "$(dirname "$sysnode")")
+num=$(<"$sysnode/partition")
+[[ -b "/dev/$disk" && "$num" =~ ^[1-9][0-9]*$ ]]
+printf 'Root growth target: /dev/%s partition %s\n' "$disk" "$num"
 
 rc=0
 out=$(growpart "/dev/$disk" "$num" 2>&1) || rc=$?
@@ -782,6 +785,8 @@ After=local-fs.target
 [Service]
 Type=oneshot
 ExecStart=/usr/local/sbin/moonlight-os-grow-root
+StandardOutput=journal+console
+StandardError=journal+console
 
 [Install]
 WantedBy=multi-user.target

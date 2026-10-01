@@ -220,4 +220,8 @@ need_text "16 GB" "$TEST_PLAN"
 need_text "Automated UEFI preflight" "$README"
 need_text "Gate 0: automated image/UEFI preflight" "$TEST_PLAN"
 
+need_text 'num=$(<"$sysnode/partition")' "$KS"
+! grep -Fq 'lsblk -n -o PARTN' "$KS"
+need_text 'StandardOutput=journal+console' "$KS"
+
 echo "Static validation passed."
