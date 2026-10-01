@@ -208,9 +208,10 @@ chmod 0644 /etc/profile.d/00-moonlight-red-terminal.sh
 install -d -m 0755 /home/moonlight/.config/wireplumber/wireplumber.conf.d
 cat > /home/moonlight/.config/wireplumber/wireplumber.conf.d/51-moonlight-airpods.conf <<'WPCONF'
 monitor.bluez.properties = {
-  bluez5.roles = [ a2dp_sink ]
-  bluez5.codecs = [ sbc sbc_xq aac ]
+  override.bluez5.roles = [ a2dp_sink ]
+  override.bluez5.codecs = [ sbc sbc_xq aac ]
   bluez5.enable-sbc-xq = true
+  override.bluez5.auto-connect = [ a2dp_sink ]
 }
 wireplumber.settings = {
   bluetooth.autoswitch-to-headset-profile = false
