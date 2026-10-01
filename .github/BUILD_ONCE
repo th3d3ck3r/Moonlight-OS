@@ -1,3 +1,3 @@
-REVALIDATE_RUN_ID=36903647579
-Moonlight-OS v0.1 targeted image inspection/OVMF recovery after audit #53 passed.
-Reuse the completed Fedora installation; source input checksums must match.
+REVALIDATE_RUN_ID=36907821587
+Moonlight-OS v0.1 read-only mount-order recovery after audit #56 passed.
+Reuse completed Fedora installation and retained compression; require payload and OVMF gates.
