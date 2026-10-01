@@ -218,6 +218,28 @@ wireplumber.settings = {
 WPCONF
 chown -R moonlight:moonlight /home/moonlight/.config
 
+# DualSense USB exposes an ALSA audio card (speaker/mic/headset jack).
+# Disable only that audio card by Sony VID/PID; hid-playstation remains active.
+cat > /home/moonlight/.config/wireplumber/wireplumber.conf.d/52-disable-dualsense-audio.conf <<'DSAUDIO'
+monitor.alsa.rules = [
+  {
+    matches = [
+      {
+        device.bus = "usb"
+        device.vendor.id = 1356
+        device.product.id = 3302
+      }
+    ]
+    actions = {
+      update-props = {
+        device.disabled = true
+      }
+    }
+  }
+]
+DSAUDIO
+chown moonlight:moonlight /home/moonlight/.config/wireplumber/wireplumber.conf.d/52-disable-dualsense-audio.conf
+
 cat > /usr/local/bin/airpods-mode <<'AIRMODE'
 #!/usr/bin/env bash
 set -euo pipefail
@@ -551,6 +573,7 @@ check nmcli general status
 check bluetoothctl show
 check modinfo hid_playstation
 command -v evtest >/dev/null 2>&1 && pass "evtest installed" || fail "evtest installed"
+[[ -r /home/moonlight/.config/wireplumber/wireplumber.conf.d/52-disable-dualsense-audio.conf ]] && pass "DualSense audio disabled by policy" || fail "DualSense audio policy"
 [[ -x /usr/local/libexec/moonlight-os/cocoos ]] && pass "CocoOS binary" || fail "CocoOS binary"
 [[ -x /usr/local/libexec/moonlight-os/moonlight ]] && pass "Moonlight binary" || fail "Moonlight binary"
 check modinfo snd_hda_codec_cs8409
