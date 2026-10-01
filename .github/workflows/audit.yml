@@ -20,7 +20,7 @@ jobs:
       - name: Fedora OVMF tool and firmware preflight
         run: |
           docker run --rm -v "$PWD:/workspace:ro" -w /workspace fedora:44 \
-            bash -euc 'dnf -y install qemu-kvm qemu-img edk2-ovmf && bash scripts/test-ovmf.sh --check-tools'
+            bash -euc 'dnf -y install qemu-kvm qemu-img edk2-ovmf && bash scripts/test-ovmf.sh --check-tools; echo "Root-growth PARTN probe:"; lsblk -n -o PARTN || true'
 
   static:
     runs-on: ubuntu-latest
