@@ -41,9 +41,9 @@ mv "$RAW" "$OUT/moonlight-os-mbp14-1.raw"
 
 fdisk -l "$OUT/moonlight-os-mbp14-1.raw"
 SIZE=$(stat -c %s "$OUT/moonlight-os-mbp14-1.raw")
-MAX=$((7500 * 1024 * 1024))
+MAX=$((14000 * 1024 * 1024))
 if (( SIZE > MAX )); then
-  echo "Image is too large for the conservative 8 GB USB target: $SIZE bytes" >&2
+  echo "Image is too large for the conservative 16 GB USB development target: $SIZE bytes" >&2
   exit 1
 fi
 
