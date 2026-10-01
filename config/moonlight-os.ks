@@ -587,22 +587,30 @@ if [[ ! -d "/usr/src/kernels/$KVER" ]]; then
   dnf -y install "kernel-devel-$KVER"
 fi
 
-# Use upstream's current DKMS configuration verbatim. Its PRE_BUILD passes
-# the target kernel to install.cirrus.driver.sh and handles 6.17+ layouts.
-rm -rf /usr/src/snd_hda_macbookpro-0.1
-ln -sfn "$PWD" /usr/src/snd_hda_macbookpro-0.1
-dkms remove -m snd_hda_macbookpro -v 0.1 --all 2>/dev/null || true
+rm -rf /usr/src/snd_hda_macbookpro-1.0
+mkdir -p /usr/src/snd_hda_macbookpro-1.0
+cp -a . /usr/src/snd_hda_macbookpro-1.0/
+chmod +x /usr/src/snd_hda_macbookpro-1.0/install.cirrus.driver.sh
 
-if ! dkms install -c "$PWD/dkms.conf" --force -m snd_hda_macbookpro -v 0.1 -k "$KVER" --verbose; then
+cat > /usr/src/snd_hda_macbookpro-1.0/dkms.conf <<'DKMSCONF'
+PACKAGE_NAME="snd_hda_macbookpro"
+PACKAGE_VERSION="1.0"
+PRE_BUILD="install.cirrus.driver.sh -k $kernelver"
+MAKE="make KERNELRELEASE=${kernelver} KDIR=/lib/modules/${kernelver}/build M=${dkms_tree}/${PACKAGE_NAME}/${PACKAGE_VERSION}/build/build/hda CFLAGS_MODULE='-DAPPLE_PINSENSE_FIXUP -DAPPLE_CODECS -DCONFIG_SND_HDA_RECONFIG=1 -Wno-unused-variable -Wno-unused-function -Wno-error -Wno-incompatible-pointer-types'"
+BUILT_MODULE_NAME[0]="snd-hda-codec-cs8409"
+BUILT_MODULE_LOCATION[0]="build/hda/codecs/cirrus"
+DEST_MODULE_LOCATION[0]="/updates/codecs/cirrus"
+AUTOINSTALL="yes"
+DKMSCONF
+
+dkms remove -m snd_hda_macbookpro -v 1.0 --all 2>/dev/null || true
+dkms add -m snd_hda_macbookpro -v 1.0
+if ! dkms install -m snd_hda_macbookpro -v 1.0 -k "$KVER" --force --verbose; then
   echo "===== snd_hda_macbookpro DKMS make.log =====" >&2
-  cat "/var/lib/dkms/snd_hda_macbookpro/0.1/build/make.log" >&2 2>/dev/null || true
+  cat "/var/lib/dkms/snd_hda_macbookpro/1.0/build/make.log" >&2 2>/dev/null || true
   exit 1
 fi
-
 depmod -a "$KVER"
-test -e "/lib/modules/$KVER/updates/dkms/snd-hda-codec-cs8409.ko" \
-  || test -e "/lib/modules/$KVER/updates/dkms/snd-hda-codec-cs8409.ko.xz" \
-  || test -e "/lib/modules/$KVER/updates/dkms/snd-hda-codec-cs8409.ko.zst"
 
 cat > /usr/local/bin/moonlight-session <<'SESSION'
 #!/usr/bin/env bash
