@@ -65,7 +65,6 @@ libva-utils
 libva-intel-driver
 libva-intel-media-driver
 ffmpeg-libs
-libavcodec-freeworld
 SDL2
 SDL2_ttf
 opus
