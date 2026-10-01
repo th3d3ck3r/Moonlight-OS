@@ -55,13 +55,14 @@ grep -q 'console=ttyS0,115200n8' "$KS"
 grep -q 'MOONLIGHT_OS_BOOT_OK' "$KS"
 
 # Graphics / decode
-for pkg in mesa-dri-drivers mesa-libGL mesa-libEGL mesa-vulkan-drivers libdrm libva libva-utils libva-intel-driver libva-intel-media-driver mesa-demos glx-utils vulkan-tools igt-gpu-tools; do
+for pkg in mesa-dri-drivers mesa-libGL mesa-libEGL mesa-libGL-devel mesa-libEGL-devel mesa-vulkan-drivers libdrm libva libva-utils libva-intel-driver libva-intel-media-driver mesa-demos glx-utils vulkan-tools igt-gpu-tools; do
   grep -qx "$pkg" "$KS"
 done
 ! grep -qx 'intel-media-driver' "$KS"
 grep -q 'vainfo --display drm --device /dev/dri/renderD128' "$KS"
 grep -q "grep -q '/i915\$'" "$KS"
 grep -q 'OpenGL renderer string' "$KS"
+grep -q 'llvmpipe|softpipe|software rasterizer' "$KS"
 grep -q 'xrandr --query' "$KS"
 
 # X11/input
@@ -86,6 +87,7 @@ for pkg in steam-devices joystick-support linuxconsoletools SDL2; do
   grep -qx "$pkg" "$KS"
 done
 grep -q 'hid_playstation' "$KS"
+grep -q -- '--agent NoInputNoOutput --timeout 30 pair' "$KS"
 grep -q '52-disable-dualsense-audio.conf' "$KS"
 grep -q 'device.bus = "usb"' "$KS"
 grep -q 'device.vendor.id = 1356' "$KS"
