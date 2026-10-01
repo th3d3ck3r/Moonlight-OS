@@ -37,7 +37,7 @@ sudo moonlight-os-client moonlight
 
 ## Building the image
 
-The GitHub Actions workflow builds a UEFI partitioned disk image using Fedora's `livemedia-creator` and OVMF. The image is approximately 6.5 GiB before compression and is intended to fit on an 8 GB USB drive.
+The GitHub Actions workflow builds a UEFI partitioned disk image using Fedora's `livemedia-creator` and OVMF. The image is approximately 6.7 GiB before compression and is intended to fit on an 8 GB USB drive.
 
 Locally, build from a Fedora 44 x86_64 host with virtualization available:
 
