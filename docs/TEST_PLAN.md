@@ -11,12 +11,19 @@
 
 Run `sudo moonlight-os-verify` and require:
 
-- `i915` available and `/dev/dri/renderD128` present.
+- `i915` available, bound to the Intel DRM device, with both `/dev/dri/card0` and `/dev/dri/renderD128`.
+- VA-API H.264 and HEVC profiles visible over the DRM render node.
+- OpenGL/Mesa and Vulkan diagnostic stacks installed; `intel_gpu_top` can observe GPU/video-engine activity during a stream.
 - VA-API advertises H.264 and HEVC decode profiles.
 - `brcmfmac` available and NetworkManager sees Wi-Fi.
 - Bluetooth controller visible after any required one-time SMC reset.
 - MacBook Cirrus audio driver loaded and a PipeWire sink exists.
+- Apple SPI keyboard and trackpad appear in the Linux input subsystem.
+- Xorg has the `xorg-x11-drv-libinput` driver installed.
+- External USB/Bluetooth mouse and keyboard appear as evdev/libinput devices.
 - USB and Bluetooth gamepads appear as input devices.
+- Brightness/backlight and battery sysfs interfaces are accessible.
+- `thermald` is enabled for sustained streaming loads.
 - DualSense is detected over USB with `hid-playstation`.
 - Pair a DualSense over Bluetooth and confirm it reconnects after reboot.
 - Run `dualsense-check` and confirm no driver/tool failures.
