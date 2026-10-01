@@ -1,6 +1,6 @@
 # Build status
 
-Status: **automatic builds paused for full v0.1 audit**
+Status: **v0.1 image built; installed-payload inspection and OVMF boot passed**
 
 Validated before the first CI image build:
 
@@ -22,7 +22,38 @@ Validated before the first CI image build:
 - OVMF boot gate uses a copy-on-write overlay and requires a multi-user serial success marker before artifact compression/upload.
 - Hardware verifier rejects llvmpipe/softpipe software OpenGL rendering.
 
-After the paused static audit is complete, one manual GitHub Actions image build is the next gate. Real i915/VA-API, BCM4350, Bluetooth, audio, controller, and streaming behavior must be validated on the actual MacBook; QEMU cannot prove those hardware-specific items.
+## Completed CI validation — 2026-10-01
+
+- Fresh [image build #40](https://github.com/th3d3ck3r/Moonlight-OS/actions/runs/36919007483) succeeded at source commit `c8a97a3bc9f4f35c986c1233c28f08b6a6e77cc0`.
+- [Audit #67](https://github.com/th3d3ck3r/Moonlight-OS/actions/runs/36919007320) passed all five jobs: static, Fedora/package/pinned-source configuration, exact-kernel Cirrus compilation, image tools, and real GPT/XFS root growth.
+- Installed kernel/module payload is checked against `6.19.10-300.fc44.x86_64` from `SOURCES.lock`.
+- Read-only inspection passed GPT/EFI/boot/XFS layout, `EFI/BOOT/BOOTX64.EFI`, kernel/initramfs, both clients, enabled growth/marker services, settings/input/network/audio policies, required diagnostics, Intel VA-API userspace, and all required MacBook/controller modules.
+- Both SBC and AAC codec plugins were verified in Fedora audit and the installed image. Headset/microphone roles remain excluded from the AirPods policy.
+- QEMU/OVMF boot passed the strict serial `MOONLIGHT_OS_BOOT_OK` gate using a qcow2 overlay. The release raw image is not modified by validation.
+- Raw size: **13,147,045,888 bytes (12.24 GiB)**, below **14,000 MiB**.
+- [Validated artifact](https://github.com/th3d3ck3r/Moonlight-OS/actions/runs/36919007483/artifacts/11193175513) contains the `.raw.xz` image and its SHA-256 file; both files were uploaded. Artifact retention ends October 15, 2026.
+
+### Four verification passes
+
+1. **Structure:** Bash helpers and embedded post-install syntax, Kickstart validation, systemd unit verification, workflow parsing/execution, matching source pins, and rejection of the old formatted partition-number query.
+2. **Fedora/build:** complete package transaction, accelerated pinned-source feature probes, actual full client builds, exact-kernel DKMS compilation, and SBC/AAC plugin presence.
+3. **Installed payload:** fresh disk inspection passed with direct filesystem probing, read-only loop devices, XFS `norecovery`, and ext4 `noload`.
+4. **Boot:** generic UEFI/OVMF boot passed, root growth succeeded, and the required serial boot marker was observed before compression and upload.
+
+### Fixes retained in the repository
+
+- Container inspection creates missing loop-partition nodes from kernel metadata and uses `blkid` instead of udev-dependent `lsblk` filesystem columns.
+- The inspector mounts `/boot` before checking its EFI mountpoint and never creates directories inside the read-only guest.
+- Guest executable checks use inherited output descriptors instead of trying to create `/dev/null` in the read-only image.
+- Root growth reads the partition number and parent disk from sysfs and validates them before writing. The exact former boot failure was `growpart: FAILED: partition-number must be a number`; the old `lsblk` result was unsuitable for its numeric argument.
+- The focused growth audit expanded a disposable real GPT/XFS disk, preserved EFI and boot partition sizes, accepted `NOCHANGE`, and verified failure remains retryable without a completion marker.
+- Failed validation retains a clearly labeled unvalidated image checkpoint and diagnostic logs. Recovery requires matching source/Kickstart checksums; an installed-payload change requires a fresh build. Manual workflow runs always build from scratch.
+- OVMF failures can collect an additional direct-kernel diagnostic journal, which never substitutes for a successful OVMF gate.
+- The checksum file names the downloaded image by basename, so Linux/macOS verification works outside the CI workspace.
+
+### Remaining physical validation
+
+Real i915/VA-API decode, OpenGL rendering, Apple SPI keyboard/trackpad, generic input, BCM4350 Wi-Fi/Bluetooth, internal Cirrus audio, AirPods Pro 2 latency/quality switching, DualSense HID/audio suppression, battery/thermal behavior, persistence, and Vibepollo/Sunshine streaming must be tested on the actual MacBook. OVMF proves generic x86_64 UEFI only. See `docs/TEST_PLAN.md` and the README flashing instructions.
 
 
 ## Fedora 44 installer workaround

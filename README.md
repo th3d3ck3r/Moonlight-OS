@@ -2,6 +2,15 @@
 
 A controller-friendly Fedora development appliance for turning a **2017 13-inch non-Touch-Bar MacBook Pro (MacBookPro14,1)** into a dedicated Moonlight client for a **Vibepollo / Sunshine-compatible host**.
 
+## v0.1 build status — 2026-10-01
+
+**The image is built and CI validated.** [Build #40](https://github.com/th3d3ck3r/Moonlight-OS/actions/runs/36919007483) completed a fresh Fedora installation, compiled both pinned clients and Cirrus audio, passed read-only image inspection, and passed the QEMU/OVMF `MOONLIGHT_OS_BOOT_OK` gate. All five jobs in [audit #67](https://github.com/th3d3ck3r/Moonlight-OS/actions/runs/36919007320) passed.
+
+[Download the validated image and checksum](https://github.com/th3d3ck3r/Moonlight-OS/actions/runs/36919007483/artifacts/11193175513) (GitHub Actions ZIP, about 3.3 GiB). It contains `moonlight-os-mbp14-1.raw.xz` and `moonlight-os-mbp14-1.raw.xz.sha256`. The raw image is **12.24 GiB / 13,147,045,888 bytes**, below the 14,000 MiB limit. This artifact is retained until **October 15, 2026**; a manual workflow run produces a fresh build.
+
+**Physical MacBook validation remains required.** CI proves generic x86_64 UEFI boot and the installed software/driver payload. It does not prove real Iris Plus hardware decoding, Apple SPI input, BCM4350 networking, Cirrus playback, AirPods latency/codec negotiation, DualSense behavior, or streaming against your host. Follow [`docs/TEST_PLAN.md`](docs/TEST_PLAN.md) after flashing.
+
+
 The normal boot path is deliberately short:
 
 ```text
@@ -39,6 +48,8 @@ sudo moonlight-os-client moonlight
 
 The GitHub Actions workflow builds a UEFI-partitioned development disk image using Fedora's `livemedia-creator` and OVMF. v0.1 is allowed to grow to **under 14,000 MiB raw** so it fits a normal 16 GB USB while retaining Git, GCC, DKMS, kernel headers, source trees, and diagnostic tooling.
 
+For a fresh CI build, open the **Build Moonlight-OS image** Actions workflow, choose **Run workflow**, and select `main`. Manual builds install from scratch and do not depend on temporary recovery artifacts.
+
 Locally, build from a Fedora 44 x86_64 host with virtualization available:
 
 ```bash
@@ -66,6 +77,16 @@ A build is not considered flashable merely because Fedora produced a raw disk. B
 The OVMF test does not modify the release raw image and does not prove Mac-specific hardware. It proves the generic x86_64 UEFI boot path before the image is flashed to the MacBook.
 
 ## Flashing
+
+Unzip the download and verify its compressed-image checksum in the same directory before flashing:
+
+```bash
+# Linux
+sha256sum -c moonlight-os-mbp14-1.raw.xz.sha256
+# macOS
+shasum -a 256 -c moonlight-os-mbp14-1.raw.xz.sha256
+```
+
 
 **This erases the destination USB. Double-check the device name.**
 
