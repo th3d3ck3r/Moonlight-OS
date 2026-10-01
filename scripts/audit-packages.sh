@@ -116,3 +116,32 @@ probe_qmake upstream "$MOONLIGHT_REPO" "$MOONLIGHT_COMMIT" normal
 probe_qmake cocoos "$COCOOS_REPO" "$COCOOS_COMMIT" embedded
 
 echo "All Fedora 44 package and pinned-source configure audits passed."
+
+
+# Exact pinned installer-kernel DKMS audit.
+# This catches MacBook internal-audio breakage before we spend time building a full disk image.
+source "$ROOT/SOURCES.lock"
+
+dnf -y install "kernel-core-$INSTALLER_KERNEL" "kernel-devel-$INSTALLER_KERNEL" || {
+  echo "Pinned installer kernel packages are no longer resolvable: $INSTALLER_KERNEL" >&2
+  exit 1
+}
+
+driver=/tmp/moonlight-os-audio-driver
+rm -rf "$driver" /usr/src/snd_hda_macbookpro-0.1
+git clone -q "$AUDIO_REPO" "$driver"
+git -C "$driver" checkout -q --detach "$AUDIO_COMMIT"
+ln -sfn "$driver" /usr/src/snd_hda_macbookpro-0.1
+
+dkms remove -m snd_hda_macbookpro -v 0.1 --all 2>/dev/null || true
+if ! dkms install -c "$driver/dkms.conf" --force -m snd_hda_macbookpro -v 0.1 -k "$INSTALLER_KERNEL" --verbose; then
+  echo "===== DKMS make.log for $INSTALLER_KERNEL =====" >&2
+  cat /var/lib/dkms/snd_hda_macbookpro/0.1/build/make.log >&2 2>/dev/null || true
+  exit 1
+fi
+
+test -e "/lib/modules/$INSTALLER_KERNEL/updates/dkms/snd-hda-codec-cs8409.ko" \
+  || test -e "/lib/modules/$INSTALLER_KERNEL/updates/dkms/snd-hda-codec-cs8409.ko.xz" \
+  || test -e "/lib/modules/$INSTALLER_KERNEL/updates/dkms/snd-hda-codec-cs8409.ko.zst"
+
+echo "Cirrus DKMS build passed for pinned installer kernel $INSTALLER_KERNEL."
