@@ -682,6 +682,8 @@ ls /dev/input/event* >/dev/null 2>&1 && pass "evdev input nodes" || fail "evdev 
 check modinfo brcmfmac
 check nmcli general status
 check bluetoothctl show
+[[ -e /usr/lib64/spa-0.2/bluez5/libspa-codec-bluez5-aac.so ]] && pass "AirPods AAC codec plugin installed" || fail "PipeWire AAC codec"
+[[ -e /usr/lib64/spa-0.2/bluez5/libspa-codec-bluez5-sbc.so ]] && pass "Bluetooth SBC codec plugin installed" || fail "PipeWire SBC codec"
 check modinfo hid_playstation
 command -v evtest >/dev/null 2>&1 && pass "evtest installed" || fail "evtest installed"
 [[ -r /home/moonlight/.config/wireplumber/wireplumber.conf.d/52-disable-dualsense-audio.conf ]] && pass "DualSense audio disabled by policy" || fail "DualSense audio policy"
@@ -690,6 +692,9 @@ command -v evtest >/dev/null 2>&1 && pass "evtest installed" || fail "evtest ins
 check modinfo snd_hda_codec_cs8409
 command -v brightnessctl >/dev/null 2>&1 && pass "brightness control installed" || fail "brightness control"
 command -v upower >/dev/null 2>&1 && pass "battery/power diagnostics installed" || fail "upower"
+check modinfo xhci_pci
+check modinfo thunderbolt
+ls /sys/class/nvme/nvme* >/dev/null 2>&1 && pass "internal NVMe controller visible" || fail "NVMe controller"
 systemctl is-enabled thermald.service >/dev/null 2>&1 && pass "thermald enabled" || fail "thermald enabled"
 [[ -r /sys/class/power_supply/BAT0/status || -r /sys/class/power_supply/BAT1/status ]] && pass "battery sysfs accessible" || fail "battery sysfs"
 [[ -d /sys/class/backlight ]] && pass "backlight sysfs accessible" || fail "backlight sysfs"
