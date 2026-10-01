@@ -39,9 +39,9 @@ awk '
 [[ -s "$post_tmp" ]]
 bash -n "$post_tmp"
 
-# Image builds remain manual while the audit workflow may run on push.
+# Image builds are manual, with an explicit BUILD_ONCE file as a controlled one-shot trigger.
 need_line "  workflow_dispatch:" "$WORKFLOW"
-! grep -q '^  push:$' "$WORKFLOW"
+need_text ".github/BUILD_ONCE" "$WORKFLOW"
 need_line "  workflow_dispatch:" "$AUDIT_WORKFLOW"
 need_line "  push:" "$AUDIT_WORKFLOW"
 
