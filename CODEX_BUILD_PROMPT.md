@@ -32,8 +32,8 @@ Tasks:
 4. Audit CocoOS and Moonlight build dependencies at the pinned commits, including current QtMultimedia/QML runtime needs.
 5. Audit the `snd_hda_macbookpro` DKMS build against the installed target kernel rather than the installer kernel.
 6. Build the image with `./scripts/build-image.sh` in a Fedora 44 environment. Fix every build error cleanly in the repo.
-7. Validate the resulting GPT image: EFI System Partition exists, root partition exists, image is <14000 MiB, EFI boot files exist, and the root filesystem contains both client binaries and `moonlight-os-verify`.
-8. Boot-test the raw image in QEMU/OVMF. Reach multi-user target and prove the system gets as far as the expected appliance/X11 launch path. Hardware-specific Mac tests require the real MacBook.
+7. Validate the resulting GPT image with `scripts/inspect-image.sh`: EFI System Partition exists, root partition exists, image is <14000 MiB, `EFI/BOOT/BOOTX64.EFI` exists, and the root filesystem contains both client binaries and diagnostics.
+8. Boot-test the raw image with `scripts/test-ovmf.sh`. It must use a copy-on-write overlay and observe `MOONLIGHT_OS_BOOT_OK` over serial after the multi-user boot path. Hardware-specific Mac tests require the real MacBook.
 9. Update `BUILD_STATUS.md` with exactly what passed, what remains hardware-only, and any known issues.
 
 Do not claim MacBook hardware success from QEMU. Do not hide failures. Prefer a bootable conservative image over extra features.
