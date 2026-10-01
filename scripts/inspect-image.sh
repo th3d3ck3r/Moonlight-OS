@@ -104,4 +104,11 @@ grep -Rqs 'console=ttyS0,115200n8' "$work/root/boot" || {
   exit 1
 }
 
+# Keep a kernel/initramfs copy for a diagnostic-only boot if the UEFI gate fails.
+diag_dir="$(dirname "$(realpath "$RAW")")"
+cp "$work/root/boot/vmlinuz-$INSTALLER_KERNEL" "$diag_dir/diagnostic-kernel"
+cp "$work/root/boot/initramfs-$INSTALLER_KERNEL.img" "$diag_dir/diagnostic-initrd"
+blkid -p -s UUID -o value "$root" > "$diag_dir/diagnostic-root-uuid"
+chroot "$work/root" /usr/bin/lsblk --version
+
 echo "Disk image inspection passed."

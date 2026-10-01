@@ -109,6 +109,7 @@ jobs:
             virt-install.log
             out/lmc/**
             out/ovmf-*.log
+            out/boot-diagnostic*.log
             out/image-build.log
           if-no-files-found: warn
           retention-days: 14
