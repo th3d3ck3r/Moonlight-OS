@@ -1,6 +1,6 @@
 # 🌙 Moonlight-OS
 
-A tiny, controller-friendly Fedora appliance for turning a **2017 13-inch non-Touch-Bar MacBook Pro (MacBookPro14,1)** into a dedicated Moonlight client for a **Vibepollo / Sunshine-compatible host**.
+A controller-friendly Fedora development appliance for turning a **2017 13-inch non-Touch-Bar MacBook Pro (MacBookPro14,1)** into a dedicated Moonlight client for a **Vibepollo / Sunshine-compatible host**.
 
 The normal boot path is deliberately short:
 
@@ -11,7 +11,7 @@ Apple EFI → Fedora 44 → NetworkManager → Xorg → CocoOS → Vibepollo/Sun
 
 ## Design targets
 
-- Boot from an 8 GB-or-larger USB drive without touching the internal SSD.
+- Boot from a **16 GB-or-larger USB drive** without touching the internal SSD. v0.1 intentionally keeps build/debug tooling; the later appliance release will be smaller.
 - Native x86_64 UEFI boot for the MacBookPro14,1.
 - Intel Iris Plus 640 via the kernel `i915` driver.
 - VA-API hardware decode for H.264/HEVC.
@@ -37,7 +37,7 @@ sudo moonlight-os-client moonlight
 
 ## Building the image
 
-The GitHub Actions workflow builds a UEFI partitioned disk image using Fedora's `livemedia-creator` and OVMF. The image is approximately 6.7 GiB before compression and is intended to fit on an 8 GB USB drive.
+The GitHub Actions workflow builds a UEFI-partitioned development disk image using Fedora's `livemedia-creator` and OVMF. v0.1 is allowed to grow to **under 14,000 MiB raw** so it fits a normal 16 GB USB while retaining Git, GCC, DKMS, kernel headers, source trees, and diagnostic tooling.
 
 Locally, build from a Fedora 44 x86_64 host with virtualization available:
 
@@ -99,6 +99,14 @@ dualsense-pair
 ```
 
 For Bluetooth pairing, hold **CREATE + PS** until the light bar flashes rapidly, then use the pairing helper.
+
+## AirPods Pro 2
+
+AirPods Pro 2 are treated as **playback-only A2DP devices**. HSP/HFP headset/microphone roles are disabled. WirePlumber is configured with the documented `bluetooth.profile-preference = "latency"` setting and A2DP codecs `sbc`, `sbc_xq`, and `aac`. The settings menu can switch between **Low Latency** and **Quality** preference without enabling microphone mode.
+
+## Network and Bluetooth menu
+
+Normal streaming should not require a shell. Press `Ctrl+Alt+F2` for the red-on-black recovery/settings console; it automatically opens `moonlight-settings`, which provides Wi-Fi, Bluetooth, AirPods Pro 2, DualSense, diagnostics, and client selection. On a first boot with no saved network, the appliance invokes the Wi-Fi helper automatically before starting X11.
 
 ## Hardware verification
 
