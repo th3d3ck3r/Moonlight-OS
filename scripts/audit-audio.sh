@@ -11,7 +11,7 @@ rm -rf "$WORK"
 mkdir -p "$WORK"
 
 dnf -y install \
-  git gcc make patch wget xz openssl dkms \
+  git gcc make patch wget1-wget xz openssl dkms \
   "kernel-core-$KVER" "kernel-modules-core-$KVER" "kernel-devel-$KVER" kernel-headers
 
 test -d "/usr/src/kernels/$KVER"
@@ -23,12 +23,15 @@ git -C "$WORK/snd_hda_macbookpro" checkout -q --detach "$AUDIO_COMMIT"
 mkdir -p /usr/src/snd_hda_macbookpro-1.0
 cp -a "$WORK/snd_hda_macbookpro/." /usr/src/snd_hda_macbookpro-1.0/
 chmod +x /usr/src/snd_hda_macbookpro-1.0/install.cirrus.driver.sh
+sed -i 's/-Wno-unused-function"/-Wno-unused-function -Wno-error -Wno-incompatible-pointer-types"/' \
+  /usr/src/snd_hda_macbookpro-1.0/Makefile
+grep -q 'Wno-incompatible-pointer-types' /usr/src/snd_hda_macbookpro-1.0/Makefile
 
 cat > /usr/src/snd_hda_macbookpro-1.0/dkms.conf <<'DKMSCONF'
 PACKAGE_NAME="snd_hda_macbookpro"
 PACKAGE_VERSION="1.0"
 PRE_BUILD="install.cirrus.driver.sh -k $kernelver --dkms"
-MAKE="make KERNELRELEASE=${kernelver} KBUILD_EXTRA_CFLAGS='-DAPPLE_PINSENSE_FIXUP -DAPPLE_CODECS -DCONFIG_SND_HDA_RECONFIG=1 -Wno-unused-variable -Wno-unused-function -Wno-error -Wno-incompatible-pointer-types'"
+MAKE="make KERNELRELEASE=${kernelver}"
 BUILT_MODULE_NAME[0]="snd-hda-codec-cs8409"
 BUILT_MODULE_LOCATION[0]="build/hda/codecs/cirrus"
 DEST_MODULE_LOCATION[0]="/updates/codecs/cirrus"
