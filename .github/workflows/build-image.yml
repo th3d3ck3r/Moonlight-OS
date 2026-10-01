@@ -2,13 +2,6 @@ name: Build Moonlight-OS image
 
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
-    paths:
-      - "config/**"
-      - "scripts/**"
-      - "SOURCES.lock"
-      - ".github/workflows/build-image.yml"
 
 permissions:
   contents: read
