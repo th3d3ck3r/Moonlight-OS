@@ -30,9 +30,30 @@ for pkg in "${packages[@]}"; do
     missing=1
   fi
 done
+(( missing == 0 ))
 
-if (( missing != 0 )); then
-  exit 1
-fi
+echo "Package-name lookup passed for ${#packages[@]} explicit packages."
 
-echo "Fedora 44 Kickstart/package audit passed for ${#packages[@]} explicit packages."
+# This is an ephemeral CI container, not an OS image. Install the complete
+# package set together to catch solver conflicts and missing dependencies.
+dnf -y --setopt=install_weak_deps=False install "${packages[@]}"
+
+# Probe the exact compile-time capabilities selected by the pinned Moonlight tree.
+for pc in   openssl   sdl2   SDL2_ttf   libavcodec   libavutil   libswscale   libva   libva-x11   libva-drm   vdpau   libdrm   libplacebo   x11   egl   opus; do
+  if ! pkg-config --exists "$pc"; then
+    echo "MISSING PKG-CONFIG CAPABILITY: $pc" >&2
+    exit 1
+  fi
+  echo "pkg-config OK: $pc $(pkg-config --modversion "$pc" 2>/dev/null || true)"
+done
+
+command -v qmake6 >/dev/null
+command -v gcc >/dev/null
+command -v g++ >/dev/null
+command -v dkms >/dev/null
+command -v vainfo >/dev/null
+command -v glxinfo >/dev/null
+command -v vulkaninfo >/dev/null
+command -v intel_gpu_top >/dev/null
+
+echo "Fedora 44 full package transaction and Moonlight build-capability audit passed."
