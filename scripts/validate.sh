@@ -51,6 +51,9 @@ grep -q '^xinput$' "$KS"
 grep -q '^evtest$' "$KS"
 grep -q 'modinfo applespi' "$KS"
 grep -q '/proc/bus/input/devices' "$KS"
+grep -q 'OpenGL renderer string' "$KS"
+grep -q 'xrandr --query' "$KS"
+grep -q 'xinput list' "$KS"
 
 # Network
 grep -q '^NetworkManager$' "$KS"
