@@ -1,3 +1,3 @@
-REVALIDATE_RUN_ID=36914593089
-Moonlight-OS root-growth journal recovery after audit #63 passed.
-Diagnostic QEMU options use an argument array; OVMF failure still fails the release gate.
+Moonlight-OS v0.1 fresh image build after audit #66 passed all five jobs.
+2026-10-01: sysfs root identity, real GPT/XFS growth and retry tests, verified SBC/AAC plugins.
+Fresh installation required because the installed first-boot helper changed.
