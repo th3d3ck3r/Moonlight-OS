@@ -203,6 +203,260 @@ fi
 THEME
 chmod 0644 /etc/profile.d/00-moonlight-red-terminal.sh
 
+# AirPods Pro 2 are playback-only on Moonlight-OS.
+# Disable HSP/HFP entirely and let WirePlumber choose A2DP profiles by latency.
+install -d -m 0755 /home/moonlight/.config/wireplumber/wireplumber.conf.d
+cat > /home/moonlight/.config/wireplumber/wireplumber.conf.d/51-moonlight-airpods.conf <<'WPCONF'
+monitor.bluez.properties = {
+  override.bluez5.roles = [ a2dp_sink ]
+  bluez5.enable-sbc-xq = true
+}
+wireplumber.settings = {
+  bluetooth.autoswitch-to-headset-profile = false
+  bluetooth.profile-preference = "latency"
+}
+WPCONF
+chown -R moonlight:moonlight /home/moonlight/.config
+
+cat > /usr/local/bin/airpods-mode <<'AIRMODE'
+#!/usr/bin/env bash
+set -euo pipefail
+CONF="$HOME/.config/wireplumber/wireplumber.conf.d/51-moonlight-airpods.conf"
+
+case "${1:-status}" in
+  low-latency|latency)
+    sed -i 's/bluetooth.profile-preference = "quality"/bluetooth.profile-preference = "latency"/' "$CONF"
+    echo "AirPods Pro 2: LOW LATENCY mode selected."
+    ;;
+  quality)
+    sed -i 's/bluetooth.profile-preference = "latency"/bluetooth.profile-preference = "quality"/' "$CONF"
+    echo "AirPods Pro 2: QUALITY mode selected."
+    ;;
+  status)
+    mode=$(grep -o 'bluetooth.profile-preference = "[^"]*"' "$CONF" 2>/dev/null | cut -d'"' -f2 || true)
+    echo "AirPods Pro 2 mode: ${mode:-unknown}"
+    echo "Microphone/headset profiles: disabled"
+    exit 0
+    ;;
+  *)
+    echo "usage: airpods-mode {low-latency|quality|status}" >&2
+    exit 2
+    ;;
+esac
+
+systemctl --user restart wireplumber pipewire pipewire-pulse 2>/dev/null || true
+AIRMODE
+chmod 0755 /usr/local/bin/airpods-mode
+
+cat > /usr/local/bin/airpods-pair <<'AIRPAIR'
+#!/usr/bin/env bash
+set -euo pipefail
+sudo systemctl start bluetooth
+sudo rfkill unblock bluetooth || true
+bluetoothctl power on >/dev/null || true
+bluetoothctl agent on >/dev/null || true
+bluetoothctl default-agent >/dev/null || true
+clear
+printf '\033[40m\033[31m'
+cat <<'EOF'
+AIRPODS PRO 2 PAIRING
+=====================
+
+Put the AirPods in pairing mode:
+  • Open the charging case with the AirPods inside.
+  • Hold the case setup control until the status light flashes white.
+
+Scanning...
+EOF
+
+timeout 12s bluetoothctl scan on >/dev/null 2>&1 || true
+mapfile -t devices < <(bluetoothctl devices | grep -Ei 'AirPods' || true)
+
+if (( ${#devices[@]} == 0 )); then
+  echo
+  echo "No AirPods were found. Try pairing mode again, then press Enter to rescan."
+  read -r _
+  timeout 12s bluetoothctl scan on >/dev/null 2>&1 || true
+  mapfile -t devices < <(bluetoothctl devices | grep -Ei 'AirPods' || true)
+fi
+
+if (( ${#devices[@]} == 0 )); then
+  echo "Still no AirPods found."
+  exit 1
+fi
+
+echo
+for i in "${!devices[@]}"; do
+  printf '  %d) %s\n' "$((i+1))" "${devices[$i]}"
+done
+printf 'Choose AirPods: '
+read -r choice
+[[ "$choice" =~ ^[0-9]+$ ]] || exit 2
+idx=$((choice-1))
+(( idx >= 0 && idx < ${#devices[@]} )) || exit 2
+mac=$(awk '{print $2}' <<<"${devices[$idx]}")
+
+bluetoothctl pair "$mac" || true
+bluetoothctl trust "$mac" || true
+bluetoothctl connect "$mac" || true
+airpods-mode low-latency
+echo
+echo "AirPods paired. Low Latency mode is active."
+AIRPAIR
+chmod 0755 /usr/local/bin/airpods-pair
+
+cat > /usr/local/bin/moonlight-wifi <<'WIFIMENU'
+#!/usr/bin/env bash
+set -u
+while true; do
+  clear
+  printf '\033[40m\033[31m'
+  active=$(nmcli -t -f NAME,TYPE connection show --active 2>/dev/null | awk -F: '$2=="802-11-wireless"{print $1; exit}')
+  cat <<EOF
+WI-FI
+=====
+
+Active: ${active:-none}
+
+  1) Connect / change Wi-Fi
+  2) Prefer 5 GHz on active Wi-Fi (recommended for Moonlight + Bluetooth)
+  3) Automatic Wi-Fi band
+  4) Show Wi-Fi status
+  0) Back
+
+EOF
+  printf 'Choose: '
+  read -r choice
+  case "$choice" in
+    1) nmtui-connect ;;
+    2)
+      active=$(nmcli -t -f NAME,TYPE connection show --active | awk -F: '$2=="802-11-wireless"{print $1; exit}')
+      if [[ -n "$active" ]]; then
+        sudo nmcli connection modify "$active" 802-11-wireless.band a
+        sudo nmcli connection down "$active" || true
+        sudo nmcli connection up "$active" || true
+        echo "5 GHz preferred for $active."
+      else
+        echo "Connect to Wi-Fi first."
+      fi
+      read -r -p "Press Enter..." _
+      ;;
+    3)
+      active=$(nmcli -t -f NAME,TYPE connection show --active | awk -F: '$2=="802-11-wireless"{print $1; exit}')
+      if [[ -n "$active" ]]; then
+        sudo nmcli connection modify "$active" 802-11-wireless.band ""
+        echo "Automatic band selection restored."
+      else
+        echo "No active Wi-Fi connection."
+      fi
+      read -r -p "Press Enter..." _
+      ;;
+    4)
+      nmcli device wifi list
+      echo
+      iw dev 2>/dev/null || true
+      read -r -p "Press Enter..." _
+      ;;
+    0) exit 0 ;;
+  esac
+done
+WIFIMENU
+chmod 0755 /usr/local/bin/moonlight-wifi
+
+cat > /usr/local/bin/moonlight-bluetooth <<'BTMENU'
+#!/usr/bin/env bash
+set -u
+sudo systemctl start bluetooth
+sudo rfkill unblock bluetooth || true
+bluetoothctl power on >/dev/null || true
+
+while true; do
+  clear
+  printf '\033[40m\033[31m'
+  cat <<'EOF'
+BLUETOOTH
+=========
+
+  1) Pair AirPods Pro 2
+  2) Pair PS5 DualSense
+  3) Scan / pair another Bluetooth device
+  4) Show paired devices
+  5) Reconnect a paired device
+  0) Back
+
+EOF
+  printf 'Choose: '
+  read -r choice
+  case "$choice" in
+    1) airpods-pair; read -r -p "Press Enter..." _ ;;
+    2) dualsense-pair; read -r -p "Press Enter..." _ ;;
+    3) bluetoothctl; ;;
+    4) bluetoothctl devices Paired 2>/dev/null || bluetoothctl paired-devices 2>/dev/null || true; read -r -p "Press Enter..." _ ;;
+    5)
+      mapfile -t devices < <(bluetoothctl devices Paired 2>/dev/null || bluetoothctl paired-devices 2>/dev/null || true)
+      if (( ${#devices[@]} == 0 )); then
+        echo "No paired devices."
+      else
+        for i in "${!devices[@]}"; do printf '  %d) %s\n' "$((i+1))" "${devices[$i]}"; done
+        printf 'Choose: '; read -r n
+        if [[ "$n" =~ ^[0-9]+$ ]]; then
+          idx=$((n-1))
+          if (( idx >= 0 && idx < ${#devices[@]} )); then
+            mac=$(awk '{print $2}' <<<"${devices[$idx]}")
+            bluetoothctl connect "$mac" || true
+          fi
+        fi
+      fi
+      read -r -p "Press Enter..." _
+      ;;
+    0) exit 0 ;;
+  esac
+done
+BTMENU
+chmod 0755 /usr/local/bin/moonlight-bluetooth
+
+cat > /usr/local/bin/moonlight-settings <<'SETMENU'
+#!/usr/bin/env bash
+set -u
+while true; do
+  clear
+  printf '\033[40m\033[31m'
+  mode=$(airpods-mode status 2>/dev/null | head -1 | sed 's/^AirPods Pro 2 mode: //' || true)
+  cat <<EOF
+MOONLIGHT-OS SETTINGS
+=====================
+
+  1) Wi-Fi
+  2) Bluetooth
+  3) AirPods Pro 2 -> LOW LATENCY
+  4) AirPods Pro 2 -> QUALITY
+  5) Audio status
+  6) Hardware diagnostics
+  7) Use CocoOS
+  8) Use vanilla Moonlight
+
+  AirPods mode: ${mode:-unknown}
+
+  0) Exit to red diagnostic shell
+
+EOF
+  printf 'Choose: '
+  read -r choice
+  case "$choice" in
+    1) moonlight-wifi ;;
+    2) moonlight-bluetooth ;;
+    3) airpods-mode low-latency; read -r -p "Press Enter..." _ ;;
+    4) airpods-mode quality; read -r -p "Press Enter..." _ ;;
+    5) wpctl status; read -r -p "Press Enter..." _ ;;
+    6) sudo moonlight-os-verify; read -r -p "Press Enter..." _ ;;
+    7) sudo moonlight-os-client cocoos; read -r -p "Press Enter..." _ ;;
+    8) sudo moonlight-os-client moonlight; read -r -p "Press Enter..." _ ;;
+    0) exit 0 ;;
+  esac
+done
+SETMENU
+chmod 0755 /usr/local/bin/moonlight-settings
+
 cd /usr/local/src
 git clone --recursive https://github.com/Djingerr/CocoOS.git cocoos
 cd cocoos
@@ -368,6 +622,8 @@ if [[ -z "${DISPLAY:-}" && "$(tty 2>/dev/null)" == "/dev/tty1" ]]; then
     nmtui-connect || true
   fi
   exec startx /usr/local/bin/moonlight-session -- :0 vt1 -keeptty -nolisten tcp
+elif [[ -z "${DISPLAY:-}" && "$(tty 2>/dev/null)" == "/dev/tty2" ]]; then
+  moonlight-settings || true
 fi
 PROFILE
 chown moonlight:moonlight /home/moonlight/.bash_profile
