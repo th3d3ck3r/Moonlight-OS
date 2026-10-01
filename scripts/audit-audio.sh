@@ -11,7 +11,7 @@ rm -rf "$WORK"
 mkdir -p "$WORK"
 
 dnf -y install \
-  git gcc make patch wget xz dkms \
+  git gcc make patch wget xz openssl dkms \
   "kernel-devel-$KVER" kernel-headers
 
 git clone -q "$AUDIO_REPO" "$WORK/snd_hda_macbookpro"
@@ -24,8 +24,8 @@ chmod +x /usr/src/snd_hda_macbookpro-1.0/install.cirrus.driver.sh
 cat > /usr/src/snd_hda_macbookpro-1.0/dkms.conf <<'DKMSCONF'
 PACKAGE_NAME="snd_hda_macbookpro"
 PACKAGE_VERSION="1.0"
-PRE_BUILD="install.cirrus.driver.sh -k $kernelver"
-MAKE="make KERNELRELEASE=${kernelver} KDIR=/lib/modules/${kernelver}/build M=${dkms_tree}/${PACKAGE_NAME}/${PACKAGE_VERSION}/build/build/hda CFLAGS_MODULE='-DAPPLE_PINSENSE_FIXUP -DAPPLE_CODECS -DCONFIG_SND_HDA_RECONFIG=1 -Wno-unused-variable -Wno-unused-function -Wno-error -Wno-incompatible-pointer-types'"
+PRE_BUILD="install.cirrus.driver.sh -k $kernelver --dkms"
+MAKE="make KERNELRELEASE=${kernelver} KBUILD_EXTRA_CFLAGS='-DAPPLE_PINSENSE_FIXUP -DAPPLE_CODECS -DCONFIG_SND_HDA_RECONFIG=1 -Wno-unused-variable -Wno-unused-function -Wno-error -Wno-incompatible-pointer-types'"
 BUILT_MODULE_NAME[0]="snd-hda-codec-cs8409"
 BUILT_MODULE_LOCATION[0]="build/hda/codecs/cirrus"
 DEST_MODULE_LOCATION[0]="/updates/codecs/cirrus"
