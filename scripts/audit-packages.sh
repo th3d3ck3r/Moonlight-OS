@@ -38,6 +38,12 @@ echo "Package-name lookup passed for ${#packages[@]} explicit packages."
 # package set together to catch solver conflicts and missing dependencies.
 dnf -y --setopt=install_weak_deps=False install "${packages[@]}"
 
+# Mirror Anaconda workaround: base Fedora 44 media has broken IGT 2.2.
+# Prove the current updates package resolves independently.
+dnf -y --refresh install igt-gpu-tools
+rpm -q igt-gpu-tools
+command -v intel_gpu_top >/dev/null
+
 # Probe the exact compile-time capabilities selected by the pinned Moonlight tree.
 for pc in   openssl   sdl2   SDL2_ttf   libavcodec   libavutil   libswscale   libva   libva-x11   libva-drm   vdpau   libdrm   libplacebo   x11   egl   opus; do
   if ! pkg-config --exists "$pc"; then
