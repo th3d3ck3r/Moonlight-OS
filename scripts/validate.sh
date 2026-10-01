@@ -140,6 +140,8 @@ for pkg in pipewire pipewire-pulseaudio wireplumber alsa-utils dkms kernel-devel
   need_pkg "$pkg"
 done
 need_text "snd_hda_macbookpro" "$KS"
+need_text 'PACKAGE_VERSION="1.0"' "$KS"
+need_text 'BUILT_MODULE_LOCATION[0]="build/hda/codecs/cirrus"' "$KS"
 need_text 'dkms install -c "$PWD/dkms.conf" --force -m snd_hda_macbookpro -v 0.1 -k "$KVER" --verbose' "$KS"
 need_text "snd_hda_macbookpro DKMS make.log" "$KS"
 need_text "/usr/src/snd_hda_macbookpro-0.1" "$KS"
