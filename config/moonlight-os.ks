@@ -107,7 +107,7 @@ kernel-headers
 pkgconf-pkg-config
 openssl
 openssl-devel
-wget
+wget1-wget
 xz
 sdl2-compat-devel
 SDL2_ttf-devel
@@ -595,11 +595,17 @@ mkdir -p /usr/src/snd_hda_macbookpro-1.0
 cp -a . /usr/src/snd_hda_macbookpro-1.0/
 chmod +x /usr/src/snd_hda_macbookpro-1.0/install.cirrus.driver.sh
 
+# Fedora 44/GCC16: add compatibility flags to the driver's own quoted
+# KBUILD_EXTRA_CFLAGS so its nested kernel make preserves them correctly.
+sed -i 's/-Wno-unused-function"/-Wno-unused-function -Wno-error -Wno-incompatible-pointer-types"/' \
+  /usr/src/snd_hda_macbookpro-1.0/Makefile
+grep -q 'Wno-incompatible-pointer-types' /usr/src/snd_hda_macbookpro-1.0/Makefile
+
 cat > /usr/src/snd_hda_macbookpro-1.0/dkms.conf <<'DKMSCONF'
 PACKAGE_NAME="snd_hda_macbookpro"
 PACKAGE_VERSION="1.0"
 PRE_BUILD="install.cirrus.driver.sh -k $kernelver --dkms"
-MAKE="make KERNELRELEASE=${kernelver} KBUILD_EXTRA_CFLAGS='-DAPPLE_PINSENSE_FIXUP -DAPPLE_CODECS -DCONFIG_SND_HDA_RECONFIG=1 -Wno-unused-variable -Wno-unused-function -Wno-error -Wno-incompatible-pointer-types'"
+MAKE="make KERNELRELEASE=${kernelver}"
 BUILT_MODULE_NAME[0]="snd-hda-codec-cs8409"
 BUILT_MODULE_LOCATION[0]="build/hda/codecs/cirrus"
 DEST_MODULE_LOCATION[0]="/updates/codecs/cirrus"
