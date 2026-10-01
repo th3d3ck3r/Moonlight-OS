@@ -63,7 +63,7 @@ libdrm
 libva
 libva-utils
 libva-intel-driver
-intel-media-driver
+libva-intel-media-driver
 ffmpeg-libs
 libavcodec-freeworld
 SDL2
