@@ -42,7 +42,7 @@ The GitHub Actions workflow builds a UEFI-partitioned development disk image usi
 Locally, build from a Fedora 44 x86_64 host with virtualization available:
 
 ```bash
-sudo dnf install -y lorax-lmc-virt qemu-kvm edk2-ovmf wget xz
+sudo dnf install -y lorax-lmc-virt qemu-kvm qemu-img edk2-ovmf curl xz util-linux xfsprogs e2fsprogs dosfstools pykickstart
 sudo ./scripts/build-image.sh
 ```
 
@@ -52,6 +52,18 @@ Output:
 out/moonlight-os-mbp14-1.raw.xz
 out/moonlight-os-mbp14-1.raw.xz.sha256
 ```
+
+## Automated UEFI preflight
+
+A build is not considered flashable merely because Fedora produced a raw disk. Before compression/upload, Moonlight-OS:
+
+1. inspects the GPT partitions and mounts them read-only;
+2. requires the removable-media path `EFI/BOOT/BOOTX64.EFI` plus Fedora EFI files;
+3. verifies CocoOS, upstream Moonlight, settings/diagnostic helpers, and Bluetooth policies are present;
+4. boots a copy-on-write overlay of the raw image under QEMU/OVMF;
+5. requires the guest to reach multi-user boot and emit `MOONLIGHT_OS_BOOT_OK` over the serial console.
+
+The OVMF test does not modify the release raw image and does not prove Mac-specific hardware. It proves the generic x86_64 UEFI boot path before the image is flashed to the MacBook.
 
 ## Flashing
 
@@ -76,7 +88,7 @@ On the MacBook, hold **Option (⌥)** at power-on and choose **EFI Boot**.
 
 ## First boot
 
-If no saved network is available, the appliance opens `nmtui-connect` on tty1 before launching the graphical client. After the connection is saved, subsequent boots launch straight into CocoOS.
+If no saved network is available, the appliance opens the Moonlight-OS Wi-Fi helper on tty1; its Connect option uses `nmtui-connect`. After the connection is saved, subsequent boots launch straight into CocoOS.
 
 If Bluetooth is missing immediately after switching from macOS, the BCM4350C0 may still have macOS' UART baud rate retained. Shut down and perform the standard SMC reset once, then boot Moonlight-OS again.
 
