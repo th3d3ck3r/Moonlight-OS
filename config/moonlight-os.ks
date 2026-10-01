@@ -44,6 +44,8 @@ wireless-regdb
 bluez
 bluez-libs
 steam-devices
+joystick-support
+evtest
 pipewire
 pipewire-pulseaudio
 wireplumber
@@ -138,6 +140,69 @@ sed -ri 's/^#?AutoEnable=.*/AutoEnable=true/' /etc/bluetooth/main.conf || true
 systemctl enable bluetooth.service NetworkManager.service firewalld.service
 systemctl disable sshd.service || true
 
+# DualSense / PlayStation controller support (USB + Bluetooth).
+install -d /etc/modules-load.d
+printf 'hid_playstation\n' > /etc/modules-load.d/moonlight-dualsense.conf
+
+cat > /usr/local/bin/dualsense-check <<'DUALCHECK'
+#!/usr/bin/env bash
+set -u
+echo "Moonlight-OS DualSense check"
+modprobe hid_playstation 2>/dev/null || true
+if lsusb 2>/dev/null | grep -Eqi '054c:0ce6|Sony.*(DualSense|Wireless Controller)'; then
+  echo "[OK] DualSense detected over USB"
+elif bluetoothctl devices 2>/dev/null | grep -Eqi 'DualSense|Wireless Controller'; then
+  echo "[OK] DualSense known to Bluetooth"
+else
+  echo "[INFO] No DualSense currently detected"
+fi
+modinfo hid_playstation >/dev/null 2>&1 && echo "[OK] hid-playstation available" || echo "[FAIL] hid-playstation missing"
+command -v evtest >/dev/null 2>&1 && echo "[OK] evtest installed" || echo "[FAIL] evtest missing"
+DUALCHECK
+chmod 0755 /usr/local/bin/dualsense-check
+
+cat > /usr/local/bin/dualsense-pair <<'DUALPAIR'
+#!/usr/bin/env bash
+set -e
+sudo systemctl start bluetooth
+sudo rfkill unblock bluetooth || true
+cat <<'EOF'
+Put the PS5 DualSense into pairing mode:
+  Hold CREATE + PS until the light bar flashes rapidly.
+
+The Bluetooth control prompt will open next.
+Useful commands:
+  power on
+  agent on
+  default-agent
+  scan on
+  pair <MAC>
+  trust <MAC>
+  connect <MAC>
+  quit
+EOF
+exec bluetoothctl
+DUALPAIR
+chmod 0755 /usr/local/bin/dualsense-pair
+
+# Recovery/debug consoles use the Moonlight-OS black + red theme.
+cat > /etc/profile.d/00-moonlight-red-terminal.sh <<'THEME'
+# Moonlight-OS console theme: black background, red foreground.
+if [[ $- == *i* ]]; then
+  case "${TERM:-}" in
+    linux)
+      setterm --foreground red --background black --clear all 2>/dev/null || true
+      ;;
+    xterm*|screen*|tmux*)
+      printf '\033[40m\033[31m'
+      ;;
+  esac
+  PS1='\[\e[31m\]\u@\h:\w\$ \[\e[31m\]'
+  export LESS='-R'
+fi
+THEME
+chmod 0644 /etc/profile.d/00-moonlight-red-terminal.sh
+
 cd /usr/local/src
 git clone --recursive https://github.com/Djingerr/CocoOS.git cocoos
 cd cocoos
@@ -230,6 +295,8 @@ else fail "vainfo installed"; fi
 check modinfo brcmfmac
 check nmcli general status
 check bluetoothctl show
+check modinfo hid_playstation
+command -v evtest >/dev/null 2>&1 && pass "evtest installed" || fail "evtest installed"
 [[ -x /usr/local/libexec/moonlight-os/cocoos ]] && pass "CocoOS binary" || fail "CocoOS binary"
 [[ -x /usr/local/libexec/moonlight-os/moonlight ]] && pass "Moonlight binary" || fail "Moonlight binary"
 check modinfo snd_hda_codec_cs8409
@@ -294,6 +361,7 @@ COLORS
 chmod 0644 /etc/profile.d/moonlight-console-colors.sh
 
 cat > /home/moonlight/.bash_profile <<'PROFILE'
+[[ -r /etc/profile.d/00-moonlight-red-terminal.sh ]] && source /etc/profile.d/00-moonlight-red-terminal.sh
 if [[ -z "${DISPLAY:-}" && "$(tty 2>/dev/null)" == "/dev/tty1" ]]; then
   if ! nm-online -q --timeout=8; then
     echo "No network connection found. Select Wi-Fi; Esc exits."
