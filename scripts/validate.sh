@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+set -euo pipefail
+ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
+for f in "$ROOT"/scripts/*.sh; do bash -n "$f"; done
+
+grep -q '^COCOOS_COMMIT=[0-9a-f]\{40\}$' "$ROOT/SOURCES.lock"
+grep -q '^MOONLIGHT_COMMIT=[0-9a-f]\{40\}$' "$ROOT/SOURCES.lock"
+grep -q '^AUDIO_COMMIT=[0-9a-f]\{40\}$' "$ROOT/SOURCES.lock"
+grep -q 'part /boot/efi --fstype=efi' "$ROOT/config/moonlight-os.ks"
+grep -q 'part / --fstype=xfs' "$ROOT/config/moonlight-os.ks"
+grep -q 'libva-intel-driver' "$ROOT/config/moonlight-os.ks"
+grep -q 'intel-media-driver' "$ROOT/config/moonlight-os.ks"
+grep -q 'wifi.powersave=2' "$ROOT/config/moonlight-os.ks"
+grep -q 'roamoff=1' "$ROOT/config/moonlight-os.ks"
+grep -q 'MacBookPro14,1' "$ROOT/config/moonlight-os.ks"
+echo "Static validation passed."
