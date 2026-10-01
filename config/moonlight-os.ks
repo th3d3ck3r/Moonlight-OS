@@ -117,6 +117,8 @@ pulseaudio-libs-devel
 alsa-lib-devel
 libdrm-devel
 libX11-devel
+mesa-libEGL-devel
+mesa-libGL-devel
 libplacebo-devel
 qt6-qtbase-devel
 qt6-qtsvg-devel
@@ -174,25 +176,54 @@ chmod 0755 /usr/local/bin/dualsense-check
 
 cat > /usr/local/bin/dualsense-pair <<'DUALPAIR'
 #!/usr/bin/env bash
-set -e
+set -euo pipefail
 sudo systemctl start bluetooth
 sudo rfkill unblock bluetooth || true
-cat <<'EOF'
-Put the PS5 DualSense into pairing mode:
-  Hold CREATE + PS until the light bar flashes rapidly.
+bluetoothctl power on >/dev/null || true
 
-The Bluetooth control prompt will open next.
-Useful commands:
-  power on
-  agent on
-  default-agent
-  scan on
-  pair <MAC>
-  trust <MAC>
-  connect <MAC>
-  quit
+clear
+printf '\033[40m\033[31m'
+cat <<'EOF'
+PS5 DUALSENSE PAIRING
+=====================
+
+Hold CREATE + PS until the light bar flashes rapidly.
+
+Scanning...
 EOF
-exec bluetoothctl
+
+timeout 12s bluetoothctl scan on >/dev/null 2>&1 || true
+mapfile -t devices < <(bluetoothctl devices | grep -Ei 'Wireless Controller|DualSense' || true)
+
+if (( ${#devices[@]} == 0 )); then
+  echo
+  echo "No DualSense found. Put it in pairing mode again, then press Enter."
+  read -r _
+  timeout 12s bluetoothctl scan on >/dev/null 2>&1 || true
+  mapfile -t devices < <(bluetoothctl devices | grep -Ei 'Wireless Controller|DualSense' || true)
+fi
+
+if (( ${#devices[@]} == 0 )); then
+  echo "Still no DualSense found."
+  exit 1
+fi
+
+echo
+for i in "${!devices[@]}"; do
+  printf '  %d) %s\n' "$((i+1))" "${devices[$i]}"
+done
+printf 'Choose controller: '
+read -r choice
+[[ "$choice" =~ ^[0-9]+$ ]] || exit 2
+idx=$((choice-1))
+(( idx >= 0 && idx < ${#devices[@]} )) || exit 2
+mac=$(awk '{print $2}' <<<"${devices[$idx]}")
+
+bluetoothctl --agent NoInputNoOutput --timeout 30 pair "$mac"
+bluetoothctl trust "$mac" >/dev/null || true
+bluetoothctl connect "$mac" >/dev/null || true
+echo
+echo "DualSense paired and trusted."
 DUALPAIR
 chmod 0755 /usr/local/bin/dualsense-pair
 
@@ -319,8 +350,6 @@ set -euo pipefail
 sudo systemctl start bluetooth
 sudo rfkill unblock bluetooth || true
 bluetoothctl power on >/dev/null || true
-bluetoothctl agent on >/dev/null || true
-bluetoothctl default-agent >/dev/null || true
 clear
 printf '\033[40m\033[31m'
 cat <<'EOF'
@@ -361,9 +390,9 @@ idx=$((choice-1))
 (( idx >= 0 && idx < ${#devices[@]} )) || exit 2
 mac=$(awk '{print $2}' <<<"${devices[$idx]}")
 
-bluetoothctl pair "$mac" || true
-bluetoothctl trust "$mac" || true
-bluetoothctl connect "$mac" || true
+bluetoothctl --agent NoInputNoOutput --timeout 30 pair "$mac"
+bluetoothctl trust "$mac" >/dev/null || true
+bluetoothctl connect "$mac" >/dev/null || true
 airpods-mode low-latency
 echo
 echo "AirPods paired. Low Latency mode is active."
@@ -671,7 +700,13 @@ if [[ -S /tmp/.X11-unix/X0 ]]; then
   export XAUTHORITY=/home/moonlight/.Xauthority
 
   glx=$(glxinfo -B 2>&1 || true)
-  grep -Eqi 'OpenGL renderer string:.*(Intel|Iris|Mesa)' <<<"$glx" && pass "X11 OpenGL renderer is Intel/Mesa" || fail "X11 OpenGL renderer"
+  if grep -Eqi 'llvmpipe|softpipe|software rasterizer' <<<"$glx"; then
+    fail "X11 is using software rendering"
+  elif grep -Eqi 'OpenGL renderer string:.*(Intel|Iris)' <<<"$glx"; then
+    pass "X11 OpenGL renderer is Intel hardware"
+  else
+    fail "X11 OpenGL renderer"
+  fi
 
   xr=$(xrandr --query 2>&1 || true)
   grep -q ' connected' <<<"$xr" && pass "X11 display connector visible" || fail "X11 display connector"
