@@ -60,7 +60,7 @@ grep -Eq '^FEDORA_ISO_SHA256=[0-9a-f]{64}$' "$LOCK"
 
 # Disk/boot invariants.
 need_line "part /boot/efi --fstype=efi --size=512" "$KS"
-need_line "part /boot --fstype=ext4 --size=768" "$KS"
+need_line "part /boot --fstype=ext4 --size=1024" "$KS"
 need_line "part / --fstype=xfs --size=11000 --grow" "$KS"
 need_text "rd.driver.pre=i915" "$KS"
 need_text "mem_sleep_default=s2idle" "$KS"
@@ -70,12 +70,14 @@ need_text "MOONLIGHT_OS_BOOT_OK" "$KS"
 need_text 'MAX=$((14000 * 1024 * 1024))' "$BUILD"
 need_text "inspect-image.sh" "$BUILD"
 need_text "test-ovmf.sh" "$BUILD"
+need_text "--ram=4096" "$BUILD"
+need_text "--vcpus=2" "$BUILD"
 
 # Graphics / hardware decode / X11 acceleration.
 for pkg in \
   mesa-dri-drivers mesa-libGL mesa-libEGL mesa-libGL-devel mesa-libEGL-devel \
   mesa-vulkan-drivers libdrm libva libva-utils libva-intel-driver \
-  libva-intel-media-driver mesa-demos glx-utils vulkan-tools igt-gpu-tools \
+  libva-intel-media-driver mesa-demos glx-utils vulkan-tools \
   libX11-devel; do
   need_pkg "$pkg"
 done
@@ -85,6 +87,8 @@ need_text "readlink -f /sys/class/drm/card0/device/driver" "$KS"
 need_text "OpenGL renderer string" "$KS"
 need_text "llvmpipe|softpipe|software rasterizer" "$KS"
 need_text "xrandr --query" "$KS"
+need_text "dnf -y --refresh install igt-gpu-tools" "$KS"
+need_text "command -v intel_gpu_top" "$KS"
 
 # Keyboard / trackpad / mouse.
 for pkg in \
@@ -162,6 +166,7 @@ for pkg in \
 done
 ! need_pkg "libavcodec-freeworld"
 need_text 'qmake6 "CONFIG+=embedded" moonlight-qt.pro' "$KS"
+need_text "make release -j2" "$KS"
 need_text "make release" "$KS"
 need_text "moonlight-os/cocoos" "$KS"
 need_text "moonlight-os/moonlight" "$KS"
