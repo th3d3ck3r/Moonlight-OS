@@ -35,6 +35,16 @@ Run `sudo moonlight-os-verify` and require:
 - Confirm the default terminal is black with red foreground text.
 - Confirm no shell interaction is required for normal appliance boot after networking is configured.
 
+## Gate 2c: live X11 acceleration/input
+
+With CocoOS or Moonlight running on X display `:0`, run `sudo moonlight-os-verify` from tty2. The X11 runtime verifier must confirm:
+
+- OpenGL renderer identifies the Intel/Mesa stack, not llvmpipe/software rendering.
+- At least one connected display is visible through `xrandr`.
+- Keyboard is visible through XInput.
+- A pointing device (Apple trackpad or external mouse) is visible through XInput.
+- `intel_gpu_top` shows GPU/video engine activity during an active Moonlight stream.
+
 ## Gate 3: client A/B
 
 Test the same Vibepollo host and stream settings using:
