@@ -751,12 +751,23 @@ cat > /usr/local/sbin/moonlight-os-grow-root <<'GROW'
 #!/usr/bin/env bash
 set -euo pipefail
 root_src=$(findmnt -n -o SOURCE /)
-part=$(basename "$root_src")
-disk=$(lsblk -ndo PKNAME "$root_src")
-num=$(cat "/sys/class/block/$part/partition")
+root_real=$(readlink -f "$root_src")
+part=$(basename "$root_real")
+disk=$(lsblk -n -o PKNAME "$root_real" | head -n1)
+num=$(lsblk -n -o PARTN "$root_real" | head -n1)
 [[ -n "$disk" && -n "$num" ]]
-growpart "/dev/$disk" "$num" || true
-xfs_growfs / || true
+
+rc=0
+out=$(growpart "/dev/$disk" "$num" 2>&1) || rc=$?
+printf '%s\n' "$out"
+
+if (( rc != 0 )) && ! grep -q 'NOCHANGE:' <<<"$out"; then
+  echo "Root partition expansion failed; will retry on next boot." >&2
+  exit "$rc"
+fi
+
+udevadm settle
+xfs_growfs /
 touch /var/lib/moonlight-os-root-grown
 GROW
 chmod 0755 /usr/local/sbin/moonlight-os-grow-root
@@ -789,7 +800,8 @@ chmod 0755 /usr/local/sbin/moonlight-os-boot-marker
 cat > /etc/systemd/system/moonlight-os-boot-marker.service <<'BOOTMARKSVC'
 [Unit]
 Description=Moonlight-OS boot verification marker
-After=local-fs.target NetworkManager.service
+Requires=moonlight-os-grow-root.service
+After=local-fs.target NetworkManager.service moonlight-os-grow-root.service
 
 [Service]
 Type=oneshot
