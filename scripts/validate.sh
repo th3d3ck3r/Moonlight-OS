@@ -136,15 +136,22 @@ need_text "airpods-mode quality" "$KS"
 need_text "AirPods AAC codec plugin installed" "$KS"
 
 # Audio.
+for pkg in openssl wget xz; do
+  need_pkg "$pkg"
+done
 for pkg in pipewire pipewire-pulseaudio wireplumber alsa-utils dkms kernel-devel kernel-headers; do
   need_pkg "$pkg"
 done
 need_text "snd_hda_macbookpro" "$KS"
 need_text 'PACKAGE_VERSION="1.0"' "$KS"
 need_text 'BUILT_MODULE_LOCATION[0]="build/hda/codecs/cirrus"' "$KS"
-need_text 'dkms install -c "$PWD/dkms.conf" --force -m snd_hda_macbookpro -v 0.1 -k "$KVER" --verbose' "$KS"
+need_text 'PRE_BUILD="install.cirrus.driver.sh -k $kernelver --dkms"' "$KS"
+need_text "KBUILD_EXTRA_CFLAGS=" "$KS"
+need_text "Wno-incompatible-pointer-types" "$KS"
+need_text 'dkms add -m snd_hda_macbookpro -v 1.0' "$KS"
+need_text 'dkms install -m snd_hda_macbookpro -v 1.0 -k "$KVER" --force --verbose' "$KS"
 need_text "snd_hda_macbookpro DKMS make.log" "$KS"
-need_text "/usr/src/snd_hda_macbookpro-0.1" "$KS"
+need_text "/usr/src/snd_hda_macbookpro-1.0" "$KS"
 
 # Power / USB-C / storage accessibility.
 for pkg in brightnessctl upower thermald; do
