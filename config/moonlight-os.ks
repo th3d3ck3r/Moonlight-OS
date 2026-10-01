@@ -18,7 +18,7 @@ zerombr
 clearpart --all --initlabel --disklabel=gpt
 part /boot/efi --fstype=efi --size=512
 part /boot --fstype=ext4 --size=768
-part / --fstype=xfs --size=5400 --grow
+part / --fstype=xfs --size=11000 --grow
 bootloader --timeout=1 --append="quiet rd.driver.pre=i915 mem_sleep_default=s2idle pcie_port_pm=off"
 
 rootpw --lock
@@ -208,7 +208,8 @@ chmod 0644 /etc/profile.d/00-moonlight-red-terminal.sh
 install -d -m 0755 /home/moonlight/.config/wireplumber/wireplumber.conf.d
 cat > /home/moonlight/.config/wireplumber/wireplumber.conf.d/51-moonlight-airpods.conf <<'WPCONF'
 monitor.bluez.properties = {
-  override.bluez5.roles = [ a2dp_sink ]
+  bluez5.roles = [ a2dp_sink ]
+  bluez5.codecs = [ sbc sbc_xq aac ]
   bluez5.enable-sbc-xq = true
 }
 wireplumber.settings = {
@@ -641,8 +642,8 @@ cat > /home/moonlight/.bash_profile <<'PROFILE'
 [[ -r /etc/profile.d/00-moonlight-red-terminal.sh ]] && source /etc/profile.d/00-moonlight-red-terminal.sh
 if [[ -z "${DISPLAY:-}" && "$(tty 2>/dev/null)" == "/dev/tty1" ]]; then
   if ! nm-online -q --timeout=8; then
-    echo "No network connection found. Select Wi-Fi; Esc exits."
-    nmtui-connect || true
+    echo "No saved network connection found."
+    moonlight-wifi || true
   fi
   exec startx /usr/local/bin/moonlight-session -- :0 vt1 -keeptty -nolisten tcp
 elif [[ -z "${DISPLAY:-}" && "$(tty 2>/dev/null)" == "/dev/tty2" ]]; then
@@ -654,8 +655,9 @@ chown moonlight:moonlight /home/moonlight/.bash_profile
 echo 'moonlight ALL=(ALL) NOPASSWD: ALL' > /etc/sudoers.d/moonlight-os
 chmod 0440 /etc/sudoers.d/moonlight-os
 
-dnf -y remove --noautoremove   git make gcc gcc-c++ patch dkms kernel-devel kernel-headers pkgconf-pkg-config   openssl-devel SDL2-devel SDL2_ttf-devel ffmpeg-devel libva-devel libvdpau-devel   opus-devel pulseaudio-libs-devel alsa-lib-devel libdrm-devel libplacebo-devel   qt6-qtbase-devel qt6-qtsvg-devel qt6-qtdeclarative-devel qt6-qtwebsockets-devel qt6-qtmultimedia-devel || true
-rm -rf /usr/local/src /root/.cache /var/cache/dnf/*
+# v0.1 is intentionally a development/debug image. Keep Git, compiler,
+# kernel headers, DKMS, pinned source trees, and diagnostic tooling on the USB.
+rm -rf /root/.cache /var/cache/dnf/*
 dnf clean all || true
 
 cat >> /etc/dnf/dnf.conf <<'DNF'
