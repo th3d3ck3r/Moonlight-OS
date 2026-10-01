@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-set -euo pipefail
+set -Eeuo pipefail
+trap 'echo "Image inspection failed at line $LINENO: $BASH_COMMAND" >&2' ERR
 
 ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 # shellcheck disable=SC1091
@@ -21,8 +22,9 @@ cleanup() {
 trap cleanup EXIT
 
 mkdir -p "$work/root"
-loop=$(losetup --find --show --partscan "$RAW")
+loop=$(losetup --read-only --find --show --partscan "$RAW")
 sleep 1
+lsblk -o NAME,TYPE,FSTYPE,PARTTYPE "$loop"
 
 esp=$(lsblk -lnpo NAME,FSTYPE "$loop" | awk '$2=="vfat"{print $1; exit}')
 boot=$(lsblk -lnpo NAME,FSTYPE "$loop" | awk '$2=="ext4"{print $1; exit}')
@@ -32,9 +34,9 @@ root=$(lsblk -lnpo NAME,FSTYPE "$loop" | awk '$2=="xfs"{print $1; exit}')
 [[ -b "$boot" ]]
 [[ -b "$root" ]]
 
-mount -o ro "$root" "$work/root"
+mount -o ro,norecovery "$root" "$work/root"
 mkdir -p "$work/root/boot" "$work/root/boot/efi"
-mount -o ro "$boot" "$work/root/boot"
+mount -o ro,noload "$boot" "$work/root/boot"
 mount -o ro "$esp" "$work/root/boot/efi"
 
 test -f "$work/root/boot/efi/EFI/BOOT/BOOTX64.EFI"

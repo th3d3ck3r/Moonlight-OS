@@ -6,8 +6,11 @@ source "$ROOT/SOURCES.lock"
 OUT="$ROOT/out"
 CACHE="$ROOT/.cache"
 mkdir -p "$OUT" "$CACHE"
+MODE=${1:-build}
+[[ "$MODE" == build || "$MODE" == --validate-only ]] || { echo 'usage: build-image.sh [--validate-only]' >&2; exit 2; }
 ISO="$CACHE/$FEDORA_ISO"
 
+if [[ "$MODE" == build ]]; then
 if [[ ! -f "$ISO" ]]; then
   curl -L --fail --retry 5 --retry-delay 3 -o "$ISO" "$FEDORA_ISO_URL"
 fi
@@ -40,6 +43,13 @@ fi
 RAW=$(find "$OUT/lmc" -maxdepth 2 -type f -name 'moonlight-os-mbp14-1.raw' -print -quit)
 [[ -n "$RAW" && -f "$RAW" ]]
 mv "$RAW" "$OUT/moonlight-os-mbp14-1.raw"
+cd "$ROOT"
+sha256sum SOURCES.lock config/moonlight-os.ks > "$OUT/build-inputs.sha256"
+else
+  cd "$ROOT"
+  sha256sum -c "$OUT/build-inputs.sha256"
+  test -f "$OUT/moonlight-os-mbp14-1.raw"
+fi
 
 fdisk -l "$OUT/moonlight-os-mbp14-1.raw"
 SIZE=$(stat -c %s "$OUT/moonlight-os-mbp14-1.raw")
@@ -53,4 +63,4 @@ bash "$ROOT/scripts/inspect-image.sh" "$OUT/moonlight-os-mbp14-1.raw"
 bash "$ROOT/scripts/test-ovmf.sh" "$OUT/moonlight-os-mbp14-1.raw"
 
 xz -T0 -9e "$OUT/moonlight-os-mbp14-1.raw"
-sha256sum "$OUT/moonlight-os-mbp14-1.raw.xz" > "$OUT/moonlight-os-mbp14-1.raw.xz.sha256"
+(cd "$OUT" && sha256sum moonlight-os-mbp14-1.raw.xz > moonlight-os-mbp14-1.raw.xz.sha256)

@@ -13,6 +13,15 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  image-tools:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fedora OVMF tool and firmware preflight
+        run: |
+          docker run --rm -v "$PWD:/workspace:ro" -w /workspace fedora:44 \
+            bash -euc 'dnf -y install qemu-kvm qemu-img edk2-ovmf && bash scripts/test-ovmf.sh --check-tools'
+
   static:
     runs-on: ubuntu-latest
     steps:

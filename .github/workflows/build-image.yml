@@ -9,6 +9,7 @@ on:
 
 permissions:
   contents: read
+  actions: read
 
 concurrency:
   group: moonlight-os-image-${{ github.ref }}
@@ -28,6 +29,22 @@ jobs:
     timeout-minutes: 300
     steps:
       - uses: actions/checkout@v4
+      - name: Select build or validation recovery
+        id: mode
+        run: |
+          RUN_ID=$(sed -n 's/^REVALIDATE_RUN_ID=\([0-9][0-9]*\)$/\1/p' .github/BUILD_ONCE)
+          echo "run_id=$RUN_ID" >> "$GITHUB_OUTPUT"
+      - name: Recover the previously installed raw image
+        if: steps.mode.outputs.run_id != ''
+        uses: actions/download-artifact@v4
+        with:
+          name: moonlight-os-unvalidated-raw
+          path: out
+          github-token: ${{ github.token }}
+          run-id: ${{ steps.mode.outputs.run_id }}
+      - name: Decompress recovered image
+        if: steps.mode.outputs.run_id != ''
+        run: xz -d out/moonlight-os-mbp14-1.raw.xz
       - name: Enable KVM when available
         run: |
           if [ -e /dev/kvm ]; then
@@ -38,12 +55,34 @@ jobs:
           KVM_ARG=""
           if [ -e /dev/kvm ]; then KVM_ARG="--device=/dev/kvm"; fi
           docker run --rm --privileged $KVM_ARG \
+            -e VALIDATION_RUN_ID="${{ steps.mode.outputs.run_id }}" \
             -v "$PWD:/workspace" -w /workspace \
             fedora:44 bash -euxo pipefail -c '
               dnf -y install lorax-lmc-virt qemu-kvm qemu-img edk2-ovmf curl xz util-linux findutils xfsprogs e2fsprogs dosfstools pykickstart &&
               ksvalidator ./config/moonlight-os.ks &&
-              bash ./scripts/build-image.sh
+              if [ -n "$VALIDATION_RUN_ID" ]; then
+                bash ./scripts/build-image.sh --validate-only
+              else
+                bash ./scripts/build-image.sh
+              fi
             '
+      - name: Preserve installed image after a validation failure
+        if: failure()
+        run: |
+          if [ -f out/moonlight-os-mbp14-1.raw ] && [ -f out/build-inputs.sha256 ]; then
+            sudo xz -T2 -1 out/moonlight-os-mbp14-1.raw
+          fi
+      - name: Upload unvalidated recovery image
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: moonlight-os-unvalidated-raw
+          path: |
+            out/moonlight-os-mbp14-1.raw.xz
+            out/build-inputs.sha256
+          compression-level: 0
+          if-no-files-found: ignore
+          retention-days: 3
       - name: Show installer failure log
         if: failure()
         run: |
@@ -64,6 +103,7 @@ jobs:
           path: |
             virt-install.log
             out/lmc/**
+            out/ovmf-*.log
           if-no-files-found: warn
           retention-days: 14
 
