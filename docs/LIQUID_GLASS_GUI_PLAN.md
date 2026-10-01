@@ -1,4 +1,4 @@
-# 💎 Liquid Glass–inspired Moonlight-OS interface
+# 💎 Crimson Glass — Moonlight-OS interface plan
 
 Status: separate design/implementation proposal, not implemented.
 Prepared October 1, 2026. Begin after physical USB boot and basic streaming validation.
@@ -7,6 +7,8 @@ Related but independently staged: [host stats overlay and dashboard plan](HOST_O
 ## Goal
 
 Make every Moonlight-OS-owned graphical surface feel like one product: clear hierarchy, consistent controls, a restrained glass material, predictable navigation, and readable settings. Use Liquid Glass as visual inspiration, implemented in Qt/SDL on Linux rather than Apple's proprietary material.
+
+**Palette direction: mostly black, with crimson and red highlights.** Use smoky black glass, restrained deep-crimson selection fills, and brighter red focus/action accents. Keep normal reading text near white so the interface stays readable.
 
 Apply the same visual language across CocoOS, the upstream Moonlight fallback, graphical appliance settings, setup/pairing dialogs, and planned host-stat controls. Preserve existing streaming capabilities and a reliable text recovery console.
 
@@ -30,12 +32,14 @@ Proposed starting tokens, to refine in actual screenshots:
 
 | Token | Starting specification |
 | --- | --- |
-| Canvas | Dark charcoal `#0B0E14`, quiet artwork or gradient |
-| Material | Neutral smoky glass; stronger fill behind text and forms |
+| Canvas | Almost-black `#050506`; darken artwork behind controls and avoid large bright backgrounds |
+| Material | Smoky black glass: base `#0B0B0E`, raised `#141116`, with strong black fill behind text/forms |
 | Primary text | Near white `#F4F6FA`; measure contrast on actual composited backgrounds |
-| Secondary text | Cool gray `#B9C2D0`; never use transparency alone for hierarchy |
-| Accent | Cool blue `#7AAEFF` initially; optional configurable accent, reused everywhere |
-| Status | Separate success/warning/error tokens, paired with icon and text |
+| Secondary text | Neutral gray `#BDB7BE`; never use transparency alone for hierarchy |
+| Crimson | Deep crimson `#9F1239` for selected surfaces, restrained gradients and primary button fills with near-white labels |
+| Red highlight | Bright red `#FF4D64` for focus rings, active indicators, slider/toggle accents and small highlights |
+| Glass rim | Subtle neutral-white upper edge with a faint crimson lower edge; avoid neon outlines on every panel |
+| Status | Preserve semantic success/warning/error colors with icon/text; distinguish errors from decorative red by shape, label and placement |
 | Spacing | 4/8/12/16/24/32/48 logical-unit scale |
 | Corners | 10 small controls, 16 cards, 24 sheets/dialogs; pills only for compact status/navigation |
 | Typography | Existing licensed Sora + JetBrains Mono; consistent 14/16/20/28/36 hierarchy |
@@ -43,12 +47,14 @@ Proposed starting tokens, to refine in actual screenshots:
 | Icons | One bundled SVG family with matching stroke weight and labeled actions |
 | Motion | 120–180 ms feedback, 180–240 ms transitions; reduced-motion alternative |
 
+Black remains the dominant surface color; crimson/red mark interaction and hierarchy rather than flooding entire screens. Use a faint crimson glow only around the focused control, no constant pulsing. Default content text is near white, not red. Selected rows use a dark crimson wash plus a visible red focus ring; primary actions use a deep-crimson fill. Disabled controls use neutral gray. Apply the same palette to both clients, settings, dialogs and the planned stats overlay.
+
 Keep text and content clear; reserve stronger glass treatment for navigation bars, sheets, floating controls and selection surfaces. Do not layer translucent cards inside translucent cards indiscriminately. A restrained highlight, thin inner rim and soft shadow establish depth; blur is an optional enhancement, not a prerequisite.
 
 Material modes:
-- **Standard:** bounded static/menu background blur where supported and measured.
+- **Standard:** smoky black glass with restrained crimson/red accents and bounded static/menu background blur where supported and measured.
 - **Lightweight:** translucent tint, highlight and border without blur.
-- **Opaque / High Contrast:** solid readable surfaces.
+- **Opaque / High Contrast:** solid black surfaces, near-white labels and a strong red/white focus outline; preserve the crimson identity without transparency.
 - **Reduce Motion:** removes drift, scaling and long animated transitions.
 
 Choose initial defaults using MacBook measurements, and expose the modes in Appearance. Avoid pointer-following reflections, continuous shimmer, animated noise and distortion of text or streamed video.
@@ -97,7 +103,7 @@ Use English product text throughout. Avoid raw stack traces in the main flow; pr
 ## Staged implementation
 
 ### Stage 0 — baseline and visual proof
-After physical boot succeeds, capture current screens and latency/resource measurements. Create representative QML previews for Home, Settings, Wi-Fi, Pairing, Error and Stats. Approve the consistent material and navigation by reviewing those screens, including opaque mode. No OS rebuild needed for an isolated preview.
+After physical boot succeeds, capture current screens and latency/resource measurements. Create representative QML previews for Home, Settings, Wi-Fi, Pairing, Error and Stats. Review black/crimson/red consistency and navigation across those screens, including opaque mode; check red highlights against bright game artwork. No OS rebuild needed for an isolated preview.
 
 ### Stage 1 — primitives and client screens
 Build tokens/components, migrate CocoOS theme/dialogs/home and all standard Qt Quick Controls, then apply the same system to fallback Moonlight. Preserve backend behavior and settings keys. Audit every popup and English string.
@@ -113,9 +119,9 @@ Complete targeted tests first, then one fresh image build with inspection/OVMF. 
 
 ## Acceptance gates
 
-- Every owned page, dialog, tooltip, control and focus state uses the shared tokens; no orphaned stock-white dialogs or inconsistent icon families.
+- Every owned page, dialog, tooltip, control and focus state uses the black/crimson/red shared tokens; no orphaned stock-white dialogs, default blue/orange interaction accents or inconsistent icon families. Semantic status colors and game artwork remain distinct from theme accents.
 - Test 1280×800 logical layout, MacBook Retina scaling, 1080p and narrow windows; no clipped text, offscreen dialogs or double scaling from CocoOS Theme.scale.
-- Text remains legible on bright/dark artwork; aim for 4.5:1 normal-text contrast and test high-contrast/opaque modes.
+- Text remains legible on bright/dark artwork; aim for 4.5:1 normal-text contrast and test high-contrast/opaque modes. Measure red labels and focus borders separately; deep crimson is a surface/fill color, not small body text on black.
 - Full keyboard/controller traversal, text entry, modal containment, no stuck buttons, proper back/cancel and focus restoration.
 - First boot works with no Wi-Fi, invalid password, absent Bluetooth, offline host and graphics failure recovery.
 - Existing stream options, pairing, persistence, fallback, AirPods playback-only policy and DualSense audio suppression remain intact.
