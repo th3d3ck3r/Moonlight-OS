@@ -1,8 +1,20 @@
 # Test plan — MacBookPro14,1
 
+## Gate 0: automated image/UEFI preflight
+
+Before any physical USB test, CI must pass both `scripts/inspect-image.sh` and `scripts/test-ovmf.sh`.
+
+Require:
+
+- GPT contains EFI, /boot, and XFS root partitions.
+- `EFI/BOOT/BOOTX64.EFI` exists.
+- CocoOS, upstream Moonlight, settings/diagnostic helpers, and audio policies are present in the installed root.
+- QEMU/OVMF boots the raw image and the guest emits `MOONLIGHT_OS_BOOT_OK` after reaching the multi-user boot path.
+- The OVMF test uses a qcow2 overlay so the release raw image remains unchanged.
+
 ## Gate 1: boot and platform
 
-1. Flash the `.raw.xz` image to an 8 GB-or-larger USB drive.
+1. Flash the `.raw.xz` image to a **16 GB-or-larger USB drive**.
 2. Hold Option at power-on and confirm **EFI Boot** appears.
 3. Boot the USB without mounting or modifying the internal SSD.
 4. Confirm `cat /sys/class/dmi/id/product_name` is `MacBookPro14,1`.
@@ -28,6 +40,9 @@ Run `sudo moonlight-os-verify` and require:
 - Pair a DualSense over Bluetooth and confirm it reconnects after reboot.
 - Run `dualsense-check` and confirm no driver/tool failures.
 - Connect DualSense over USB and confirm its speaker/microphone audio card is **absent from PipeWire**, while controller input still works.
+- Pair AirPods Pro 2 through the guided menu; confirm they reconnect after reboot.
+- Confirm AirPods expose playback A2DP only and no headset/microphone profile.
+- Compare AirPods **Low Latency** and **Quality** modes during a stream.
 
 ## Gate 2b: recovery console
 
