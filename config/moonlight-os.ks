@@ -277,6 +277,22 @@ GETTY
 install -d /etc/systemd/system/getty@tty2.service.d
 cp /etc/systemd/system/getty@tty1.service.d/autologin.conf /etc/systemd/system/getty@tty2.service.d/autologin.conf
 
+cat > /etc/profile.d/moonlight-console-colors.sh <<'COLORS'
+# Moonlight-OS diagnostic console theme: black background, red text.
+# Apply only to Linux virtual consoles so X11/Moonlight rendering is untouched.
+case "$(tty 2>/dev/null || true)" in
+  /dev/tty[1-9]|/dev/tty[1-9][0-9])
+    if command -v setterm >/dev/null 2>&1; then
+      setterm --foreground red --background black --store 2>/dev/null || \
+      setterm --foreground red --background black 2>/dev/null || true
+      clear
+    fi
+    export PS1='\[\e[1;31m\]\u@moonlight-os\[\e[0;31m\]:\w\$ \[\e[0m\]'
+    ;;
+esac
+COLORS
+chmod 0644 /etc/profile.d/moonlight-console-colors.sh
+
 cat > /home/moonlight/.bash_profile <<'PROFILE'
 if [[ -z "${DISPLAY:-}" && "$(tty 2>/dev/null)" == "/dev/tty1" ]]; then
   if ! nm-online -q --timeout=8; then
