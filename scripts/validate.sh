@@ -156,7 +156,7 @@ need_text "snd_hda_macbookpro DKMS make.log" "$KS"
 need_text "/usr/src/snd_hda_macbookpro-1.0" "$KS"
 
 # Power / USB-C / storage accessibility.
-for pkg in brightnessctl upower thermald; do
+for pkg in brightnessctl upower thermald xfsprogs kmod; do
   need_pkg "$pkg"
 done
 need_text "thermald.service" "$KS"
