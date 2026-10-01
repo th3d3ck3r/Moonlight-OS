@@ -85,9 +85,11 @@ test -f "$work/root/usr/lib64/dri/iHD_drv_video.so"
 # Resolve executable symlinks inside the guest, not against the build host.
 chroot "$work/root" /bin/bash -ec '
   export PATH=/usr/sbin:/usr/bin:/sbin:/bin
+  missing=0
   for tool do
-    command -v "$tool" >/dev/null || { echo "Required installed tool missing: $tool" >&2; exit 1; }
+    command -v "$tool" || { echo "Required installed tool missing: $tool" >&2; missing=1; }
   done
+  exit "$missing"
 ' bash Xorg libinput xinput evtest nmcli nmtui-connect bluetoothctl \
   pipewire wireplumber wpctl intel_gpu_top vainfo glxinfo growpart xfs_growfs \
   gcc git dkms modinfo

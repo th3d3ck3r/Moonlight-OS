@@ -55,6 +55,8 @@ jobs:
           fi
       - name: Build Fedora 44 UEFI disk image
         run: |
+          set -o pipefail
+          mkdir -p out
           KVM_ARG=""
           if [ -e /dev/kvm ]; then KVM_ARG="--device=/dev/kvm"; fi
           docker run --rm --privileged $KVM_ARG \
@@ -68,7 +70,7 @@ jobs:
               else
                 bash ./scripts/build-image.sh
               fi
-            '
+            ' 2>&1 | tee out/image-build.log
       - name: Preserve installed image after a validation failure
         if: failure()
         run: |
@@ -107,6 +109,7 @@ jobs:
             virt-install.log
             out/lmc/**
             out/ovmf-*.log
+            out/image-build.log
           if-no-files-found: warn
           retention-days: 14
 
