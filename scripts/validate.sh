@@ -136,7 +136,7 @@ need_text "airpods-mode quality" "$KS"
 need_text "AirPods AAC codec plugin installed" "$KS"
 
 # Audio.
-for pkg in openssl wget xz; do
+for pkg in openssl wget1-wget xz; do
   need_pkg "$pkg"
 done
 for pkg in pipewire pipewire-pulseaudio wireplumber alsa-utils dkms kernel-devel kernel-headers; do
@@ -146,8 +146,8 @@ need_text "snd_hda_macbookpro" "$KS"
 need_text 'PACKAGE_VERSION="1.0"' "$KS"
 need_text 'BUILT_MODULE_LOCATION[0]="build/hda/codecs/cirrus"' "$KS"
 need_text 'PRE_BUILD="install.cirrus.driver.sh -k $kernelver --dkms"' "$KS"
-need_text "KBUILD_EXTRA_CFLAGS=" "$KS"
 need_text "Wno-incompatible-pointer-types" "$KS"
+need_text "/usr/src/snd_hda_macbookpro-1.0/Makefile" "$KS"
 need_text 'dkms add -m snd_hda_macbookpro -v 1.0' "$KS"
 need_text 'dkms install -m snd_hda_macbookpro -v 1.0 -k "$KVER" --force --verbose' "$KS"
 need_text "snd_hda_macbookpro DKMS make.log" "$KS"
@@ -202,9 +202,9 @@ need_text "MOONLIGHT_OS_BOOT_OK" "$ROOT/scripts/test-ovmf.sh"
 need_text "qcow2" "$ROOT/scripts/test-ovmf.sh"
 need_text "OVMF_CODE.fd" "$ROOT/scripts/test-ovmf.sh"
 need_text "ksvalidator" "$ROOT/scripts/audit-packages.sh"
-need_text "Exact pinned installer-kernel DKMS audit" "$ROOT/scripts/audit-packages.sh"
-need_text 'kernel-devel-$INSTALLER_KERNEL' "$ROOT/scripts/audit-packages.sh"
-need_text 'dkms install -c "$driver/dkms.conf"' "$ROOT/scripts/audit-packages.sh"
+need_text 'KVER="6.19.10-300.fc44.x86_64"' "$ROOT/scripts/audit-audio.sh"
+need_text "kernel-modules-core" "$ROOT/scripts/audit-audio.sh"
+need_text "Wno-incompatible-pointer-types" "$ROOT/scripts/audit-audio.sh"
 
 # Documentation matches v0.1.
 need_text "16 GB" "$README"
