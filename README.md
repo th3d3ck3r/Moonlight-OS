@@ -89,6 +89,8 @@ The local user is `moonlight`. It has passwordless sudo in this diagnostic v1 im
 
 Normal use should not require a command line. If you intentionally enter a recovery/debug shell, Moonlight-OS defaults to a **black background with red text**.
 
+DualSense audio behavior: the controller's **speaker, microphone, and headset audio endpoints are disabled** on USB. The controller remains fully available through `hid-playstation` for normal input and supported haptics/features. Bluetooth DualSense is HID-only on mainline Linux, so no controller audio device is exposed there.
+
 DualSense helpers:
 
 ```bash
