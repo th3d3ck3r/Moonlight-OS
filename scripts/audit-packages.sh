@@ -57,3 +57,56 @@ command -v vulkaninfo >/dev/null
 command -v intel_gpu_top >/dev/null
 
 echo "Fedora 44 full package transaction and Moonlight build-capability audit passed."
+
+# qmake configure-only feature probe: no compilation is performed here.
+# This proves the pinned source trees actually select the accelerated Linux paths.
+# shellcheck disable=SC1091
+source "$ROOT/SOURCES.lock"
+
+probe_qmake() {
+  local name=$1 repo=$2 commit=$3 mode=$4
+  local dir="/tmp/moonlight-os-qmake-$name"
+  rm -rf "$dir"
+  git clone -q "$repo" "$dir"
+  git -C "$dir" checkout -q --detach "$commit"
+  git -C "$dir" submodule update -q --init --recursive
+
+  pushd "$dir" >/dev/null
+  if [[ "$mode" == "embedded" ]]; then
+    qmake6 "CONFIG+=embedded" moonlight-qt.pro > qmake-root.log 2>&1
+    (cd app && qmake6 "CONFIG+=embedded" app.pro > ../qmake-app.log 2>&1)
+  else
+    qmake6 moonlight-qt.pro > qmake-root.log 2>&1
+    (cd app && qmake6 app.pro > ../qmake-app.log 2>&1)
+  fi
+
+  cat qmake-root.log qmake-app.log > qmake-combined.log
+
+  for msg in     "FFmpeg decoder selected"     "VAAPI renderer selected"     "VAAPI X11 support enabled"     "VAAPI DRM support enabled"     "DRM renderer selected"     "Vulkan support enabled via libplacebo"     "EGL renderer selected"; do
+    if ! grep -Fq "$msg" qmake-combined.log; then
+      echo "$name qmake did not select required feature: $msg" >&2
+      cat qmake-combined.log >&2
+      exit 1
+    fi
+  done
+
+  if [[ "$mode" == "embedded" ]]; then
+    grep -Fq "Embedded build" qmake-combined.log || {
+      echo "$name qmake did not select EMBEDDED_BUILD" >&2
+      cat qmake-combined.log >&2
+      exit 1
+    }
+  fi
+
+  if grep -Fq "VAAPI Wayland support enabled" qmake-combined.log; then
+    echo "INFO: $name also detected Wayland support; runtime remains forced to X11."
+  fi
+
+  echo "$name qmake configure-only accelerated feature probe passed."
+  popd >/dev/null
+}
+
+probe_qmake upstream "$MOONLIGHT_REPO" "$MOONLIGHT_COMMIT" normal
+probe_qmake cocoos "$COCOOS_REPO" "$COCOOS_COMMIT" embedded
+
+echo "All Fedora 44 package and pinned-source configure audits passed."
