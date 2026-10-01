@@ -32,7 +32,10 @@ jobs:
       - name: Select build or validation recovery
         id: mode
         run: |
-          RUN_ID=$(sed -n 's/^REVALIDATE_RUN_ID=\([0-9][0-9]*\)$/\1/p' .github/BUILD_ONCE)
+          RUN_ID=""
+          if [ "$GITHUB_EVENT_NAME" = push ]; then
+            RUN_ID=$(sed -n 's/^REVALIDATE_RUN_ID=\([0-9][0-9]*\)$/\1/p' .github/BUILD_ONCE)
+          fi
           echo "run_id=$RUN_ID" >> "$GITHUB_OUTPUT"
       - name: Recover the previously installed raw image
         if: steps.mode.outputs.run_id != ''
