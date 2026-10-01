@@ -20,5 +20,8 @@ grep -q 'hid_playstation' "$ROOT/config/moonlight-os.ks"
 grep -q '^joystick-support$' "$ROOT/config/moonlight-os.ks"
 grep -q '^evtest$' "$ROOT/config/moonlight-os.ks"
 grep -q 'moonlight-red-terminal' "$ROOT/config/moonlight-os.ks"
+grep -q '52-disable-dualsense-audio.conf' "$ROOT/config/moonlight-os.ks"
+grep -q 'device.vendor.id = 1356' "$ROOT/config/moonlight-os.ks"
+grep -q 'device.product.id = 3302' "$ROOT/config/moonlight-os.ks"
 
 echo "Static validation passed."
