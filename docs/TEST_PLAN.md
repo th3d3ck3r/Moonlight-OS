@@ -25,7 +25,7 @@ Run `sudo moonlight-os-verify` and require:
 
 - `i915` available, bound to the Intel DRM device, with both `/dev/dri/card0` and `/dev/dri/renderD128`.
 - VA-API H.264 and HEVC profiles visible over the DRM render node.
-- OpenGL/Mesa and Vulkan diagnostic stacks installed; `intel_gpu_top` can observe GPU/video-engine activity during a stream.
+- OpenGL/Mesa and Vulkan diagnostic stacks installed; `igt-gpu-tools` is the current Fedora updates build and `intel_gpu_top` can observe GPU/video-engine activity during a stream.
 - VA-API advertises H.264 and HEVC decode profiles.
 - `brcmfmac` available and NetworkManager sees Wi-Fi.
 - Bluetooth controller visible after any required one-time SMC reset.
