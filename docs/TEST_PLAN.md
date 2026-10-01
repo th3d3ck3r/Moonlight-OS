@@ -17,6 +17,15 @@ Run `sudo moonlight-os-verify` and require:
 - Bluetooth controller visible after any required one-time SMC reset.
 - MacBook Cirrus audio driver loaded and a PipeWire sink exists.
 - USB and Bluetooth gamepads appear as input devices.
+- DualSense is detected over USB with `hid-playstation`.
+- Pair a DualSense over Bluetooth and confirm it reconnects after reboot.
+- Run `dualsense-check` and confirm no driver/tool failures.
+
+## Gate 2b: recovery console
+
+- Switch to `Ctrl+Alt+F2`.
+- Confirm the default terminal is black with red foreground text.
+- Confirm no shell interaction is required for normal appliance boot after networking is configured.
 
 ## Gate 3: client A/B
 
