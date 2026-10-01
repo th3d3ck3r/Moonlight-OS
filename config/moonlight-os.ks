@@ -595,7 +595,7 @@ echo "Moonlight-OS verification"
 model=$(cat /sys/class/dmi/id/product_name 2>/dev/null || true)
 [[ "$model" == "MacBookPro14,1" ]] && pass "model MacBookPro14,1" || fail "model is ${model:-unknown}"
 check modinfo i915
-readlink -f /sys/class/drm/card0/device/driver 2>/dev/null | grep -q '/i915
+readlink -f /sys/class/drm/card0/device/driver 2>/dev/null | grep -q '/i915$' && pass "i915 bound to DRM display device" || fail "i915 DRM binding"
 [[ -e /dev/dri/card0 ]] && pass "DRM display node" || fail "DRM display node"
 [[ -e /dev/dri/renderD128 ]] && pass "DRM render node" || fail "DRM render node"
 
