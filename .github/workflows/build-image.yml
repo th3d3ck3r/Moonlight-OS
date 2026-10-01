@@ -36,7 +36,8 @@ jobs:
           docker run --rm --privileged $KVM_ARG \
             -v "$PWD:/workspace" -w /workspace \
             fedora:44 bash -euxo pipefail -c '
-              dnf -y install lorax-lmc-virt qemu-kvm edk2-ovmf curl xz util-linux findutils &&
+              dnf -y install lorax-lmc-virt qemu-kvm qemu-img edk2-ovmf curl xz util-linux findutils xfsprogs e2fsprogs dosfstools pykickstart &&
+              ksvalidator ./config/moonlight-os.ks &&
               bash ./scripts/build-image.sh
             '
       - name: Upload image artifact
