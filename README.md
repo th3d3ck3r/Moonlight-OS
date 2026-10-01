@@ -185,7 +185,6 @@ The development image stays **under 14,000 MiB raw** while retaining Git, GCC, D
 ## 📚 Project notes
 
 - [Build status](BUILD_STATUS.md)
-- [Feature compatibility and efficient build gates](docs/FEATURE_REVIEW_GATES.md)
 - [Hardware and streaming test plan](docs/TEST_PLAN.md)
 - [Planned host stats overlay and dashboard button](docs/HOST_OVERLAY_PLAN.md) — follow-up after physical boot validation
 - [Liquid Glass–inspired GUI plan](docs/LIQUID_GLASS_GUI_PLAN.md) — cohesive client and appliance settings redesign
