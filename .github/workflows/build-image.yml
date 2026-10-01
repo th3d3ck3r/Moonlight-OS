@@ -1,0 +1,54 @@
+name: Build Moonlight-OS image
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "config/**"
+      - "scripts/**"
+      - "SOURCES.lock"
+      - ".github/workflows/build-image.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Static validation
+        run: ./scripts/validate.sh
+
+  build:
+    needs: validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    steps:
+      - uses: actions/checkout@v4
+      - name: Enable KVM when available
+        run: |
+          if [ -e /dev/kvm ]; then
+            sudo chmod 666 /dev/kvm
+          fi
+      - name: Build Fedora 44 UEFI disk image
+        run: |
+          KVM_ARG=""
+          if [ -e /dev/kvm ]; then KVM_ARG="--device=/dev/kvm"; fi
+          docker run --rm --privileged $KVM_ARG \
+            -v "$PWD:/workspace" -w /workspace \
+            fedora:44 bash -euxo pipefail -c '
+              dnf -y install lorax-lmc-virt qemu-kvm edk2-ovmf curl xz util-linux findutils &&
+              ./scripts/build-image.sh
+            '
+      - name: Upload image artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: moonlight-os-mbp14-1
+          path: |
+            out/moonlight-os-mbp14-1.raw.xz
+            out/moonlight-os-mbp14-1.raw.xz.sha256
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 14
