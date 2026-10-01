@@ -13,6 +13,16 @@ for file in "$ROOT"/scripts/*.sh; do
   bash -n "$file"
 done
 
+post_tmp=$(mktemp)
+trap 'rm -f "$post_tmp"' EXIT
+awk '
+  /^%post([[:space:]]|$)/ { in_post=1; next }
+  in_post && /^%end$/ { exit }
+  in_post { print }
+' "$KS" > "$post_tmp"
+[[ -s "$post_tmp" ]]
+bash -n "$post_tmp"
+
 # Build automation stays manual during v0.1 audit/testing.
 grep -q '^  workflow_dispatch:$' "$WORKFLOW"
 ! grep -q '^  push:$' "$WORKFLOW"
@@ -39,6 +49,10 @@ grep -q 'rd.driver.pre=i915' "$KS"
 grep -q 'mem_sleep_default=s2idle' "$KS"
 grep -q 'pcie_port_pm=off' "$KS"
 grep -q 'MAX=$((14000 \* 1024 \* 1024))' "$BUILD"
+grep -q 'inspect-image.sh' "$BUILD"
+grep -q 'test-ovmf.sh' "$BUILD"
+grep -q 'console=ttyS0,115200n8' "$KS"
+grep -q 'MOONLIGHT_OS_BOOT_OK' "$KS"
 
 # Graphics / decode
 for pkg in mesa-dri-drivers mesa-libGL mesa-libEGL mesa-vulkan-drivers libdrm libva libva-utils libva-intel-driver libva-intel-media-driver mesa-demos glx-utils vulkan-tools igt-gpu-tools; do
@@ -57,6 +71,8 @@ done
 grep -q 'modinfo applespi' "$KS"
 grep -q '/proc/bus/input/devices' "$KS"
 grep -q 'xinput list' "$KS"
+grep -q '40-moonlight-macbook-input.conf' "$KS"
+grep -q 'ClickMethod" "clickfinger' "$KS"
 
 # Network / Bluetooth
 for pkg in NetworkManager NetworkManager-wifi NetworkManager-tui wpa_supplicant iw wireless-regdb bluez bluez-libs; do
@@ -79,7 +95,8 @@ grep -q 'device.disabled = true' "$KS"
 # AirPods Pro 2: playback-only A2DP.
 grep -q 'override.bluez5.roles = \[ a2dp_sink \]' "$KS"
 grep -q 'override.bluez5.codecs = \[ sbc sbc_xq aac \]' "$KS"
-grep -q 'override.bluez5.auto-connect = \[ a2dp_sink \]' "$KS"
+grep -q 'bluez5.auto-connect = \[ a2dp_sink \]' "$KS"
+grep -q 'monitor.bluez.seat-monitoring = disabled' "$KS"
 grep -q 'bluetooth.autoswitch-to-headset-profile = false' "$KS"
 grep -q 'bluetooth.profile-preference = "latency"' "$KS"
 grep -q 'airpods-mode low-latency' "$KS"
@@ -102,7 +119,7 @@ grep -q 'battery sysfs accessible' "$KS"
 grep -q 'backlight sysfs accessible' "$KS"
 
 # Streaming/client build stack
-for pkg in ffmpeg-libs ffmpeg-devel libplacebo libplacebo-devel qt6-qtbase-gui qt6-qtbase-devel qt6-qtdeclarative qt6-qtdeclarative-devel qt6-qtsvg qt6-qtsvg-devel qt6-qtwebsockets qt6-qtwebsockets-devel qt6-qtmultimedia qt6-qtmultimedia-devel; do
+for pkg in ffmpeg-libs ffmpeg-devel libplacebo libplacebo-devel libX11-devel qt6-qtbase-gui qt6-qtbase-devel qt6-qtdeclarative qt6-qtdeclarative-devel qt6-qtsvg qt6-qtsvg-devel qt6-qtwebsockets qt6-qtwebsockets-devel qt6-qtmultimedia qt6-qtmultimedia-devel; do
   grep -qx "$pkg" "$KS"
 done
 ! grep -qx 'libavcodec-freeworld' "$KS"
