@@ -1,7 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
-for f in "$ROOT"/scripts/*.sh; do bash -n "$f"; done
+
+for f in "$ROOT"/scripts/*.sh; do
+  bash -n "$f"
+done
 
 grep -q '^COCOOS_COMMIT=[0-9a-f]\{40\}$' "$ROOT/SOURCES.lock"
 grep -q '^MOONLIGHT_COMMIT=[0-9a-f]\{40\}$' "$ROOT/SOURCES.lock"
@@ -14,9 +17,8 @@ grep -q 'wifi.powersave=2' "$ROOT/config/moonlight-os.ks"
 grep -q 'roamoff=1' "$ROOT/config/moonlight-os.ks"
 grep -q 'MacBookPro14,1' "$ROOT/config/moonlight-os.ks"
 grep -q 'hid_playstation' "$ROOT/config/moonlight-os.ks"
-grep -q '^joystick-supportecho "Static validation passed."
- "$ROOT/config/moonlight-os.ks"
-grep -q '^evtestecho "Static validation passed."
- "$ROOT/config/moonlight-os.ks"
+grep -q '^joystick-support$' "$ROOT/config/moonlight-os.ks"
+grep -q '^evtest$' "$ROOT/config/moonlight-os.ks"
 grep -q 'moonlight-red-terminal' "$ROOT/config/moonlight-os.ks"
+
 echo "Static validation passed."
