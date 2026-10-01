@@ -116,6 +116,7 @@ opus-devel
 pulseaudio-libs-devel
 alsa-lib-devel
 libdrm-devel
+libX11-devel
 libplacebo-devel
 qt6-qtbase-devel
 qt6-qtsvg-devel
@@ -221,7 +222,23 @@ monitor.bluez.properties = {
   override.bluez5.roles = [ a2dp_sink ]
   override.bluez5.codecs = [ sbc sbc_xq aac ]
   bluez5.enable-sbc-xq = true
-  override.bluez5.auto-connect = [ a2dp_sink ]
+}
+monitor.bluez.rules = [
+  {
+    matches = [
+      { device.name = "~bluez_card.*" }
+    ]
+    actions = {
+      update-props = {
+        bluez5.auto-connect = [ a2dp_sink ]
+      }
+    }
+  }
+]
+wireplumber.profiles = {
+  main = {
+    monitor.bluez.seat-monitoring = disabled
+  }
 }
 wireplumber.settings = {
   bluetooth.autoswitch-to-headset-profile = false
@@ -229,6 +246,20 @@ wireplumber.settings = {
 }
 WPCONF
 chown -R moonlight:moonlight /home/moonlight/.config
+
+# MacBookPro14,1 X11 input defaults: clickfinger right-click, tap-to-click, natural scrolling.
+install -d -m 0755 /etc/X11/xorg.conf.d
+cat > /etc/X11/xorg.conf.d/40-moonlight-macbook-input.conf <<'XINPUTCONF'
+Section "InputClass"
+    Identifier "Moonlight-OS Apple SPI Touchpad"
+    MatchProduct "Apple SPI Touchpad"
+    MatchIsTouchpad "on"
+    Driver "libinput"
+    Option "ClickMethod" "clickfinger"
+    Option "Tapping" "on"
+    Option "NaturalScrolling" "true"
+EndSection
+XINPUTCONF
 
 # DualSense USB exposes an ALSA audio card (speaker/mic/headset jack).
 # Disable only that audio card by Sony VID/PID; hid-playstation remains active.
@@ -525,14 +556,16 @@ fi
 rm -rf /usr/src/snd_hda_macbookpro-1.0
 mkdir -p /usr/src/snd_hda_macbookpro-1.0
 cp -a . /usr/src/snd_hda_macbookpro-1.0/
+chmod +x /usr/src/snd_hda_macbookpro-1.0/install.cirrus.driver.sh
+
 cat > /usr/src/snd_hda_macbookpro-1.0/dkms.conf <<'DKMSCONF'
 PACKAGE_NAME="snd_hda_macbookpro"
 PACKAGE_VERSION="1.0"
-PRE_BUILD="install.cirrus.driver.sh -k $kernelver --dkms"
-MAKE="make KERNELRELEASE=${kernelver} CFLAGS_MODULE='-DAPPLE_PINSENSE_FIXUP -DAPPLE_CODECS -DCONFIG_SND_HDA_RECONFIG=1 -Wno-unused-variable -Wno-unused-function -Wno-error -Wno-incompatible-pointer-types'"
+PRE_BUILD="install.cirrus.driver.sh -k $kernelver"
+MAKE="make KERNELRELEASE=${kernelver} KDIR=/lib/modules/${kernelver}/build M=${dkms_tree}/${PACKAGE_NAME}/${PACKAGE_VERSION}/build/build/hda CFLAGS_MODULE='-DAPPLE_PINSENSE_FIXUP -DAPPLE_CODECS -DCONFIG_SND_HDA_RECONFIG=1 -Wno-unused-variable -Wno-unused-function -Wno-error -Wno-incompatible-pointer-types'"
 BUILT_MODULE_NAME[0]="snd-hda-codec-cs8409"
 BUILT_MODULE_LOCATION[0]="build/hda/codecs/cirrus"
-DEST_MODULE_LOCATION[0]="/updates/dkms"
+DEST_MODULE_LOCATION[0]="/updates/codecs/cirrus"
 AUTOINSTALL="yes"
 DKMSCONF
 
