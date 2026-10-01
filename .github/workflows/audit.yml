@@ -26,27 +26,5 @@ jobs:
       - uses: actions/checkout@v4
       - name: Fedora 44 Kickstart and package audit
         run: |
-          docker run --rm -v "$PWD:/workspace:ro" -w /workspace fedora:44 bash -euxo pipefail -c '
-            dnf -y install pykickstart dnf5-plugins ca-certificates curl
-            dnf -y install               https://download1.rpmfusion.org/free/fedora/rpmfusion-free-release-44.noarch.rpm               https://download1.rpmfusion.org/nonfree/fedora/rpmfusion-nonfree-release-44.noarch.rpm
-            ksvalidator ./config/moonlight-os.ks
-
-            mapfile -t packages < <(
-              awk '''
-                /^%packages/ { inpkgs=1; next }
-                inpkgs && /^%end$/ { exit }
-                inpkgs && NF && $1 !~ /^@/ && $1 !~ /^-/ { print $1 }
-              ''' ./config/moonlight-os.ks
-            )
-
-            missing=0
-            for pkg in "${packages[@]}"; do
-              if ! dnf -q repoquery "$pkg" 2>/dev/null | grep -q .; then
-                echo "MISSING PACKAGE: $pkg" >&2
-                missing=1
-              fi
-            done
-            test "$missing" -eq 0
-
-            echo "Fedora 44 Kickstart/package audit passed."
-          '
+          docker run --rm -v "$PWD:/workspace:ro" -w /workspace fedora:44 \
+            bash ./scripts/audit-packages.sh
