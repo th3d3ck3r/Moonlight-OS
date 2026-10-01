@@ -13,5 +13,9 @@ Validated before the first CI image build:
 - CocoOS has an automatic upstream Moonlight fallback.
 - SSH disabled by default.
 - Camera intentionally omitted.
+- AirPods Pro 2 configured for playback-only A2DP with latency/quality preference switching; HSP/HFP disabled.
+- DualSense speaker/microphone/headset audio endpoints suppressed without disabling controller HID.
+- Red-on-black diagnostics/settings console added with Wi-Fi and Bluetooth helpers.
+- v0.1 keeps Git/GCC/DKMS/kernel headers and source trees for hardware debugging; 16 GB USB target.
 
 The GitHub Actions image build is the next gate. Real i915/VA-API, BCM4350, Bluetooth, audio, controller, and streaming behavior must be validated on the actual MacBook; QEMU cannot prove those hardware-specific items.
