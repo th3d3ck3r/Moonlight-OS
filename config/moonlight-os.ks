@@ -53,8 +53,18 @@ alsa-utils
 xorg-x11-server-Xorg
 xorg-x11-xinit
 xorg-x11-xauth
+xorg-x11-drv-libinput
+libinput-utils
+xinput
 xrandr
 xset
+mesa-demos
+vulkan-tools
+igt-gpu-tools
+brightnessctl
+upower
+thermald
+linuxconsoletools
 mesa-dri-drivers
 mesa-libGL
 mesa-libEGL
@@ -136,7 +146,7 @@ options brcmfmac roamoff=1
 BRCM
 
 sed -ri 's/^#?AutoEnable=.*/AutoEnable=true/' /etc/bluetooth/main.conf || true
-systemctl enable bluetooth.service NetworkManager.service firewalld.service
+systemctl enable bluetooth.service NetworkManager.service firewalld.service thermald.service
 systemctl disable sshd.service || true
 
 # DualSense / PlayStation controller support (USB + Bluetooth).
@@ -584,12 +594,28 @@ echo "Moonlight-OS verification"
 model=$(cat /sys/class/dmi/id/product_name 2>/dev/null || true)
 [[ "$model" == "MacBookPro14,1" ]] && pass "model MacBookPro14,1" || fail "model is ${model:-unknown}"
 check modinfo i915
+grep -Eq 'i915' /sys/class/drm/card*/device/driver/module/uevent 2>/dev/null && pass "i915 bound to DRM device" || fail "i915 DRM binding"
+[[ -e /dev/dri/card0 ]] && pass "DRM display node" || fail "DRM display node"
 [[ -e /dev/dri/renderD128 ]] && pass "DRM render node" || fail "DRM render node"
+
 if command -v vainfo >/dev/null; then
-  va=$(vainfo 2>&1 || true)
-  grep -q 'VAProfileH264' <<<"$va" && pass "VA-API H.264" || fail "VA-API H.264"
-  grep -q 'VAProfileHEVC' <<<"$va" && pass "VA-API HEVC" || fail "VA-API HEVC"
+  va=$(vainfo --display drm --device /dev/dri/renderD128 2>&1 || vainfo 2>&1 || true)
+  grep -q 'VAProfileH264' <<<"$va" && pass "VA-API H.264 hardware decode profile" || fail "VA-API H.264"
+  grep -q 'VAProfileHEVC' <<<"$va" && pass "VA-API HEVC hardware decode profile" || fail "VA-API HEVC"
 else fail "vainfo installed"; fi
+
+command -v vulkaninfo >/dev/null 2>&1 && pass "Vulkan diagnostics installed" || fail "vulkaninfo installed"
+command -v glxinfo >/dev/null 2>&1 && pass "OpenGL diagnostics installed" || fail "glxinfo installed"
+command -v intel_gpu_top >/dev/null 2>&1 && pass "Intel GPU telemetry installed" || fail "intel_gpu_top installed"
+
+rpm -q xorg-x11-drv-libinput >/dev/null 2>&1 && pass "X11 libinput driver installed" || fail "X11 libinput driver"
+command -v libinput >/dev/null 2>&1 && pass "libinput diagnostics installed" || fail "libinput tools"
+command -v xinput >/dev/null 2>&1 && pass "X11 input diagnostics installed" || fail "xinput"
+check modinfo applespi
+grep -Eqi 'Apple.*Keyboard|Apple.*SPI.*Keyboard' /proc/bus/input/devices 2>/dev/null && pass "Apple keyboard input device" || fail "Apple keyboard input device"
+grep -Eqi 'Apple.*Touchpad|Apple.*SPI.*Touchpad' /proc/bus/input/devices 2>/dev/null && pass "Apple trackpad input device" || fail "Apple trackpad input device"
+ls /dev/input/event* >/dev/null 2>&1 && pass "evdev input nodes" || fail "evdev input nodes"
+
 check modinfo brcmfmac
 check nmcli general status
 check bluetoothctl show
@@ -599,6 +625,12 @@ command -v evtest >/dev/null 2>&1 && pass "evtest installed" || fail "evtest ins
 [[ -x /usr/local/libexec/moonlight-os/cocoos ]] && pass "CocoOS binary" || fail "CocoOS binary"
 [[ -x /usr/local/libexec/moonlight-os/moonlight ]] && pass "Moonlight binary" || fail "Moonlight binary"
 check modinfo snd_hda_codec_cs8409
+command -v brightnessctl >/dev/null 2>&1 && pass "brightness control installed" || fail "brightness control"
+command -v upower >/dev/null 2>&1 && pass "battery/power diagnostics installed" || fail "upower"
+systemctl is-enabled thermald.service >/dev/null 2>&1 && pass "thermald enabled" || fail "thermald enabled"
+[[ -r /sys/class/power_supply/BAT0/status || -r /sys/class/power_supply/BAT1/status ]] && pass "battery sysfs accessible" || fail "battery sysfs"
+[[ -d /sys/class/backlight ]] && pass "backlight sysfs accessible" || fail "backlight sysfs"
+
 printf '\nMemory: '; free -h | awk '/Mem:/ {print $3 " used / " $2 " total"}'
 printf 'Checks: %d OK, %d failed\n' "$ok" "$bad"
 (( bad == 0 ))
