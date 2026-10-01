@@ -17,7 +17,7 @@ Apple EFI → Fedora 44 → NetworkManager → Xorg → CocoOS → Vibepollo/Sun
 - VA-API hardware decode for H.264/HEVC.
 - Broadcom BCM4350 Wi-Fi and Bluetooth using the in-kernel drivers/firmware path.
 - Wi-Fi power saving disabled to reduce latency spikes.
-- **PS5 DualSense support over USB and Bluetooth** via `hid-playstation`, BlueZ, SDL2, joystick udev rules, and controller diagnostics.
+- **PS5 DualSense support over USB and Bluetooth** via `hid-playstation`, BlueZ, Fedora's SDL2 compatibility layer, joystick udev rules, and controller diagnostics.
 - Internal audio through the MacBook-specific Cirrus CS8409/CS42L83 driver.
 - X11 with no desktop environment and no compositor.
 - CocoOS as the console UI, with pinned upstream Moonlight as a recovery/reference client.
