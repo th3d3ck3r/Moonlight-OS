@@ -44,6 +44,29 @@ jobs:
               ksvalidator ./config/moonlight-os.ks &&
               bash ./scripts/build-image.sh
             '
+      - name: Show installer failure log
+        if: failure()
+        run: |
+          echo "===== virt-install.log ====="
+          if [ -f virt-install.log ]; then
+            tail -n 400 virt-install.log
+          else
+            echo "virt-install.log was not produced"
+          fi
+          echo "===== lmc files ====="
+          find out/lmc -maxdepth 3 -type f -print 2>/dev/null || true
+
+      - name: Upload failure diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: moonlight-os-build-failure-logs
+          path: |
+            virt-install.log
+            out/lmc/**
+          if-no-files-found: warn
+          retention-days: 14
+
       - name: Upload image artifact
         uses: actions/upload-artifact@v4
         with:
