@@ -632,6 +632,24 @@ systemctl is-enabled thermald.service >/dev/null 2>&1 && pass "thermald enabled"
 [[ -r /sys/class/power_supply/BAT0/status || -r /sys/class/power_supply/BAT1/status ]] && pass "battery sysfs accessible" || fail "battery sysfs"
 [[ -d /sys/class/backlight ]] && pass "backlight sysfs accessible" || fail "backlight sysfs"
 
+# If the appliance X session is running, prove real X11 rendering and input access too.
+if [[ -S /tmp/.X11-unix/X0 ]]; then
+  export DISPLAY=:0
+  export XAUTHORITY=/home/moonlight/.Xauthority
+
+  glx=$(glxinfo -B 2>&1 || true)
+  grep -Eqi 'OpenGL renderer string:.*(Intel|Iris|Mesa)' <<<"$glx" && pass "X11 OpenGL renderer is Intel/Mesa" || fail "X11 OpenGL renderer"
+
+  xr=$(xrandr --query 2>&1 || true)
+  grep -q ' connected' <<<"$xr" && pass "X11 display connector visible" || fail "X11 display connector"
+
+  xi=$(xinput list 2>&1 || true)
+  grep -Eqi 'keyboard|Apple.*Keyboard' <<<"$xi" && pass "X11 keyboard visible" || fail "X11 keyboard"
+  grep -Eqi 'touchpad|Apple.*Touchpad|pointer' <<<"$xi" && pass "X11 pointing device visible" || fail "X11 pointing device"
+else
+  echo "[INFO] X11 runtime checks skipped because :0 is not currently running"
+fi
+
 printf '\nMemory: '; free -h | awk '/Mem:/ {print $3 " used / " $2 " total"}'
 printf 'Checks: %d OK, %d failed\n' "$ok" "$bad"
 (( bad == 0 ))
