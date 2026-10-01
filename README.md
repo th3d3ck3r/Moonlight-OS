@@ -17,7 +17,7 @@ Apple EFI → Fedora 44 → NetworkManager → Xorg → CocoOS → Vibepollo/Sun
 - VA-API hardware decode for H.264/HEVC.
 - Broadcom BCM4350 Wi-Fi and Bluetooth using the in-kernel drivers/firmware path.
 - Wi-Fi power saving disabled to reduce latency spikes.
-- USB/Bluetooth controller support.
+- **PS5 DualSense support over USB and Bluetooth** via `hid-playstation`, BlueZ, SDL2, joystick udev rules, and controller diagnostics.
 - Internal audio through the MacBook-specific Cirrus CS8409/CS42L83 driver.
 - X11 with no desktop environment and no compositor.
 - CocoOS as the console UI, with pinned upstream Moonlight as a recovery/reference client.
@@ -83,9 +83,20 @@ If Bluetooth is missing immediately after switching from macOS, the BCM4350C0 ma
 Useful consoles:
 
 - `Ctrl+Alt+F1` — appliance session
-- `Ctrl+Alt+F2` — diagnostic login console
+- `Ctrl+Alt+F2` — diagnostic login console (black background / red text)
 
 The local user is `moonlight`. It has passwordless sudo in this diagnostic v1 image. Do not expose SSH to untrusted networks; SSH is disabled by default.
+
+Normal use should not require a command line. If you intentionally enter a recovery/debug shell, Moonlight-OS defaults to a **black background with red text**.
+
+DualSense helpers:
+
+```bash
+dualsense-check
+dualsense-pair
+```
+
+For Bluetooth pairing, hold **CREATE + PS** until the light bar flashes rapidly, then use the pairing helper.
 
 ## Hardware verification
 
