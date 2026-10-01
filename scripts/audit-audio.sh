@@ -12,7 +12,10 @@ mkdir -p "$WORK"
 
 dnf -y install \
   git gcc make patch wget xz openssl dkms \
-  "kernel-devel-$KVER" kernel-headers
+  "kernel-core-$KVER" "kernel-modules-core-$KVER" "kernel-devel-$KVER" kernel-headers
+
+test -d "/usr/src/kernels/$KVER"
+test -e "/lib/modules/$KVER/build"
 
 git clone -q "$AUDIO_REPO" "$WORK/snd_hda_macbookpro"
 git -C "$WORK/snd_hda_macbookpro" checkout -q --detach "$AUDIO_COMMIT"
