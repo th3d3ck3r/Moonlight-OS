@@ -3,7 +3,7 @@
 set -euo pipefail
 ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 if [[ "${1:-}" == --install-tools ]]; then
-  dnf -y install gcc plymouth plymouth-plugin-script plymouth-scripts python3-pillow
+  dnf -y install gcc plymouth plymouth-plugin-script plymouth-plugin-label dejavu-sans-fonts plymouth-scripts python3-pillow
 fi
 python3 "$ROOT/scripts/audit-boot-animation.py" --art
 plugin=$(find /usr/lib64/plymouth /usr/lib/plymouth -name script.so -print -quit 2>/dev/null || true)

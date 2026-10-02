@@ -22,7 +22,7 @@ for image in re.findall(r'Image\("([^"]+)"\)', script):
 assert 'Plymouth.SetRefreshRate(20)' in script
 assert 'j < bullets && j < 32' in script
 assert 'j < 4096 && count < 8' in script
-for required in ('rhgb plymouth.ignore-serial-consoles', 'plymouth-plugin-script',
+for required in ('rhgb plymouth.ignore-serial-consoles', 'plymouth-plugin-script', 'plymouth-plugin-label', 'dejavu-sans-fonts', 'TimeoutStartSec=5',
                  'add_dracutmodules+=" plymouth "', 'sudo timeout 3 plymouth quit',
                  'After=plymouth-quit.service', 'dracut --force --kver "$KVER"'):
     assert required in ks, required

@@ -74,6 +74,8 @@ for asset in background.png apollo.png crimson-apollo.script crimson-apollo.plym
   grep -Fq "usr/share/plymouth/themes/crimson-apollo/$asset" "$work/initramfs-list"
 done
 grep -Fq 'plymouth/script.so' "$work/initramfs-list"
+grep -Eq 'plymouth/label-(pango|freetype)\.so' "$work/initramfs-list"
+grep -Fq 'usr/share/fonts/dejavu-sans-fonts/DejaVuSans.ttf' "$work/initramfs-list"
 test -x "$work/root/usr/local/libexec/moonlight-os/cocoos"
 test -x "$work/root/usr/local/libexec/moonlight-os/moonlight"
 test -x "$work/root/usr/local/bin/moonlight-os-verify"

@@ -29,6 +29,8 @@ user --name=moonlight --groups=wheel,video,input,audio --lock
 plymouth
 plymouth-scripts
 plymouth-plugin-script
+plymouth-plugin-label
+dejavu-sans-fonts
 kernel
 kernel-core
 kernel-modules
@@ -2293,11 +2295,20 @@ plymouth-set-default-theme > /etc/moonlight-plymouth-previous-theme
 plymouth-set-default-theme crimson-apollo
 cat > /etc/dracut.conf.d/90-moonlight-plymouth.conf <<'APOLLO_DRACUT'
 add_dracutmodules+=" plymouth "
+install_items+=" /usr/share/fonts/dejavu-sans-fonts/DejaVuSans.ttf "
 APOLLO_DRACUT
 # Rebuild only the installed, pinned kernel after DKMS and theme installation.
 test "$KVER" = "6.19.10-300.fc44.x86_64"
 dracut --force --kver "$KVER" "/boot/initramfs-$KVER.img"
 # END GENERATED CRIMSON APOLLO PAYLOAD
+# A failed splash must not hold Getty behind an unlimited quit-wait service.
+for unit in plymouth-quit.service plymouth-quit-wait.service; do
+  install -d "/etc/systemd/system/$unit.d"
+  cat > "/etc/systemd/system/$unit.d/moonlight-timeout.conf" <<'APOLLO_TIMEOUT'
+[Service]
+TimeoutStartSec=5
+APOLLO_TIMEOUT
+done
 
 # Confirmed physical console geometry on this Retina panel, before either tty login path.
 cat > /etc/profile.d/moonlight-rows.sh <<'ROWS'

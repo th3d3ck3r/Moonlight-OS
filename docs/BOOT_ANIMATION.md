@@ -6,9 +6,9 @@ The source recipe now installs an original black/crimson Plymouth script theme. 
 
 ## How it is installed
 
-The Kickstart embeds the two PNGs and native script/theme descriptor directly, with no network fetch of mutable artwork. It installs Fedora's Plymouth script plugin, saves the previous theme, selects `crimson-apollo` and runs dracut for the exact pinned kernel after the Cirrus DKMS installation. `rhgb` enables graphics; `plymouth.ignore-serial-consoles` allows the splash while keeping the existing serial console and boot marker.
+The Kickstart embeds the two PNGs and native script/theme descriptor directly, with no network fetch of mutable artwork. It installs Fedora's Plymouth script and label plugins plus DejaVu Sans, saves the previous theme, selects `crimson-apollo` and runs dracut for the exact pinned kernel after the Cirrus DKMS installation. `rhgb` enables graphics; `plymouth.ignore-serial-consoles` allows the splash while keeping the existing serial console and boot marker.
 
-Fedora's Plymouth quit service remains responsible for normal handoff. Getty follows that service; tty1 also attempts a bounded, best-effort `plymouth quit` before network setup or X11. It does not wait for animation completion. tty2, the red diagnostic shell, both frontends, Openbox, English labels, media keys, console rows and the Intel/audio fixes remain in place.
+Fedora's Plymouth quit service remains responsible for normal handoff. Getty follows that service; tty1 also attempts a bounded, best-effort `plymouth quit` before network setup or X11. Both quit units have a five-second failure bound; normal handoff does not wait for animation completion. tty2, the red diagnostic shell, both frontends, Openbox, English labels, media keys, console rows and the Intel/audio fixes remain in place.
 
 The 20 Hz theme caches 72 small padded spacecraft rotations. Layout responds to Plymouth display changes and respects viewport offsets. Password input is represented only by at most 32 stars. Messages cannot replace an active password/question prompt; prompts use a black background and bounded, width-fitting lines. Extremely long messages are limited to eight visible lines; use Escape/serial logs for complete boot details. The theme never logs password contents.
 
