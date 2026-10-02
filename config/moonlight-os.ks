@@ -2532,6 +2532,11 @@ install -d -m 0755 /home/moonlight/.config/pegasus-frontend/metafiles
 cat > /home/moonlight/.config/pegasus-frontend/metafiles/metadata.pegasus.txt <<'PEGASUS_META'
 collection: Moonlight-OS Streaming
 shortname: pc
+files:
+  /usr/local/libexec/moonlight-os/moonlight
+  /usr/local/libexec/moonlight-os/frontends/vibemis/usr/bin/vibemis
+  /usr/local/libexec/moonlight-os/frontends/artemis
+  /usr/local/libexec/moonlight-os/cocoos
 
 game: Moonlight
 file: /usr/local/libexec/moonlight-os/moonlight
