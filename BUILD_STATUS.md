@@ -1,5 +1,10 @@
 # Build status
 
+Current downloadable image: promoted to regular release after user-confirmed Mac boot, animation and Bluetooth pairing. Image commit remains `32bc89855f8bac3caf90b9d5177ae583bc50313d`.
+
+Next candidate: Vibemis Crimson source implemented, awaiting focused Qt/full audit results and a separately authorized fresh experimental build. No new candidate is hardware-validated yet. See [implementation](docs/VIBEMIS_CRIMSON.md).
+
+
 Status: **experimental prerelease published from a completed image; six audits, installed-payload inspection and OVMF boot passed; physical candidate validation pending**
 
 ## Current experimental release — 2026-10-02

@@ -7,21 +7,25 @@
 
 A controller-friendly USB appliance for the **2017 13-inch non-Touch-Bar MacBook Pro — MacBookPro14,1**, connecting to **Vibepollo / Sunshine-compatible hosts**.
 
-**[🧪 Experimental release](https://github.com/th3d3ck3r/Moonlight-OS/releases/tag/v0.1-experimental.20261002) · [⬇️ Previous repair download](https://github.com/th3d3ck3r/Moonlight-OS/actions/runs/36972953272/artifacts/11213197745) · [🚀 Setup](#quick-start) · [✨ Features](#features) · [🩺 Troubleshooting](#troubleshooting) · [🌑 Animation](#crimson-apollo-animation-preview) · [🧭 Roadmap](#independent-feature-plans) · [🧪 Test plan](docs/TEST_PLAN.md)**
+**[🌙 Current release](https://github.com/th3d3ck3r/Moonlight-OS/releases/tag/v0.1-experimental.20261002) · [⬇️ Previous repair download](https://github.com/th3d3ck3r/Moonlight-OS/actions/runs/36972953272/artifacts/11213197745) · [🚀 Setup](#quick-start) · [✨ Features](#features) · [🩺 Troubleshooting](#troubleshooting) · [🌑 Animation](#crimson-apollo-animation-preview) · [🧭 Roadmap](#independent-feature-plans) · [🧪 Test plan](docs/TEST_PLAN.md)**
 
 </div>
 
 ---
 
-## 🧪 Experimental update — Apollo, Bluetooth & five frontends
+## 🌙 Current release — Apollo, Bluetooth & five frontends
 
-**[⬇️ Experimental prerelease](https://github.com/th3d3ck3r/Moonlight-OS/releases/tag/v0.1-experimental.20261002) · [📦 One-file Actions ZIP](https://github.com/th3d3ck3r/Moonlight-OS/actions/runs/36995905431/artifacts/11223945065) · [📖 Download / flashing guide](docs/releases/v0.1-experimental.20261002.md)**
+**[⬇️ Current release](https://github.com/th3d3ck3r/Moonlight-OS/releases/tag/v0.1-experimental.20261002) · [📦 One-file Actions ZIP](https://github.com/th3d3ck3r/Moonlight-OS/actions/runs/36995905431/artifacts/11223945065) · [📖 Download / flashing guide](docs/releases/v0.1-experimental.20261002.md)**
 
 Includes the **black/crimson animated Apollo moon boot screen**, a remembered selector for **Vibemis / Artemis / Pegasus / Moonlight / CocoOS**, and generic guided Bluetooth pairing with confirmation prompts and verified connection state. All Intel, English UI, Openbox/display, audio, Mac media-key and console repairs remain included.
 
-**All six audits, installed-image inspection and strict OVMF boot passed** for image commit `32bc89855f8bac3caf90b9d5177ae583bc50313d`. Physical Mac boot of this candidate, animation handoff, controller/AirPods pairing and new-client streaming remain unverified. The previous repair download below stays available as a fallback; this update is explicitly experimental.
+**All six audits, installed-image inspection and strict OVMF boot passed** for image commit `32bc89855f8bac3caf90b9d5177ae583bc50313d`. The user confirmed boot, animation and Bluetooth pairing on the Mac and prefers Vibemis. Exact device-by-device AirPods/controller features, decoder telemetry and sustained streaming checks still need results. The previous repair download below stays available as a fallback; this image is now promoted to a regular release; the next theme/status image will remain experimental.
 
-**One complete download; no split files.** The experimental prerelease links to the original Actions ZIP (about **3.62 GiB**), containing the compressed image and checksum. GitHub may require sign-in; the artifact expires October 16. No image is attached as a release asset because it exceeds GitHub's per-file limit. Do not flash GitHub's automatic source-code ZIP.
+**One complete download; no split files.** The current release links to the original Actions ZIP (about **3.62 GiB**), containing the compressed image and checksum. GitHub may require sign-in; the artifact expires October 16. No image is attached as a release asset because it exceeds GitHub's per-file limit. Do not flash GitHub's automatic source-code ZIP.
+
+## 🖤🔴 Next experimental — Vibemis Crimson
+
+Source update in validation: a full-app black/crimson palette, sixteen accent colors and three matching top-bar buttons for **network**, **battery** and **Vibepollo host CPU/RAM/GPU hardware stats**. Generic Bluetooth starts with a shorter six-second scan. [Implementation and host-stats setup](docs/VIBEMIS_CRIMSON.md). A new experimental image/download will be added after its audits, inspection and OVMF pass; the current release image is unchanged.
 
 ## ✅ Previous v0.1 repair — built, inspected, boot validated
 

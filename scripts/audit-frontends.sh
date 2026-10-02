@@ -5,6 +5,7 @@ ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 TASK=$(mktemp -d /tmp/moonlight-frontends.XXXXXX)
 export FRONTENDS_LOCK="$ROOT/SOURCES.lock" FRONTENDS_DEST="$TASK/runtime/frontends"
 export VIBEMIS_SOURCE="$TASK/vibemis-source"
+export VIBEMIS_PATCH="$ROOT/patches/vibemis-crimson.patch"
 export FRONTENDS_CACHE="$TASK/cache" ARTEMIS_SOURCE="$TASK/artemis-source"
 bash "$ROOT/scripts/install-frontends.sh"
 dnf -y install xorg-x11-server-Xvfb

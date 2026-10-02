@@ -1,0 +1,18 @@
+name: Promote physically tested image
+on:
+  push:
+    branches: [main]
+    paths: ['.github/PROMOTE_TESTED']
+permissions:
+  contents: write
+jobs:
+  promote:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Promote existing release; keep the original image unchanged
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          gh release edit v0.1-experimental.20261002 --prerelease=false --latest --title '🌙 Moonlight-OS v0.1 — Apollo, frontends & Bluetooth' --notes-file docs/releases/v0.1-experimental.20261002.md

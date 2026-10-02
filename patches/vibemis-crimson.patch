@@ -1,0 +1,960 @@
+diff --git a/app/app.pro b/app/app.pro
+index c1886a48..089c2621 100644
+--- a/app/app.pro
++++ b/app/app.pro
+@@ -631,3 +631,7 @@ macx {
+ # counts) or the smart-build check skips the release.
+ VERSION = "$$cat(version.txt)"
+ DEFINES += VERSION_STR=\\\"$$cat(version.txt)\\\"
++
++# Moonlight-OS optional launcher status and host stats.
++SOURCES += moonlightos/crimsonstatus.cpp
++HEADERS += moonlightos/crimsonstatus.h
+diff --git a/app/gui/AppView.qml b/app/gui/AppView.qml
+index 63f645d8..383adb75 100644
+--- a/app/gui/AppView.qml
++++ b/app/gui/AppView.qml
+@@ -11,6 +11,7 @@ import ComputerManager 1.0
+ import SdlGamepadKeyNavigation 1.0
+ 
+ CenteredGridView {
++    property var crimsonHost: ({})
+     property int computerIndex
+     property AppModel appModel : createModel()
+     property bool activated
+diff --git a/app/gui/AutoResizingComboBox.qml b/app/gui/AutoResizingComboBox.qml
+index 53afcaf8..f1239320 100644
+--- a/app/gui/AutoResizingComboBox.qml
++++ b/app/gui/AutoResizingComboBox.qml
+@@ -1,5 +1,6 @@
+ import QtQuick 2.9
+ import QtQuick.Controls 2.2
++import Vibemis.Redesign 1.0
+ 
+ import SdlGamepadKeyNavigation 1.0
+ import SystemProperties 1.0
+@@ -92,7 +93,7 @@ ComboBox {
+         // Override the popup color to improve contrast with the overridden
+         // Material 2 background color set in main.qml.
+         if (SystemProperties.usesMaterial3Theme) {
+-            popup.background.color = "#424242"
++            popup.background.color = Qt.binding(function() { return VbTokens.bgElev2 })
+         }
+     }
+ 
+diff --git a/app/gui/CrimsonStatusDialog.qml b/app/gui/CrimsonStatusDialog.qml
+new file mode 100644
+index 00000000..6870f9c3
+--- /dev/null
++++ b/app/gui/CrimsonStatusDialog.qml
+@@ -0,0 +1,90 @@
++import QtQuick 2.9
++import QtQuick.Controls 2.5
++import QtQuick.Layouts 1.3
++import QtQuick.Controls.Material 2.2
++import Vibemis.Redesign 1.0
++import CrimsonStatus 1.0
++
++NavigableDialog {
++    id: panel
++    property string kind: "host"
++    width: Math.min(620, parent.width - 32)
++    height: Math.min(kind === "host" ? 650 : 280, parent.height - 32)
++    title: kind === "host" ? qsTr("Vibepollo • Host hardware") : kind === "network" ? qsTr("Network status") : qsTr("Battery status")
++    standardButtons: Dialog.Close
++    Material.background: VbTokens.bgElev
++    Material.accent: VbTokens.accent
++    background: Rectangle { color: VbTokens.bgElev; radius: VbTokens.radiusDialog; border.color: VbTokens.stroke; border.width: 1 }
++    onOpened: {
++        urlInput.text = CrimsonStatus.endpoint
++        pinInput.text = CrimsonStatus.fingerprint
++        tokenInput.text = ""
++        CrimsonStatus.setVisible(kind === "host")
++    }
++    onClosed: { CrimsonStatus.setVisible(false); tokenInput.text = ""; stackView.forceActiveFocus() }
++    function metric(key, suffix) {
++        var n = CrimsonStatus.stats[key]
++        return n === undefined ? qsTr("N/A") : Number(n).toFixed(1) + suffix
++    }
++    function memory(prefix) {
++        var s = CrimsonStatus.stats
++        return s[prefix + "_used_bytes"] === undefined || !s[prefix + "_total_bytes"] ? qsTr("N/A")
++             : (s[prefix + "_used_bytes"] / 1073741824).toFixed(1) + " / " + (s[prefix + "_total_bytes"] / 1073741824).toFixed(1) + " GiB"
++    }
++    contentItem: ScrollView {
++        clip: true
++        contentWidth: availableWidth
++        ColumnLayout {
++            width: panel.availableWidth
++            spacing: VbTokens.space3
++            Label {
++                visible: panel.kind !== "host"
++                Layout.fillWidth: true; wrapMode: Text.Wrap
++                text: panel.kind === "network" ? (CrimsonStatus.local.network + (CrimsonStatus.local.wifiSignal >= 0 ? " • " + CrimsonStatus.local.wifiSignal + "% signal" : "") + "\n" + qsTr("Active link status; internet access is not assumed."))
++                    : (CrimsonStatus.local.batteryPercent >= 0 ? CrimsonStatus.local.batteryPercent + "% • " : "") + CrimsonStatus.local.batteryState
++                color: VbTokens.text; font.pixelSize: VbTokens.typeBody
++            }
++            Label {
++                visible: panel.kind === "host"
++                Layout.fillWidth: true; wrapMode: Text.Wrap
++                text: CrimsonStatus.status
++                color: VbTokens.textDim
++            }
++            Repeater {
++                model: panel.kind === "host" ? [
++                    [qsTr("CPU"), panel.metric("cpu_percent", "%"), panel.metric("cpu_temp_c", " °C")],
++                    [qsTr("RAM"), panel.memory("ram"), panel.metric("ram_percent", "%")],
++                    [qsTr("GPU"), panel.metric("gpu_percent", "%"), panel.metric("gpu_temp_c", " °C")],
++                    [qsTr("VRAM"), panel.memory("vram"), panel.metric("vram_percent", "%")],
++                    [qsTr("GPU encoder"), panel.metric("gpu_encoder_percent", "%"), ""],
++                    [qsTr("Host network"), panel.metric("net_rx_bps", " B/s RX"), panel.metric("net_tx_bps", " B/s TX")]
++                ] : []
++                delegate: Rectangle {
++                    Layout.fillWidth: true; implicitHeight: 58
++                    color: VbTokens.bgWindow; radius: VbTokens.radiusControl
++                    border.color: VbTokens.stroke; border.width: 1
++                    RowLayout {
++                        anchors.fill: parent; anchors.margins: 12
++                        Label { text: modelData[0]; color: VbTokens.textDim; Layout.preferredWidth: 115 }
++                        Label { text: modelData[1]; color: VbTokens.text; Layout.fillWidth: true }
++                        Label { text: modelData[2]; color: VbTokens.accent }
++                    }
++                }
++            }
++            GroupBox {
++                visible: panel.kind === "host"
++                title: qsTr("Configure host stats")
++                Layout.fillWidth: true
++                ColumnLayout {
++                    anchors.fill: parent
++                    Label { Layout.fillWidth: true; wrapMode: Text.Wrap; text: qsTr("Select a host first. Enable realtime stats in Vibepollo and create a read-only token for GET /api/host/stats. GameStream pairing does not grant this access."); color: VbTokens.textDim }
++                    TextField { id: urlInput; Layout.fillWidth: true; placeholderText: qsTr("HTTPS host URL, e.g. https://192.168.1.10:47990"); selectByMouse: true }
++                    TextField { id: tokenInput; Layout.fillWidth: true; placeholderText: qsTr("Read-only API token (blank keeps saved token)"); echoMode: TextInput.Password; selectByMouse: true }
++                    TextField { id: pinInput; Layout.fillWidth: true; placeholderText: qsTr("SHA-256 certificate fingerprint for a self-signed host"); selectByMouse: true }
++                    Label { Layout.fillWidth: true; wrapMode: Text.Wrap; text: qsTr("Verify a self-signed certificate's SHA-256 fingerprint on the host before saving it. Token is stored privately on this USB; it is not encrypted. Unsupported or missing sensors show N/A."); color: VbTokens.textDim }
++                    Button { text: qsTr("Save & connect"); onClicked: { if (CrimsonStatus.configure(urlInput.text, tokenInput.text, pinInput.text)) tokenInput.text = "" } }
++                }
++            }
++        }
++    }
++}
+diff --git a/app/gui/PcView.qml b/app/gui/PcView.qml
+index f0e739a8..f4d012b8 100644
+--- a/app/gui/PcView.qml
++++ b/app/gui/PcView.qml
+@@ -444,7 +444,7 @@ CenteredGridView {
+                         visible: model.online && model.paired,
+                         trigger: function() {
+                             var component = Qt.createComponent("AppView.qml")
+-                            var appView = component.createObject(stackView, {"computerIndex": index, "objectName": model.name, "showHiddenGames": true, "hostOnline": model.online, "hostType": model.hostType, "hostTransport": model.transport})
++                            var appView = component.createObject(stackView, {"computerIndex": index, "crimsonHost": computerModel.crimsonHost(index), "objectName": model.name, "showHiddenGames": true, "hostOnline": model.online, "hostType": model.hostType, "hostTransport": model.transport})
+                             stackView.push(appView)
+                         }
+                     },
+@@ -535,7 +535,7 @@ CenteredGridView {
+                 else if (model.paired) {
+                     // go to game view
+                     var component = Qt.createComponent("AppView.qml")
+-                    var appView = component.createObject(stackView, {"computerIndex": index, "objectName": model.name, "hostOnline": model.online, "hostType": model.hostType, "hostTransport": model.transport})
++                    var appView = component.createObject(stackView, {"computerIndex": index, "crimsonHost": computerModel.crimsonHost(index), "objectName": model.name, "hostOnline": model.online, "hostType": model.hostType, "hostTransport": model.transport})
+                     stackView.push(appView)
+                 }
+                 else {
+diff --git a/app/gui/SettingsView.qml b/app/gui/SettingsView.qml
+index 494e35ba..f980d8f0 100644
+--- a/app/gui/SettingsView.qml
++++ b/app/gui/SettingsView.qml
+@@ -3055,14 +3055,26 @@ Item {
+                     textRole: "text"
+                     hoverEnabled: true
+                     model: ListModel {
+-                        ListElement { text: qsTr("Teal (default)") }
++                        ListElement { text: qsTr("Teal") }
+                         ListElement { text: qsTr("Indigo") }
+                         ListElement { text: qsTr("Green") }
+                         ListElement { text: qsTr("Amber") }
++                        ListElement { text: qsTr("Crimson (default)") }
++                        ListElement { text: qsTr("Red") }
++                        ListElement { text: qsTr("Orange") }
++                        ListElement { text: qsTr("Gold") }
++                        ListElement { text: qsTr("Lime") }
++                        ListElement { text: qsTr("Mint") }
++                        ListElement { text: qsTr("Cyan") }
++                        ListElement { text: qsTr("Blue") }
++                        ListElement { text: qsTr("Violet") }
++                        ListElement { text: qsTr("Pink") }
++                        ListElement { text: qsTr("Silver") }
++                        ListElement { text: qsTr("Rose") }
+                     }
+                     Component.onCompleted: currentIndex = StreamingPreferences.uiAccentIndex
+                     onActivated: StreamingPreferences.uiAccentIndex = currentIndex
+-                    ToolTip.text: qsTr("The accent color used across the redesigned UI.")
++                    ToolTip.text: qsTr("The accent color used throughout Vibemis.")
+                     ToolTip.delay: 1000
+                     ToolTip.visible: hovered
+                 }
+diff --git a/app/gui/Theme.qml b/app/gui/Theme.qml
+index fb91c850..57c9f848 100644
+--- a/app/gui/Theme.qml
++++ b/app/gui/Theme.qml
+@@ -11,20 +11,20 @@ import Vibemis.Redesign 1.0
+ QtObject {
+     // ---- Color ----
+     readonly property color accent:        VbTokens.accent  // BL-2077: single source of truth (VbTokens brand accent, default #00CCCC)
+-    readonly property color accentPressed: "#00A3A3"
+-    readonly property color background:    "#303030"  // app root
+-    readonly property color surface:       "#2D2D2D"  // raised surfaces / overlays
+-    readonly property color surfaceAlt:    "#424242"  // popups / combo dropdowns
+-    readonly property color border:        "#444444"
+-    readonly property color textPrimary:   "#FFFFFF"
+-    readonly property color textSecondary: "#CCCCCC"
+-    readonly property color textTertiary:  "#AAAAAA"
+-    readonly property color textDisabled:  "#777777"
+-    readonly property color success:       "#4CAF50"
+-    readonly property color warning:       "#E0A030"  // the single amber
+-    readonly property color error:         "#F44336"
+-    readonly property color info:          "#80A0C0"
+-    readonly property color scrim:         "#D0000000"
++    readonly property color accentPressed: VbTokens.accentPressed
++    readonly property color background:    VbTokens.bgWindow  // app root
++    readonly property color surface:       VbTokens.bgElev  // raised surfaces / overlays
++    readonly property color surfaceAlt:    VbTokens.bgElev2  // popups / combo dropdowns
++    readonly property color border:        VbTokens.stroke
++    readonly property color textPrimary:   VbTokens.textPrimary
++    readonly property color textSecondary: VbTokens.textSecondary
++    readonly property color textTertiary:  VbTokens.textTertiary
++    readonly property color textDisabled:  VbTokens.textDisabled
++    readonly property color success:       VbTokens.statusSuccess
++    readonly property color warning:       VbTokens.statusWarning  // the single amber
++    readonly property color error:         VbTokens.statusDanger
++    readonly property color info:          VbTokens.statusInfo
++    readonly property color scrim:         VbTokens.dialogScrim
+ 
+     // ---- Typography (pointSize; pair with bold where noted in DESIGN_SYSTEM.md) ----
+     readonly property int fontDisplay: 24  // overlay/Quick Menu title (bold)
+diff --git a/app/gui/VbTokens.qml b/app/gui/VbTokens.qml
+index 52a34de4..6862f2fd 100644
+--- a/app/gui/VbTokens.qml
++++ b/app/gui/VbTokens.qml
+@@ -10,31 +10,29 @@ QtObject {
+     id: t
+ 
+     // ---- Color ----
+-    readonly property color bgApp:        "#08090B"  // outermost app bg behind the rounded window
+-    readonly property color bgWindow:     "#0E1013"  // main screen background
+-    readonly property color bgElev:       "#15181D"  // cards, panels, dialogs, sidebar rows
+-    readonly property color bgElev2:      "#1B1F26"  // focused/selected surface fill, chips
+-    readonly property color bgFooter:     "#0B0D10"  // bottom gamepad hint bar
++    readonly property color bgApp:        "#060607"  // outermost app bg behind the rounded window
++    readonly property color bgWindow:     "#0B0B0E"  // main screen background
++    readonly property color bgElev:       "#151115"  // cards, panels, dialogs, sidebar rows
++    readonly property color bgElev2:      "#21171C"  // focused/selected surface fill, chips
++    readonly property color bgFooter:     "#09080B"  // bottom gamepad hint bar
+     readonly property color stroke:       Qt.rgba(1, 1, 1, 0.08)  // default 1px card border
+     readonly property color strokeSoft:   Qt.rgba(1, 1, 1, 0.06)  // header/footer dividers
+     readonly property color text:         "#ECEEF1"  // primary text
+     readonly property color textDim:      "#98A1AB"  // secondary / label text
+     readonly property color textMute:     "#B9C0C8"  // tertiary / inactive item labels
+ 
+-    // Accent is swappable — one of the 4 curated values. Index 0 is the Vibemis brand
+-    // teal #00CCCC (BL-2077): the single canonical accent that Theme.qml + all literals now
+-    // resolve through, and the anchor for the P3.17/P3.18 design work.
+-    readonly property var accentOptions:  ["#00CCCC", "#7C8CF8", "#3ED598", "#F0A868"]
++    // Preserve legacy indices 0..3; append colors and default new preferences to crimson.
++    readonly property var accentOptions:  ["#00CCCC", "#7C8CF8", "#3ED598", "#F0A868", "#DC3658", "#F25D64", "#F58347", "#F1BC45", "#B7DC63", "#63CCAE", "#63C4ED", "#6C9FFF", "#AD85F5", "#E976BC", "#CAD0DA", "#D995AC"]
+     // Bound to the saved preference (Settings > accent picker); persists across restarts.
+     property int accentIndex: StreamingPreferences.uiAccentIndex
+-    readonly property color accent:       accentOptions[accentIndex]
+-    readonly property color accentHi:     "#6ADDE7"  // accent gradient light stop / link hover
++    readonly property color accent:       accentOptions[Math.max(0, Math.min(accentOptions.length - 1, accentIndex))]
++    readonly property color accentHi:     Qt.lighter(accent, 1.18)  // accent gradient light stop / link hover
+ 
+     readonly property color statusOnline:  "#3ED598"  // online dot, RESUME badge
+     readonly property color statusOffline: "#5A626C"  // offline dot / greyed monitor
+     readonly property color statusDanger:  "#F26D6D"  // destructive (Delete PC)
+ 
+-    readonly property color textOnAccent: "#08090B"  // text on an accent-filled button
++    readonly property color textOnAccent: "#060607"  // text on an accent-filled button
+ 
+     // ---- Typography (families + sizes; weights per the type scale) ----
+     readonly property string fontDisplay: "Sora"     // titles, card names, wordmark, all-caps labels
+@@ -119,7 +117,7 @@ QtObject {
+     // textOnAccent (#08090B) is defined in the base block above — text on an accent fill.
+ 
+     // ---- Interactive states: normal / hover / focus / pressed / disabled ----
+-    readonly property color accentPressed:      "#00A3A3" // pressed accented control (matches legacy Theme.accentPressed)
++    readonly property color accentPressed:      Qt.darker(accent, 1.18) // pressed accented control (matches legacy Theme.accentPressed)
+     readonly property color interactiveHover:   bgElev2    // row / list-item / icon-button hover fill
+     readonly property color interactiveFocus:   focusedFill// focused fill (= bgElev2) — pair with the focus ring
+     readonly property color interactivePressed: bgElev     // pressed neutral fill (recedes under the press)
+diff --git a/app/gui/computermodel.cpp b/app/gui/computermodel.cpp
+index 63c71158..2d487ff5 100644
+--- a/app/gui/computermodel.cpp
++++ b/app/gui/computermodel.cpp
+@@ -1,3 +1,4 @@
++#include <QUrl>
+ #include "computermodel.h"
+ #include "backend/serverpermissions.h"
+ #include "settings/vibemissettings.h"
+@@ -420,3 +421,13 @@ void ComputerModel::handleComputerStateChanged(NvComputer* computer)
+ }
+ 
+ #include "computermodel.moc"
++
++QVariantMap ComputerModel::crimsonHost(int index) const
++{
++    if (index < 0 || index >= m_Computers.count()) return {};
++    auto computer = m_Computers[index];
++    QReadLocker lock(&computer->lock);
++    QUrl url; url.setScheme("https"); url.setHost(computer->activeAddress.address());
++    url.setPort(computer->activeAddress.port() > 0 ? computer->activeAddress.port() + 1 : 47990);
++    return {{"id", computer->uuid}, {"url", url.toString()}};
++}
+diff --git a/app/gui/computermodel.h b/app/gui/computermodel.h
+index 6ecae30d..2ee73c1d 100644
+--- a/app/gui/computermodel.h
++++ b/app/gui/computermodel.h
+@@ -43,6 +43,8 @@ public:
+ 
+     virtual QHash<int, QByteArray> roleNames() const override;
+ 
++    Q_INVOKABLE QVariantMap crimsonHost(int computerIndex) const;
++
+     Q_INVOKABLE void deleteComputer(int computerIndex);
+ 
+     Q_INVOKABLE QString generatePinString();
+diff --git a/app/gui/main.qml b/app/gui/main.qml
+index 9bce5105..ba1f4ad0 100644
+--- a/app/gui/main.qml
++++ b/app/gui/main.qml
+@@ -12,8 +12,24 @@ import SystemProperties 1.0
+ import SdlGamepadKeyNavigation 1.0
+ import UiSoundManager 1.0
+ import Theme 1.0
++import CrimsonStatus 1.0
+ 
+ ApplicationWindow {
++    Material.theme: Material.Dark
++    Material.accent: VbTokens.accent
++    Material.primary: VbTokens.bgElev
++    Material.background: VbTokens.bgWindow
++    Material.foreground: VbTokens.text
++    color: VbTokens.bgApp
++    palette.window: VbTokens.bgWindow
++    palette.windowText: VbTokens.text
++    palette.base: VbTokens.bgApp
++    palette.alternateBase: VbTokens.bgElev
++    palette.text: VbTokens.text
++    palette.button: VbTokens.bgElev
++    palette.buttonText: VbTokens.text
++    palette.highlight: VbTokens.accent
++    palette.highlightedText: VbTokens.textOnAccent
+     property bool pollingActive: false
+ 
+     // Set by SettingsView to force the back operation to pop all
+@@ -46,14 +62,13 @@ ApplicationWindow {
+         // in order to improve contrast between GFE's placeholder box art
+         // and the background of the app grid.
+         if (SystemProperties.usesMaterial3Theme) {
+-            Material.background = Theme.background
++            // Theme remains a live binding to the shared palette.
+         }
+ 
+         // Bridge the Material style to the Vibemis design tokens so the
+         // Material-styled pages (Computers grid, App grid, dialogs) share the same
+         // accent/background system as the token-native pages. See docs/DESIGN_SYSTEM.md.
+-        Material.theme = Material.Dark
+-        Material.accent = Theme.accent
++        // Material theme/accent are bound at the root, including after changes.
+ 
+         SdlGamepadKeyNavigation.enable()
+     }
+@@ -267,6 +282,8 @@ ApplicationWindow {
+         }
+     }
+ 
++    CrimsonStatusDialog { id: crimsonPanel }
++
+     header: ToolBar {
+         id: toolBar
+         // Redesign: EVERY redesigned launcher screen (Computers, App grid, Settings, Help)
+@@ -338,7 +355,7 @@ ApplicationWindow {
+         // VIBEMIS wordmark (diamond + wordmark), shown on the Computers screen in place of a title,
+         // matching the design header. Left-aligned at the HTML's 40px padding.
+         Row {
+-            visible: toolBar.onPcView
++            visible: toolBar.onPcView && toolBar.width > 700
+             anchors.left: parent.left
+             anchors.leftMargin: 40
+             anchors.verticalCenter: parent.verticalCenter
+@@ -487,6 +504,45 @@ ApplicationWindow {
+                 }
+             }
+ 
++            NavigableToolButton {
++                id: networkStatusButton
++                iconSource: "qrc:/res/crimson-network.svg"
++                Accessible.name: qsTr("Network status")
++                ToolTip.visible: hovered
++                ToolTip.text: qsTr("Network: %1").arg(CrimsonStatus.local.network || qsTr("Unavailable"))
++                onClicked: { crimsonPanel.kind = "network"; crimsonPanel.open() }
++                Keys.onDownPressed: stackView.currentItem.forceActiveFocus(Qt.TabFocus)
++                Rectangle {
++                    anchors.right: parent.right; anchors.bottom: parent.bottom; anchors.margins: 5
++                    width: 8; height: 8; radius: 4
++                    color: CrimsonStatus.local.connected ? VbTokens.statusOnline : VbTokens.statusOffline
++                }
++            }
++            NavigableToolButton {
++                id: batteryStatusButton
++                iconSource: "qrc:/res/crimson-battery.svg"
++                Accessible.name: qsTr("Battery status")
++                ToolTip.visible: hovered
++                ToolTip.text: CrimsonStatus.local.batteryPercent >= 0 ? qsTr("Battery: %1% • %2").arg(CrimsonStatus.local.batteryPercent).arg(CrimsonStatus.local.batteryState) : qsTr("Battery unavailable")
++                onClicked: { crimsonPanel.kind = "battery"; crimsonPanel.open() }
++                Keys.onDownPressed: stackView.currentItem.forceActiveFocus(Qt.TabFocus)
++            }
++            NavigableToolButton {
++                id: hostHardwareButton
++                iconSource: "qrc:/res/crimson-host.svg"
++                Accessible.name: qsTr("Vibepollo host hardware stats")
++                ToolTip.visible: hovered
++                ToolTip.text: qsTr("Host CPU, RAM, GPU and temperatures")
++                onClicked: {
++                    var item = stackView.currentItem
++                    var host = toolBar.onAppView ? item.crimsonHost
++                             : (toolBar.onPcView ? item.computerModel.crimsonHost(item.currentIndex) : {})
++                    CrimsonStatus.selectHost(host.id || "", host.url || "")
++                    crimsonPanel.kind = "host"; crimsonPanel.open()
++                }
++                Keys.onDownPressed: stackView.currentItem.forceActiveFocus(Qt.TabFocus)
++            }
++
+             NavigableToolButton {
+                 id: discordButton
+                 visible: false // Temporarily disabled for Vibemis
+diff --git a/app/moonlightos/crimsonstatus.cpp b/app/moonlightos/crimsonstatus.cpp
+new file mode 100644
+index 00000000..9382ef59
+--- /dev/null
++++ b/app/moonlightos/crimsonstatus.cpp
+@@ -0,0 +1,212 @@
++#include "crimsonstatus.h"
++#include <QDateTime>
++#include <QDir>
++#include <QFile>
++#include <QJsonDocument>
++#include <QJsonObject>
++#include <QNetworkInterface>
++#include <QNetworkRequest>
++#include <QSaveFile>
++#include <QSslCertificate>
++#include <QSslError>
++#include <QStandardPaths>
++#include <QCryptographicHash>
++#include <QUrl>
++#include <cmath>
++#include <QQmlEngine>
++#include <QCoreApplication>
++#include <memory>
++#include <QRegularExpression>
++#include <QFileInfo>
++#include <QSslConfiguration>
++
++namespace {
++QString read(const QString& path) {
++    QFile f(path); return f.open(QIODevice::ReadOnly) ? QString::fromUtf8(f.readAll()).trimmed() : QString();
++}
++const auto userOnly = QFileDevice::ReadOwner | QFileDevice::WriteOwner;
++}
++CrimsonStatus::CrimsonStatus(QObject* parent) : QObject(parent) {
++    connect(&m_localTimer, &QTimer::timeout, this, &CrimsonStatus::refreshLocal);
++    connect(&m_statsTimer, &QTimer::timeout, this, &CrimsonStatus::refresh);
++    connect(&m_wifi, &QProcess::finished, this, [this](int exit, QProcess::ExitStatus) {
++        if (exit == 0) {
++            const auto lines = QString::fromUtf8(m_wifi.readAllStandardOutput()).split('\n');
++            for (const auto& line : lines) {
++                if (!line.startsWith("yes:")) continue;
++                int separator = line.indexOf(':', 4); bool ok = false;
++                int signal = line.mid(4, separator - 4).toInt(&ok);
++                if (ok && signal >= 0 && signal <= 100) m_local["wifiSignal"] = signal;
++                if (separator >= 0) m_local["network"] = tr("Wi-Fi: %1").arg(line.mid(separator + 1));
++                break;
++            }
++            emit localChanged();
++        }
++    });
++    m_localTimer.start(10000); m_statsTimer.setInterval(2000); refreshLocal();
++}
++QString CrimsonStatus::configFile() const {
++    return QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation) + "/crimson-hosts.json";
++}
++QString CrimsonStatus::normalizedPin(QString pin) {
++    pin.remove(':'); pin.remove(' '); return pin.toLower();
++}
++bool CrimsonStatus::validEndpoint(const QString& value) {
++    QUrl u(value, QUrl::StrictMode);
++    return u.isValid() && u.scheme() == "https" && !u.host().isEmpty() &&
++        u.userInfo().isEmpty() && u.query().isEmpty() && u.fragment().isEmpty() &&
++        (u.path().isEmpty() || u.path() == "/") && u.port(47990) > 0;
++}
++void CrimsonStatus::cancel() {
++    if (m_reply) { disconnect(m_reply, nullptr, this, nullptr); m_reply->abort(); m_reply->deleteLater(); m_reply = nullptr; }
++}
++void CrimsonStatus::selectHost(QString id, QString suggestedUrl) {
++    if (id == m_host) return;
++    cancel(); m_network.clearConnectionCache(); m_host = id; m_token.clear(); m_pin.clear();
++    m_endpoint = validEndpoint(suggestedUrl) ? suggestedUrl : QString();
++    QFile f(configFile());
++    if (f.open(QIODevice::ReadOnly)) {
++        auto c = QJsonDocument::fromJson(f.readAll()).object().value(id).toObject();
++        if (validEndpoint(c.value("url").toString())) {
++            m_endpoint = c.value("url").toString(); m_token = c.value("token").toString(); m_pin = c.value("pin").toString();
++        }
++    }
++    m_stats.clear(); m_status = id.isEmpty() ? tr("Choose a host to view hardware stats") : tr("Configure a Vibepollo read-only stats token");
++    emit configChanged(); emit statsChanged(); if (m_visible) refresh();
++}
++bool CrimsonStatus::configure(QString url, QString token, QString pin) {
++    pin = normalizedPin(pin);
++    if (m_host.isEmpty() || !validEndpoint(url) || (!pin.isEmpty() &&
++        (pin.size() != 64 || pin.contains(QRegularExpression("[^0-9a-f]"))))) {
++        fail(tr("Use an HTTPS host URL and an optional 64-digit SHA-256 certificate fingerprint")); return false;
++    }
++    // A blank token keeps the old token only for the same endpoint.
++    if (token.isEmpty() && QUrl(url) == QUrl(m_endpoint)) token = m_token;
++    if (token.isEmpty() || token.contains('\r') || token.contains('\n') || token.size() > 4096) {
++        fail(tr("A read-only Vibepollo API token is required")); return false;
++    }
++    QFile f(configFile()); QJsonObject all;
++    if (f.open(QIODevice::ReadOnly)) all = QJsonDocument::fromJson(f.readAll()).object();
++    all[m_host] = QJsonObject{{"url", url}, {"token", token}, {"pin", pin}};
++    QDir().mkpath(QFileInfo(configFile()).absolutePath());
++    QSaveFile out(configFile());
++    if (!out.open(QIODevice::WriteOnly) || !out.setPermissions(userOnly) ||
++        out.write(QJsonDocument(all).toJson()) < 0 || !out.commit()) {
++        fail(tr("Could not save host access settings")); return false;
++    }
++    cancel(); m_network.clearConnectionCache(); m_endpoint = url; m_token = token; m_pin = pin;
++    m_stats.clear(); m_status = tr("Connecting to host stats…");
++    emit configChanged(); emit statsChanged(); refresh(); return true;
++}
++void CrimsonStatus::setVisible(bool visible) {
++    m_visible = visible;
++    if (visible) { refreshLocal(); m_statsTimer.start(); refresh(); }
++    else { m_statsTimer.stop(); cancel(); }
++}
++void CrimsonStatus::fail(QString message) {
++    m_stats.clear(); m_status = message; emit statsChanged();
++}
++QVariantMap CrimsonStatus::parseStats(const QByteArray& bytes, QString* error) {
++    if (bytes.size() > 65536) { *error = "Oversized host stats response"; return {}; }
++    QJsonParseError e; auto doc = QJsonDocument::fromJson(bytes, &e);
++    if (e.error != QJsonParseError::NoError || !doc.isObject()) { *error = "Invalid host stats response"; return {}; }
++    auto obj = doc.object(); QVariantMap result;
++    const QStringList keys = {"cpu_percent","cpu_temp_c","ram_used_bytes","ram_total_bytes","ram_percent",
++        "gpu_percent","gpu_encoder_percent","gpu_temp_c","vram_used_bytes","vram_total_bytes","vram_percent","net_rx_bps","net_tx_bps"};
++    bool recognized = false;
++    for (const auto& key : keys) {
++        auto v = obj.value(key); recognized |= obj.contains(key);
++        double n = v.toDouble(-1);
++        if (!v.isDouble() || !std::isfinite(n) || n < 0 || (key.endsWith("percent") && n > 100)) continue;
++        result[key] = n;
++    }
++    for (const auto& prefix : {QString("ram"), QString("vram")}) {
++        double total = result.value(prefix + "_total_bytes").toDouble();
++        if (total <= 0) { result.remove(prefix + "_percent"); result.remove(prefix + "_used_bytes"); }
++        else if (result.contains(prefix + "_used_bytes")) {
++            double used = qMin(result.value(prefix + "_used_bytes").toDouble(), total);
++            result[prefix + "_used_bytes"] = used; result[prefix + "_percent"] = used * 100 / total;
++        }
++    }
++    if (!recognized) { *error = "Host does not expose the expected Vibepollo stats fields"; return {}; }
++    error->clear(); return result;
++}
++void CrimsonStatus::refresh() {
++    if (!m_visible || m_reply || !configured()) return;
++    QUrl url(m_endpoint); url.setPath("/api/host/stats");
++    QNetworkRequest req(url);
++    req.setAttribute(QNetworkRequest::RedirectPolicyAttribute, QNetworkRequest::ManualRedirectPolicy);
++    req.setTransferTimeout(3000);
++    req.setRawHeader("Authorization", "Bearer " + m_token.toUtf8());
++    req.setRawHeader("Accept", "application/json");
++    auto reply = m_network.get(req); m_reply = reply;
++    auto data = std::make_shared<QByteArray>();
++    auto invalidPin = std::make_shared<bool>(false);
++    auto certMatches = [this, reply] {
++        return normalizedPin(QString::fromLatin1(reply->sslConfiguration().peerCertificate().digest(QCryptographicHash::Sha256).toHex())) == m_pin;
++    };
++    connect(reply, &QNetworkReply::encrypted, this, [this, reply, certMatches, invalidPin] {
++        if (!m_pin.isEmpty() && !certMatches()) { *invalidPin = true; reply->abort(); }
++    });
++    connect(reply, &QNetworkReply::sslErrors, this, [this, reply, certMatches](const QList<QSslError>& errors) {
++        if (m_pin.isEmpty() || !certMatches()) return;
++        for (const auto& e : errors) {
++            if (e.error() != QSslError::SelfSignedCertificate && e.error() != QSslError::SelfSignedCertificateInChain &&
++                e.error() != QSslError::CertificateUntrusted && e.error() != QSslError::HostNameMismatch) return;
++        }
++        reply->ignoreSslErrors(errors); // Only this explicitly pinned host certificate.
++    });
++    connect(reply, &QNetworkReply::readyRead, this, [reply, data] {
++        if (data->size() + reply->bytesAvailable() > 65536) { reply->abort(); return; }
++        data->append(reply->readAll());
++    });
++    connect(reply, &QNetworkReply::finished, this, [this, reply, data, invalidPin] {
++        m_reply = nullptr;
++        int status = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
++        if (*invalidPin) fail(tr("Host certificate changed; verify the saved fingerprint"));
++        else if (status == 401 || status == 403) fail(tr("Host stats access denied: check the read-only token"));
++        else if (status == 404) fail(tr("This host does not provide Vibepollo hardware stats"));
++        else if (reply->error() == QNetworkReply::SslHandshakeFailedError) fail(tr("Verify the host certificate fingerprint in Configure"));
++        else if (reply->error() != QNetworkReply::NoError || status != 200) fail(tr("Host stats unavailable: check connection and realtime stats setting"));
++        else {
++            data->append(reply->readAll()); QString error;
++            auto parsed = parseStats(*data, &error);
++            if (!error.isEmpty()) fail(error);
++            else { m_stats = parsed; m_status = tr("HOST • received %1").arg(QDateTime::currentDateTime().toString("hh:mm:ss")); emit statsChanged(); }
++        }
++        reply->deleteLater();
++    });
++    // Absolute request bound even if a peer keeps sending occasional bytes.
++    QTimer::singleShot(3500, reply, [reply] { if (!reply->isFinished()) reply->abort(); });
++}
++QVariantMap CrimsonStatus::readLocal(const QString& root) {
++    QVariantMap out; QStringList networks;
++    for (const auto& name : QDir(root + "/class/net").entryList(QDir::Dirs | QDir::NoDotAndDotDot)) {
++        if (name == "lo" || read(root + "/class/net/" + name + "/operstate") != "up") continue;
++        networks << name;
++    }
++    out["connected"] = !networks.isEmpty(); out["network"] = networks.isEmpty() ? tr("No active network link") : networks.join(", ");
++    // Link status is intentionally not presented as internet reachability.
++    out["batteryPercent"] = -1; out["batteryState"] = tr("Battery unavailable");
++    for (const auto& name : QDir(root + "/class/power_supply").entryList(QDir::Dirs | QDir::NoDotAndDotDot)) {
++        const auto base = root + "/class/power_supply/" + name + "/";
++        if (read(base + "type") != "Battery" || read(base + "present") == "0") continue;
++        bool ok; int cap = read(base + "capacity").toInt(&ok);
++        if (ok && cap >= 0 && cap <= 100) out["batteryPercent"] = cap;
++        const auto state = read(base + "status"); out["batteryState"] = state.isEmpty() ? tr("Unknown") : state; break;
++    }
++    return out;
++}
++void CrimsonStatus::refreshLocal() {
++    m_local = readLocal(); m_local["wifiSignal"] = -1; emit localChanged();
++    if (m_wifi.state() == QProcess::NotRunning) {
++        m_wifi.start("nmcli", {"-t", "--escape", "no", "-f", "ACTIVE,SIGNAL,SSID", "device", "wifi", "list", "--rescan", "no"});
++        QTimer::singleShot(2000, &m_wifi, [this] { if (m_wifi.state() != QProcess::NotRunning) m_wifi.kill(); });
++    }
++}
++
++static void registerCrimsonStatus() {
++    qmlRegisterSingletonType<CrimsonStatus>("CrimsonStatus", 1, 0, "CrimsonStatus",
++        [](QQmlEngine*, QJSEngine*) -> QObject* { return new CrimsonStatus(); });
++}
++Q_COREAPP_STARTUP_FUNCTION(registerCrimsonStatus)
+diff --git a/app/moonlightos/crimsonstatus.h b/app/moonlightos/crimsonstatus.h
+new file mode 100644
+index 00000000..29b05e13
+--- /dev/null
++++ b/app/moonlightos/crimsonstatus.h
+@@ -0,0 +1,51 @@
++#pragma once
++#include <QObject>
++#include <QVariantMap>
++#include <QTimer>
++#include <QNetworkAccessManager>
++#include <QPointer>
++#include <QNetworkReply>
++#include <QProcess>
++
++// Optional launcher status. Never participates in the streaming/decoder path.
++class CrimsonStatus : public QObject {
++    Q_OBJECT
++    Q_PROPERTY(QVariantMap local READ local NOTIFY localChanged)
++    Q_PROPERTY(QVariantMap stats READ stats NOTIFY statsChanged)
++    Q_PROPERTY(QString status READ status NOTIFY statsChanged)
++    Q_PROPERTY(QString endpoint READ endpoint NOTIFY configChanged)
++    Q_PROPERTY(QString fingerprint READ fingerprint NOTIFY configChanged)
++    Q_PROPERTY(bool configured READ configured NOTIFY configChanged)
++public:
++    explicit CrimsonStatus(QObject* parent = nullptr);
++    QVariantMap local() const { return m_local; }
++    QVariantMap stats() const { return m_stats; }
++    QString status() const { return m_status; }
++    QString endpoint() const { return m_endpoint; }
++    QString fingerprint() const { return m_pin; }
++    bool configured() const { return !m_endpoint.isEmpty() && !m_token.isEmpty(); }
++    Q_INVOKABLE void selectHost(QString id, QString suggestedUrl);
++    Q_INVOKABLE bool configure(QString url, QString token, QString pin);
++    Q_INVOKABLE void setVisible(bool visible);
++    Q_INVOKABLE void refresh();
++    static QVariantMap parseStats(const QByteArray& bytes, QString* error);
++    static bool validEndpoint(const QString& url);
++    static QString normalizedPin(QString pin);
++    static QVariantMap readLocal(const QString& sysRoot = "/sys");
++signals:
++    void localChanged();
++    void statsChanged();
++    void configChanged();
++private:
++    void refreshLocal();
++    void fail(QString message);
++    void cancel();
++    QString configFile() const;
++    QString m_host, m_endpoint, m_token, m_pin, m_status = "Choose a host to view hardware stats";
++    QVariantMap m_local, m_stats;
++    QTimer m_localTimer, m_statsTimer;
++    QProcess m_wifi;
++    QNetworkAccessManager m_network;
++    QPointer<QNetworkReply> m_reply;
++    bool m_visible = false;
++};
+diff --git a/app/moonlightos/tests/Harness.qml b/app/moonlightos/tests/Harness.qml
+new file mode 100644
+index 00000000..d15a4741
+--- /dev/null
++++ b/app/moonlightos/tests/Harness.qml
+@@ -0,0 +1,13 @@
++import QtQuick 2.9
++import QtQuick.Controls 2.5
++import QtQuick.Controls.Material 2.2
++import Vibemis.Redesign 1.0
++import StreamingPreferences 1.0
++import "../../gui"
++ApplicationWindow {
++    width: 1280; height: 800; visible: true
++    function chooseAccent(i) { StreamingPreferences.uiAccentIndex = i }
++    Item { id: stackView }
++    QtObject { objectName: "testState"; property color accent: VbTokens.accent; property color pressed: VbTokens.accentPressed }
++    CrimsonStatusDialog { objectName: "testPanel" }
++}
+diff --git a/app/moonlightos/tests/Preferences.qml b/app/moonlightos/tests/Preferences.qml
+new file mode 100644
+index 00000000..dfdaf02c
+--- /dev/null
++++ b/app/moonlightos/tests/Preferences.qml
+@@ -0,0 +1,3 @@
++pragma Singleton
++import QtQuick 2.9
++QtObject { property int uiAccentIndex: 4; property bool uiShowHints: true }
+diff --git a/app/moonlightos/tests/test-crimson.cpp b/app/moonlightos/tests/test-crimson.cpp
+new file mode 100644
+index 00000000..14c0c95a
+--- /dev/null
++++ b/app/moonlightos/tests/test-crimson.cpp
+@@ -0,0 +1,146 @@
++#include <QtTest>
++#include <QTemporaryDir>
++#include <QQmlEngine>
++#include <QQmlComponent>
++#include <QQmlContext>
++#include <QQuickStyle>
++#include <QQuickWindow>
++#include <QFile>
++#include <QTcpServer>
++#include <QSslSocket>
++#include <QSslKey>
++#include <QSslCertificate>
++#include <QCryptographicHash>
++#include <memory>
++#include <QStandardPaths>
++#include <QDir>
++#include <QFileInfo>
++#include "../crimsonstatus.h"
++
++class TlsFixture : public QTcpServer {
++public:
++    QByteArray body = R"({"cpu_percent":37.5,"ram_used_bytes":50,"ram_total_bytes":100})";
++    int code = 200, requests = 0;
++    bool respond = true;
++    QByteArray authorization;
++    QSslCertificate cert;
++    QSslKey key;
++    TlsFixture() {
++        QFile c(qEnvironmentVariable("CRIMSON_TEST_CERT")); c.open(QIODevice::ReadOnly); cert = QSslCertificate(c.readAll());
++        QFile k(qEnvironmentVariable("CRIMSON_TEST_KEY")); k.open(QIODevice::ReadOnly); key = QSslKey(k.readAll(), QSsl::Rsa);
++        listen(QHostAddress::LocalHost);
++    }
++    void incomingConnection(qintptr descriptor) override {
++        auto socket = new QSslSocket(this);
++        socket->setLocalCertificate(cert); socket->setPrivateKey(key); socket->setPeerVerifyMode(QSslSocket::VerifyNone);
++        socket->setSocketDescriptor(descriptor);
++        auto input = std::make_shared<QByteArray>();
++        connect(socket, &QSslSocket::readyRead, this, [this, socket, input] {
++            input->append(socket->readAll());
++            if (!input->contains("\r\n\r\n")) return;
++            ++requests; authorization = *input;
++            if (respond) {
++                QByteArray header = "HTTP/1.1 " + QByteArray::number(code) + " Fixture\r\nContent-Type: application/json\r\nConnection: close\r\nContent-Length: " + QByteArray::number(body.size()) + "\r\n";
++                if (code == 302) header += "Location: https://127.0.0.2:12345/\r\n";
++                socket->write(header + "\r\n" + body); socket->disconnectFromHost();
++            }
++            input->clear();
++        });
++        connect(socket, &QSslSocket::disconnected, socket, &QObject::deleteLater);
++        socket->startServerEncryption();
++    }
++};
++
++class CrimsonTest : public QObject {
++    Q_OBJECT
++private slots:
++    void endpointValidation() {
++        QVERIFY(CrimsonStatus::validEndpoint("https://192.168.1.10:47990"));
++        QVERIFY(CrimsonStatus::validEndpoint("https://[fd00::1]:47990/"));
++        for (auto bad : {"http://host", "https://user:secret@host", "https://host/api", "https://host/?token=secret", "file:///etc/passwd", "https://host/#fragment"})
++            QVERIFY(!CrimsonStatus::validEndpoint(bad));
++    }
++    void missingAndInvalidMetrics() {
++        QString error;
++        QVERIFY(CrimsonStatus::parseStats("not json", &error).isEmpty()); QVERIFY(!error.isEmpty());
++        auto s = CrimsonStatus::parseStats(R"({"cpu_percent":42.5,"cpu_temp_c":-1,"gpu_percent":null,"ram_total_bytes":0,"ram_percent":0,"vram_total_bytes":100,"vram_used_bytes":120})", &error);
++        QVERIFY(error.isEmpty()); QCOMPARE(s.value("cpu_percent").toDouble(), 42.5);
++        QVERIFY(!s.contains("cpu_temp_c")); QVERIFY(!s.contains("gpu_percent")); QVERIFY(!s.contains("ram_percent"));
++        QCOMPARE(s.value("vram_percent").toDouble(), 100.0);
++        auto invalid = CrimsonStatus::parseStats(R"({"cpu_percent":101,"gpu_percent":"0"})", &error);
++        QVERIFY(invalid.isEmpty()); QVERIFY(error.isEmpty());
++        CrimsonStatus::parseStats(QByteArray(65537, 'a'), &error); QVERIFY(!error.isEmpty());
++        CrimsonStatus::parseStats(R"({"error":"unsupported"})", &error); QVERIFY(!error.isEmpty());
++    }
++    void localHardwareFixture() {
++        QTemporaryDir temp; QVERIFY(temp.isValid());
++        auto write = [&](QString p, QByteArray value) { QDir().mkpath(QFileInfo(temp.path()+p).absolutePath()); QFile f(temp.path()+p); QVERIFY(f.open(QIODevice::WriteOnly)); f.write(value); };
++        write("/class/power_supply/BAT0/type", "Battery"); write("/class/power_supply/BAT0/capacity", "73"); write("/class/power_supply/BAT0/status", "Charging");
++        write("/class/net/wlan0/operstate", "up"); write("/class/net/lo/operstate", "up");
++        auto local = CrimsonStatus::readLocal(temp.path()); QCOMPARE(local.value("batteryPercent").toInt(), 73); QCOMPARE(local.value("batteryState").toString(), QString("Charging"));
++        QCOMPARE(local.value("network").toString(), QString("wlan0")); QVERIFY(local.value("connected").toBool());
++        write("/class/power_supply/BAT0/capacity", "101"); QCOMPARE(CrimsonStatus::readLocal(temp.path()).value("batteryPercent").toInt(), -1);
++    }
++    void privateSettingsAndNoCrossHostCredentials() {
++        QStandardPaths::setTestModeEnabled(true);
++        CrimsonStatus status; status.selectHost("test-a", "https://127.0.0.1:47990");
++        QVERIFY(status.configure("https://127.0.0.1:47990", "fixture-token", "")); QVERIFY(status.configured());
++        auto path = QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation) + "/crimson-hosts.json";
++        QVERIFY((QFile::permissions(path) & (QFileDevice::ReadGroup | QFileDevice::ReadOther | QFileDevice::WriteGroup | QFileDevice::WriteOther)) == 0);
++        status.selectHost("test-b", "https://127.0.0.2:47990"); QVERIFY(!status.configured());
++        QVERIFY(!status.configure("https://127.0.0.2:47990", "", ""));
++        QVERIFY(!status.configure("https://127.0.0.2:47990", "fixture-token", "invalid-pin"));
++        QVERIFY(!status.configure("https://127.0.0.2:47990", "token\ninjection", ""));
++        QFile::remove(path);
++    }
++    void tlsAuthenticationAndVisibility() {
++        TlsFixture server; QVERIFY(server.isListening()); QVERIFY(!server.cert.isNull());
++        QString url = "https://127.0.0.1:" + QString::number(server.serverPort());
++        QString pin = QString::fromLatin1(server.cert.digest(QCryptographicHash::Sha256).toHex());
++        CrimsonStatus status; status.selectHost("fixture-tls", url);
++        QVERIFY(status.configure(url, "fixture-only-token", "")); status.setVisible(true);
++        QTRY_VERIFY_WITH_TIMEOUT(status.status().contains("fingerprint"), 5000);
++        QCOMPARE(server.requests, 0); // no credentials sent before trusting self-signed TLS
++        QVERIFY(status.configure(url, "fixture-only-token", pin));
++        QTRY_COMPARE_WITH_TIMEOUT(status.stats().value("cpu_percent").toDouble(), 37.5, 5000);
++        QVERIFY(server.authorization.contains("Authorization: Bearer fixture-only-token"));
++        QVERIFY(server.authorization.startsWith("GET /api/host/stats "));
++        status.setVisible(false); int count = server.requests; QTest::qWait(2100); QCOMPARE(server.requests, count);
++        for (int code : {401, 403, 404, 302}) {
++            server.code = code; int prior = server.requests; status.setVisible(true);
++            QTRY_VERIFY_WITH_TIMEOUT(server.requests > prior, 5000);
++            QTRY_VERIFY_WITH_TIMEOUT(status.stats().isEmpty(), 5000);
++            status.setVisible(false);
++        }
++        server.code = 200; server.body = QByteArray(70000, 'a'); int prior = server.requests; status.setVisible(true);
++        QTRY_VERIFY_WITH_TIMEOUT(server.requests > prior, 5000);
++        QTRY_VERIFY_WITH_TIMEOUT(status.stats().isEmpty(), 5000); status.setVisible(false);
++        QVERIFY(status.configure(url, "fixture-only-token", QString(64, '0'))); status.setVisible(true);
++        count = server.requests; QTest::qWait(500); QCOMPARE(server.requests, count); QVERIFY(status.stats().isEmpty());
++        status.setVisible(false);
++    }
++    void qmlPaletteAndPanels() {
++        QString source = qEnvironmentVariable("VIBEMIS_TEST_SOURCE"); QVERIFY(!source.isEmpty());
++        QQuickStyle::setStyle("Material");
++        qmlRegisterSingletonType(QUrl::fromLocalFile(source + "/app/moonlightos/tests/Preferences.qml"), "StreamingPreferences", 1, 0, "StreamingPreferences");
++        qmlRegisterSingletonType(QUrl::fromLocalFile(source + "/app/gui/VbTokens.qml"), "Vibemis.Redesign", 1, 0, "VbTokens");
++        QQmlEngine engine;
++        QQmlComponent component(&engine, QUrl::fromLocalFile(source + "/app/moonlightos/tests/Harness.qml"));
++        QScopedPointer<QObject> root(component.create()); QVERIFY2(root, qPrintable(component.errorString()));
++        auto panel = root->findChild<QObject*>("testPanel"); QVERIFY(panel);
++        auto state = root->findChild<QObject*>("testState"); QVERIFY(state);
++        for (int i = 0; i < 16; ++i) {
++            QVERIFY(QMetaObject::invokeMethod(root.data(), "chooseAccent", Q_ARG(QVariant, i)));
++            QVERIFY(state->property("accent").value<QColor>().isValid());
++            QVERIFY(state->property("pressed").value<QColor>().isValid());
++        }
++        for (QString kind : {"network", "battery", "host"}) {
++            QVERIFY(panel->setProperty("kind", kind));
++            QVERIFY(QMetaObject::invokeMethod(panel, "open")); QTest::qWait(30);
++            QVERIFY(panel->property("visible").toBool());
++            QVERIFY(QMetaObject::invokeMethod(panel, "close")); QTest::qWait(30);
++        }
++    }
++};
++QTEST_MAIN(CrimsonTest)
++#include "test-crimson.moc"
+diff --git a/app/moonlightos/tests/test-crimson.pro b/app/moonlightos/tests/test-crimson.pro
+new file mode 100644
+index 00000000..fe9b0fb7
+--- /dev/null
++++ b/app/moonlightos/tests/test-crimson.pro
+@@ -0,0 +1,5 @@
++QT += core gui quick network quickcontrols2 testlib
++CONFIG += c++17 testcase
++TARGET = test-crimson
++SOURCES += test-crimson.cpp ../crimsonstatus.cpp
++HEADERS += ../crimsonstatus.h
+diff --git a/app/qml.qrc b/app/qml.qrc
+index a3c11dd7..7762a8a7 100644
+--- a/app/qml.qrc
++++ b/app/qml.qrc
+@@ -14,6 +14,7 @@
+         <file>gui/VbHostCard.qml</file>
+         <file>gui/VbWelcomeSheet.qml</file>
+         <file>gui/main.qml</file>
++        <file>gui/CrimsonStatusDialog.qml</file>
+         <file>gui/PcView.qml</file>
+         <file>gui/AppView.qml</file>
+         <file>gui/SettingsView.qml</file>
+diff --git a/app/res/crimson-battery.svg b/app/res/crimson-battery.svg
+new file mode 100644
+index 00000000..3753566a
+--- /dev/null
++++ b/app/res/crimson-battery.svg
+@@ -0,0 +1 @@
++<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><g fill="none" stroke="#ECEEF1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="18" height="12" rx="2"/><path d="M22 10v4M6 10v4M10 10v4M14 10v4"/></g></svg>
+diff --git a/app/res/crimson-host.svg b/app/res/crimson-host.svg
+new file mode 100644
+index 00000000..d1d59b0c
+--- /dev/null
++++ b/app/res/crimson-host.svg
+@@ -0,0 +1 @@
++<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><g fill="none" stroke="#ECEEF1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="14" rx="2"/><path d="M8 21h8M12 17v4M6 10h3l2-4 3 8 2-4h2"/></g></svg>
+diff --git a/app/res/crimson-network.svg b/app/res/crimson-network.svg
+new file mode 100644
+index 00000000..b2a103a6
+--- /dev/null
++++ b/app/res/crimson-network.svg
+@@ -0,0 +1 @@
++<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><g fill="none" stroke="#ECEEF1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8a14 14 0 0 1 18 0M6 12a9 9 0 0 1 12 0M9 16a4 4 0 0 1 6 0"/><circle cx="12" cy="20" r="1"/></g></svg>
+diff --git a/app/resources.qrc b/app/resources.qrc
+index b5d4ee79..84a25897 100644
+--- a/app/resources.qrc
++++ b/app/resources.qrc
+@@ -1,5 +1,8 @@
+ <RCC>
+     <qresource prefix="/">
++        <file>res/crimson-network.svg</file>
++        <file>res/crimson-battery.svg</file>
++        <file>res/crimson-host.svg</file>
+         <file alias="res/steam/vibemis_p.png">res/steam/vibemis_p.png</file>
+         <file alias="res/steam/vibemis.png">res/steam/vibemis.png</file>
+         <file alias="res/steam/vibemis_hero.png">res/steam/vibemis_hero.png</file>
+diff --git a/app/settings/streamingpreferences.cpp b/app/settings/streamingpreferences.cpp
+index d69a9131..6022b253 100644
+--- a/app/settings/streamingpreferences.cpp
++++ b/app/settings/streamingpreferences.cpp
+@@ -229,7 +229,7 @@ void StreamingPreferences::reload()
+     seenWelcomeHint = settings.value(SER_SEENWELCOMEHINT, false).toBool();
+     enableHdr = settings.value(SER_HDR, false).toBool();
+     uiShowHints = settings.value(SER_UI_SHOWHINTS, true).toBool();
+-    uiAccentIndex = qBound(0, settings.value(SER_UI_ACCENTINDEX, 0).toInt(), 3);
++    uiAccentIndex = qBound(0, settings.value(SER_UI_ACCENTINDEX, 4).toInt(), 15);
+     uiSounds = settings.value(SER_UISOUNDS, true).toBool();
+     displayHdrCapability = settings.value(SER_DISPLAY_HDR_CAPABILITY, true).toBool();
+     hdrTonemapping = settings.value(SER_HDR_TONEMAP, false).toBool();

@@ -69,3 +69,13 @@ jobs:
         run: |
           docker run --rm -v "$PWD:/workspace:ro" -w /workspace fedora:44 \
             bash scripts/audit-boot-animation.sh --install-tools
+
+  vibemis-crimson:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Qt hardware-stats contract, TLS, palette and panel tests
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y qt6-base-dev qt6-declarative-dev qml6-module-qtquick qml6-module-qtquick-controls qml6-module-qtquick-layouts qml6-module-qtquick-window qml6-module-qtquick-templates qml6-module-qtqml-workerscript xvfb
+          bash scripts/audit-vibemis-crimson.sh

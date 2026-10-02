@@ -1,0 +1,3 @@
+
+# Unified patch context prefixes are intentional whitespace.
+patches/*.patch whitespace=-blank-at-eol

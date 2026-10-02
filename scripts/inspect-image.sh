@@ -87,6 +87,7 @@ for helper in moonlight-launch moonlight-frontend-select moonlight-bluetooth; do
   test -x "$work/root/usr/local/bin/$helper"
 done
 cmp "$ROOT/SOURCES.lock" "$work/root/usr/local/share/moonlight-os/FRONTENDS.lock"
+grep -Fqx "VIBEMIS_PATCH_SHA256=$VIBEMIS_PATCH_SHA256" "$work/root/usr/local/libexec/moonlight-os/frontends/versions.conf"
 grep -Fq "VIBEMIS_COMMIT=$VIBEMIS_COMMIT" "$work/root/usr/local/libexec/moonlight-os/frontends/versions.conf"
 grep -Fq "ARTEMIS_COMMIT=$ARTEMIS_COMMIT" "$work/root/usr/local/libexec/moonlight-os/frontends/versions.conf"
 chroot "$work/root" python3 -c 'import pexpect'

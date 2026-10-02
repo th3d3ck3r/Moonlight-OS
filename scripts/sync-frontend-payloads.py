@@ -1,11 +1,14 @@
 #!/usr/bin/env python3
 """Keep the offline installer payload byte-identical to reviewed helper sources."""
 import argparse
+import base64
+import textwrap
 from pathlib import Path
 
 root = Path(__file__).resolve().parents[1]
 ks = root / 'config/moonlight-os.ks'
 pairs = {
+    'VIBEMIS_PATCH_B64': 'patches/vibemis-crimson.patch',
     'BTMENU': 'scripts/bluetooth-menu.py',
     'FRONTENDS_LOCK': 'SOURCES.lock',
     'FRONTENDS_INSTALL': 'scripts/install-frontends.sh',
@@ -20,6 +23,8 @@ for marker, source in pairs.items():
     start = text.index("<<'" + marker + "'\n") + len(marker) + 5
     end = text.index('\n' + marker + '\n', start) + 1
     payload = (root / source).read_text()
+    if marker == 'VIBEMIS_PATCH_B64':
+        payload = '\n'.join(textwrap.wrap(base64.b64encode((root / source).read_bytes()).decode(), 76)) + '\n'
     if args.check:
         assert text[start:end] == payload, f'{source} differs from its installed payload'
     else:

@@ -22,7 +22,7 @@ v0.1 is intentionally a larger development/debug image and may use a normal **16
 
 ## Current checkpoint — do not rediscover solved work
 
-Read `BUILD_STATUS.md`, `SOURCES.lock`, `docs/FRONTEND_BLUETOOTH_INTEGRATION.md`, the current GitHub Actions history, and the current scripts before changing anything. Keep each task prompt self-contained; do not combine the separate GUI, telemetry or minimization plans. The user authorized publication as an [experimental prerelease](https://github.com/th3d3ck3r/Moonlight-OS/releases/tag/v0.1-experimental.20261002), alongside the previous repair download. Keep it explicitly experimental until physical validation; do not replace the previous fallback or claim hardware success.
+Read `BUILD_STATUS.md`, `SOURCES.lock`, `docs/FRONTEND_BLUETOOTH_INTEGRATION.md`, the current GitHub Actions history, and the current scripts before changing anything. Keep each task prompt self-contained; do not combine the separate GUI, telemetry or minimization plans. The user authorized publication as an [experimental prerelease](https://github.com/th3d3ck3r/Moonlight-OS/releases/tag/v0.1-experimental.20261002), alongside the previous repair download. The user has since confirmed Mac boot, animation and Bluetooth pairing and authorized regular-release promotion. The newer Vibemis Crimson theme/status candidate must remain separately experimental until its own physical test; preserve the previous fallback.
 
 Already proven in previous CI work:
 
@@ -35,6 +35,7 @@ Already proven in previous CI work:
 - Explicit X11/libinput, GPU diagnostic, root-growth, kmod and hardware-payload checks have already been added.
 - Automatic image-build spam was disabled; use the controlled one-shot build path.
 - Recent audits added/fixed the Cirrus DKMS GCC16 path. **Verify the current repo state rather than reverting to older audio attempts.**
+- A new Vibemis Crimson patch and focused Qt audit are being added; see `docs/VIBEMIS_CRIMSON.md`. Require the current seven audit jobs before the next build.
 - All six source audits passed in run **36994719874**. All six audits also passed for build commit **32bc89855f8bac3caf90b9d5177ae583bc50313d**, in run **36995905423**. Re-run checks appropriate to any subsequent code changes.
 
 Candidate build **36995905431** completed successfully from commit **32bc89855f8bac3caf90b9d5177ae583bc50313d**. Installed-image inspection and strict OVMF UEFI validation passed. Artifact **11223945065** contains the compressed raw image and checksum. Physical testing of this candidate is pending. Reuse this candidate when available; do not trigger another full build without an authorized source change, missing artifact or explicit user request. The historical Cirrus build blocker is resolved; inspect current evidence before changing that path.

@@ -17,6 +17,14 @@ VIBSRC=${VIBEMIS_SOURCE:-/usr/local/src/vibemis}
 if [[ ! -d "$VIBSRC/.git" ]]; then git clone --no-checkout "$VIBEMIS_REPO" "$VIBSRC"; fi
 git -C "$VIBSRC" checkout --detach "$VIBEMIS_COMMIT"
 git -C "$VIBSRC" submodule update --init --recursive
+PATCH=${VIBEMIS_PATCH:-/usr/local/share/moonlight-os/vibemis-crimson.patch}
+printf '%s  %s\n' "$VIBEMIS_PATCH_SHA256" "$PATCH" | sha256sum -c -
+if git -C "$VIBSRC" apply --reverse --check "$PATCH" 2>/dev/null; then
+  echo 'Reviewed Vibemis patch already applied.'
+else
+  git -C "$VIBSRC" apply --check "$PATCH"
+  git -C "$VIBSRC" apply "$PATCH"
+fi
 (cd "$VIBSRC" && { qmake6 vibemis.pro CONFIG+=release; (cd app && qmake6 app.pro CONFIG+=release); } 2>&1 | tee configure.log; for feature in "FFmpeg decoder selected" "VAAPI renderer selected" "EGL renderer selected"; do grep -Fq "$feature" configure.log; done; make release -j2)
 mkdir -p "$DEST/vibemis/usr/bin"
 install -m 0755 "$VIBSRC/app/vibemis" "$DEST/vibemis/usr/bin/vibemis"
@@ -40,6 +48,7 @@ install -m 0755 "$SRC/app/artemis" "$DEST/artemis"
 cat > "$DEST/versions.conf" <<VERSIONS
 VIBEMIS_VERSION=$VIBEMIS_VERSION
 VIBEMIS_COMMIT=$VIBEMIS_COMMIT
+VIBEMIS_PATCH_SHA256=$VIBEMIS_PATCH_SHA256
 ARTEMIS_COMMIT=$ARTEMIS_COMMIT
 PEGASUS_VERSION=$PEGASUS_VERSION
 PEGASUS_SHA256=$PEGASUS_SHA256

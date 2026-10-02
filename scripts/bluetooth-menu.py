@@ -133,8 +133,8 @@ def pair_device(airpods=False):
                                    pexpect.EOF, pexpect.TIMEOUT], timeout=15)
         if event != 0:
             raise RuntimeError(clean(str(agent.child.after)) if event == 1 else 'Bluetooth discovery did not start')
-        print('Scanning for 12 seconds...')
-        end = time.monotonic() + 12
+        print('Scanning for 6 seconds... If your device is not listed, keep it in pairing mode and scan again.')
+        end = time.monotonic() + 6
         while time.monotonic() < end:
             try:
                 agent.child.read_nonblocking(4096, timeout=min(1, end-time.monotonic()))
