@@ -1,2 +1,4 @@
-2026-10-02: fresh image with confirmed Mac runtime fixes and local media-key service.
-Audit #78 passed all five jobs; preserve all source/kernel pins and strict OVMF gate.
+2026-10-02T07:54Z: explicitly authorized fresh image with Crimson Apollo boot animation.
+All six audits passed for d91e2eae12523faee4dec020b82621c9756becd2.
+Preserve source/kernel pins, installed-image inspection and strict OVMF gate.
+Do not update download links or release-facing documentation until the user validates physical boot.
