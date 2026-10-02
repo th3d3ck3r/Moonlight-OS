@@ -1,0 +1,8 @@
+[Plymouth Theme]
+Name=Moonlight-OS Crimson Apollo
+Description=Black and crimson lunar orbit with an Apollo-inspired spacecraft
+ModuleName=script
+
+[script]
+ImageDir=/usr/share/plymouth/themes/crimson-apollo
+ScriptFile=/usr/share/plymouth/themes/crimson-apollo/crimson-apollo.script

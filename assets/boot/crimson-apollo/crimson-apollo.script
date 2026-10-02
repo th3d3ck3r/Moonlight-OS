@@ -1,0 +1,82 @@
+# Inactive theme prototype; activation requires the separate integration prompt.
+Window.SetBackgroundTopColor(0, 0, 0);
+Window.SetBackgroundBottomColor(0, 0, 0);
+
+pi = 3.141592653589793;
+scale = Window.GetWidth() / 1024;
+if (Window.GetHeight() / 640 < scale) scale = Window.GetHeight() / 640;
+if (scale > 2) scale = 2;
+background = Image("background.png").Scale(1024 * scale, 640 * scale);
+back = Sprite(background);
+back.SetPosition(Window.GetX() + (Window.GetWidth() - background.GetWidth()) / 2,
+                 Window.GetY() + (Window.GetHeight() - background.GetHeight()) / 2, -100);
+origin_x = Window.GetX() + (Window.GetWidth() - 1024 * scale) / 2;
+origin_y = Window.GetY() + (Window.GetHeight() - 640 * scale) / 2;
+base_ship = Image("apollo.png").Scale(76 * scale, 88 * scale);
+# Cache small rotations once; no frame-sized image decoding in the refresh loop.
+for (i = 0; i < 72; i++) rotated[i] = base_ship.Rotate((i / 72) * 2 * pi + pi);
+ship = Sprite(rotated[0]);
+ship.SetZ(10);
+angle = 0;
+status = "normal";
+
+for (i = 0; i < 3; i++) {
+    dot_image[i] = Image.Text(".", 0.93, 0.32, 0.45);
+    dots[i] = Sprite(dot_image[i]);
+    dots[i].SetPosition(origin_x + (494 + i * 15) * scale, origin_y + 602 * scale, 20);
+}
+
+fun refresh_callback() {
+    if (status != "normal") {
+        ship.SetOpacity(0);
+        return;
+    }
+    ship.SetOpacity(1);
+    # Reference script cadence is 50 Hz. Confirm actual duration in Fedora audit.
+    angle += 2 * pi / 360;
+    if (angle >= 2 * pi) angle -= 2 * pi;
+    index = Math.Int(angle * 72 / (2 * pi)) % 72;
+    ship.SetImage(rotated[index]);
+    ship.SetPosition(origin_x + (512 + 170 * Math.Cos(angle)) * scale - rotated[index].GetWidth() / 2,
+                     origin_y + (248 + 170 * Math.Sin(angle)) * scale - rotated[index].GetHeight() / 2, 10);
+    for (i = 0; i < 3; i++) {
+        if (Math.Int(angle * 9 / (2 * pi)) % 3 == i) dots[i].SetOpacity(1);
+        else dots[i].SetOpacity(0.25);
+    }
+}
+Plymouth.SetRefreshFunction(refresh_callback);
+
+# Keep prompt/error text visible; never retain or print password contents.
+prompt_sprite = Sprite();
+answer_sprite = Sprite();
+fun show_prompt(prompt, answer) {
+    status = "prompt";
+    prompt_image = Image.Text(prompt, 1, 1, 1);
+    answer_image = Image.Text(answer, 1, 0.3, 0.4);
+    prompt_sprite.SetImage(prompt_image);
+    answer_sprite.SetImage(answer_image);
+    prompt_sprite.SetPosition(Window.GetX() + (Window.GetWidth() - prompt_image.GetWidth()) / 2,
+                              Window.GetY() + Window.GetHeight() - 75, 100);
+    answer_sprite.SetPosition(Window.GetX() + (Window.GetWidth() - answer_image.GetWidth()) / 2,
+                              Window.GetY() + Window.GetHeight() - 45, 100);
+    prompt_sprite.SetOpacity(1);
+    answer_sprite.SetOpacity(1);
+}
+fun display_password_callback(prompt, bullets) {
+    masked = "";
+    for (i = 0; i < bullets; i++) masked += "*";
+    show_prompt(prompt, masked);
+}
+fun display_question_callback(prompt, entry) { show_prompt(prompt, entry); }
+fun display_normal_callback() {
+    status = "normal";
+    prompt_sprite.SetOpacity(0);
+    answer_sprite.SetOpacity(0);
+}
+fun message_callback(text) { show_prompt(text, ""); }
+Plymouth.SetDisplayPasswordFunction(display_password_callback);
+Plymouth.SetDisplayQuestionFunction(display_question_callback);
+Plymouth.SetDisplayNormalFunction(display_normal_callback);
+Plymouth.SetDisplayMessageFunction(message_callback);
+fun hide_message_callback(text) { display_normal_callback(); }
+Plymouth.SetHideMessageFunction(hide_message_callback);

@@ -7,7 +7,7 @@
 
 A controller-friendly USB appliance for the **2017 13-inch non-Touch-Bar MacBook Pro — MacBookPro14,1**, connecting to **Vibepollo / Sunshine-compatible hosts**.
 
-**[⬇️ Download](https://github.com/th3d3ck3r/Moonlight-OS/actions/runs/36919007483/artifacts/11193175513) · [🚀 Setup](#quick-start) · [✨ Features](#features) · [🩺 Troubleshooting](#troubleshooting) · [🧪 Test plan](docs/TEST_PLAN.md)**
+**[⬇️ Download](https://github.com/th3d3ck3r/Moonlight-OS/actions/runs/36972953272/artifacts/11213197745) · [🚀 Setup](#quick-start) · [✨ Features](#features) · [🩺 Troubleshooting](#troubleshooting) · [🧪 Test plan](docs/TEST_PLAN.md)**
 
 </div>
 
@@ -15,18 +15,18 @@ A controller-friendly USB appliance for the **2017 13-inch non-Touch-Bar MacBook
 
 ## ✅ v0.1 — built, inspected, boot validated
 
-**Validated on October 1, 2026.** [Fresh build #40](https://github.com/th3d3ck3r/Moonlight-OS/actions/runs/36919007483) installed Fedora, compiled both pinned clients and Cirrus audio, passed read-only image inspection, and booted through QEMU/OVMF with `MOONLIGHT_OS_BOOT_OK`. All five jobs in the [final repository audit #68](https://github.com/th3d3ck3r/Moonlight-OS/actions/runs/36923967450) passed.
+**Validated on October 2, 2026.** [Repair image build](https://github.com/th3d3ck3r/Moonlight-OS/actions/runs/36972953272) installed Fedora, compiled both pinned clients and Cirrus audio, passed read-only image inspection, and booted through QEMU/OVMF with the required `MOONLIGHT_OS_BOOT_OK` gate. All five jobs in [audit #79](https://github.com/th3d3ck3r/Moonlight-OS/actions/runs/36972953285) passed on the exact build commit. This download includes the Intel, English UI, window-sizing, console, audio-helper and media-key repairs.
 
 | 📦 Download details | Value |
 | --- | --- |
-| Artifact | [moonlight-os-mbp14-1](https://github.com/th3d3ck3r/Moonlight-OS/actions/runs/36919007483/artifacts/11193175513) |
+| Artifact | [moonlight-os-mbp14-1](https://github.com/th3d3ck3r/Moonlight-OS/actions/runs/36972953272/artifacts/11213197745) |
 | ZIP contents | `moonlight-os-mbp14-1.raw.xz` + `moonlight-os-mbp14-1.raw.xz.sha256` |
-| Download size | About **3.3 GiB** |
+| Download size | About **3.23 GiB** |
 | Uncompressed image | **12.24 GiB / 13,147,045,888 bytes** |
 | USB requirement | **16 GB or larger** |
-| Artifact expires | **October 15, 2026** — run the build workflow for a fresh artifact |
+| Artifact expires | **October 16, 2026** — run the build workflow for a fresh artifact |
 
-> 🛠️ **October 2 physical testing found fixes missing from the downloadable October 1 image.** Installing the full Intel media driver exposed H.264/HEVC decode profiles; Openbox fixed client/stream sizing at native resolution; direct mouse control fixed desktop pointer speed; mixer adjustment fixed quiet speakers; keyboard backlight control worked. The repository includes these repairs and English CocoOS labels, but **a new image has not yet been built or OVMF-validated**. AirPods and DualSense remain untested on this Mac.
+> 🛠️ **Physical Mac testing confirmed:** booting and desktop streaming, H.264/HEVC decode capability after the full Intel driver fix, native-resolution sizing with Openbox, direct desktop mouse mode, speaker mixer adjustment, and screen/keyboard brightness plus volume keys. The new image contains these repairs and English CocoOS labels. Actual decoder telemetry, reboot persistence, mute/keys during active streaming, AirPods and DualSense still need their physical checks. Hardware mixer levels may need a one-time adjustment/save on a newly flashed image because the exact working values were not supplied.
 
 <a id="features"></a>
 
@@ -60,7 +60,7 @@ CocoOS is a Moonlight-Qt fork whose interface is still evolving. After repeated 
 
 ### 1. Download and verify 🔍
 
-[Download the validated GitHub Actions ZIP](https://github.com/th3d3ck3r/Moonlight-OS/actions/runs/36919007483/artifacts/11193175513), then unzip it. GitHub may require you to sign in.
+[Download the validated GitHub Actions ZIP](https://github.com/th3d3ck3r/Moonlight-OS/actions/runs/36972953272/artifacts/11213197745), then unzip it. GitHub may require you to sign in.
 
 Run the checksum command in the directory containing both downloaded files:
 
@@ -188,6 +188,8 @@ The development image stays **under 14,000 MiB raw** while retaining Git, GCC, D
 - [Hardware and streaming test plan](docs/TEST_PLAN.md)
 - [Planned host stats overlay and dashboard button](docs/HOST_OVERLAY_PLAN.md) — follow-up after physical boot validation
 - [Liquid Glass–inspired GUI plan](docs/LIQUID_GLASS_GUI_PLAN.md) — cohesive client and appliance settings redesign
+- [Black-and-red terminal settings plan](CODEX_CLI_INTERFACE_PROMPT.md) — independent, self-contained execution prompt; no new image build
+- [Crimson Apollo boot animation](CODEX_BOOT_ANIMATION_PROMPT.md) — animated preview and inactive theme; separate integration prompt, no new image build
 - [Pinned sources](SOURCES.lock)
 - [Third-party software](docs/THIRD_PARTY.md)
 
@@ -221,7 +223,7 @@ Built for a dedicated streaming setup — with the diagnostics to keep improving
 | Keyboard lighting | Keyboard-light keys (F5/F6 media functions) |
 | Mute / quieter / louder | Audio keys (F10/F11/F12 media functions) |
 
-A local media-key service reads brightness, keyboard-light and volume events independently of X11, so streaming keyboard grabs do not bypass it. It does not grab input or change ordinary/game keys. The user confirmed brightness keys work on the Mac. Volume/mute keys and keyboard-light key presses still require physical testing. Console switching and the stream mouse toggle were tested. Brightness and volume commands remain available from tty2.
+A local media-key service reads brightness, keyboard-light and volume events independently of X11, so streaming keyboard grabs do not bypass it. It does not grab input or change ordinary/game keys. The user confirmed screen brightness, keyboard brightness and volume keys work on the Mac. Mute and behavior during streaming still need confirmation. Console switching and the stream mouse toggle were tested. Brightness and volume commands remain available from tty2.
 
 ### 🛠️ Repairs for the original downloadable image
 
@@ -244,4 +246,10 @@ git clone https://github.com/th3d3ck3r/Moonlight-OS
 bash Moonlight-OS/scripts/install-media-keys.sh
 ```
 
-The helper installs the same media-key service as new images, clears the older Openbox bindings to avoid applying each key twice, backs up the Openbox configuration, and reloads the running WM. It does not rebuild or reflash the USB. Test screen brightness, keyboard lighting, mute and volume in CocoOS first, then while streaming. If a key sends a function key rather than a media symbol, hold Fn. Volume increase is capped at 100%; use the saved hardware mixer adjustment if speakers remain quiet. Brightness key presses are confirmed on the Mac; volume/mute and behavior during a stream still need confirmation.
+The helper installs the same media-key service as new images, clears the older Openbox bindings to avoid applying each key twice, backs up the Openbox configuration, and reloads the running WM. It does not rebuild or reflash the USB. Test screen brightness, keyboard lighting, mute and volume in CocoOS first, then while streaming. If a key sends a function key rather than a media symbol, hold Fn. Volume increase is capped at 100%; use the saved hardware mixer adjustment if speakers remain quiet. Screen brightness, keyboard brightness and volume keys are confirmed on the Mac; mute and behavior during a stream still need confirmation.
+
+## 🌑🚀 Crimson Apollo animation preview
+
+![Black-and-crimson Apollo spacecraft orbiting a moon](assets/boot/crimson-apollo/preview.gif)
+
+Original animated artwork and a Plymouth theme prototype are included in the repository. **The theme is not activated in the downloadable image.** See the [separate integration prompt](CODEX_BOOT_ANIMATION_PROMPT.md); no additional build was started for this artwork or the terminal-interface plan.

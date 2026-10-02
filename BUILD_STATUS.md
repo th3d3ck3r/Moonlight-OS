@@ -75,8 +75,19 @@ User booted the October 1 image on MacBookPro14,1 and streamed the Windows host 
 - `stty rows 100` worked at native resolution and has a target-console login setting.
 - CocoOS embedded console labels were French in the pinned source; an explicit English translation is now applied before compilation, with placeholders and source expectations checked.
 
-This repair source is **not yet a newly built/OVMF-validated downloadable image**. Existing artifact links still point to the old image. New media-key bindings, saved-state behavior across reboot, AirPods modes, DualSense, sustained game performance, and actual decoder telemetry remain physical validation items. Original source/kernel pins and both independent feature plans remain unchanged.
+The repair image is **built, inspected and OVMF-validated**. Current README links point to the repaired image. The fresh build ran from `eb907394d62f6245bfeae971155a3c7dc15e89e3` after audit #78 passed all five jobs. The exact build commit also passed all five jobs in audit #79. Source/kernel pins and both independent feature plans remain unchanged.
 
-The media-key service uses Linux input events independently of X11 keyboard grabs. It handles only seven brightness/volume codes, ignores releases and repeated mute toggles, and leaves game input capture intact. Synthetic input-event checks pass; actual Mac key presses remain untested.
+The media-key service reads only seven Linux brightness/volume event codes independently of X11 keyboard grabs. It ignores releases and repeated mute toggles, without grabbing input or changing game capture. Synthetic event checks and systemd unit checks pass. On October 2 the user confirmed **screen brightness, keyboard brightness and volume keys work on the Mac**. Mute and these keys during an active stream were not explicitly reported.
 
-October 2 follow-up: the user confirmed brightness keys work after applying the live fix. Volume/mute and keyboard-light key presses are not yet physically confirmed. Audit #78 (36972572149, source 5990610) passed all five jobs before the controlled fresh build.
+Saved-state behavior across reboot, AirPods modes, DualSense, sustained game performance, and actual decoder telemetry remain physical validation items. Exact hardware mixer values were not supplied, so new images include explicit mixer/save/restore helpers rather than invented default levels.
+
+## Completed repair image — 2026-10-02
+
+- [Build run 36972953272](https://github.com/th3d3ck3r/Moonlight-OS/actions/runs/36972953272) succeeded at source `eb907394d62f6245bfeae971155a3c7dc15e89e3`.
+- All five jobs passed on that exact source in [audit #79](https://github.com/th3d3ck3r/Moonlight-OS/actions/runs/36972953285).
+- Read-only installed-image inspection passed at 06:35 UTC, including the full nonfree iHD payload, Openbox/tools, mixer helper/restore, console setup and enabled local media-key service.
+- Strict OVMF UEFI validation passed at 06:35:36 UTC; the unchanged boot gate requires `MOONLIGHT_OS_BOOT_OK` and uses a qcow2 overlay rather than modifying the release raw image.
+- Raw size remains **13,147,045,888 bytes / 12.24 GiB**, below 14,000 MiB. [Artifact 11213197745](https://github.com/th3d3ck3r/Moonlight-OS/actions/runs/36972953272/artifacts/11213197745) is **3,463,708,878 bytes** and contains the compressed raw image plus SHA-256 file. Retention ends October 16, 2026.
+- Four passes covered structure/generated scripts/systemd units, full Fedora/source/audio audits and client compilation, installed payload, then the strict boot gate. Physical evidence is listed above; OVMF does not substitute for Mac hardware tests.
+
+The separate terminal-interface prompt is planning only. The Crimson Apollo artwork/GIF is created and visually checked, with an inactive Plymouth theme prototype that still requires real daemon/integration tests. Neither feature is implemented or activated in this repaired image. No additional image build was started for either feature.
