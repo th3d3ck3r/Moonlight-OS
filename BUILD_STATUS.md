@@ -78,3 +78,5 @@ User booted the October 1 image on MacBookPro14,1 and streamed the Windows host 
 This repair source is **not yet a newly built/OVMF-validated downloadable image**. Existing artifact links still point to the old image. New media-key bindings, saved-state behavior across reboot, AirPods modes, DualSense, sustained game performance, and actual decoder telemetry remain physical validation items. Original source/kernel pins and both independent feature plans remain unchanged.
 
 The media-key service uses Linux input events independently of X11 keyboard grabs. It handles only seven brightness/volume codes, ignores releases and repeated mute toggles, and leaves game input capture intact. Synthetic input-event checks pass; actual Mac key presses remain untested.
+
+October 2 follow-up: the user confirmed brightness keys work after applying the live fix. Volume/mute and keyboard-light key presses are not yet physically confirmed. Audit #78 (36972572149, source 5990610) passed all five jobs before the controlled fresh build.

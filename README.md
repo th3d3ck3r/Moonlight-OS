@@ -221,7 +221,7 @@ Built for a dedicated streaming setup — with the diagnostics to keep improving
 | Keyboard lighting | Keyboard-light keys (F5/F6 media functions) |
 | Mute / quieter / louder | Audio keys (F10/F11/F12 media functions) |
 
-A local media-key service reads brightness, keyboard-light and volume events independently of X11, so streaming keyboard grabs do not bypass it. It does not grab input or change ordinary/game keys. Actual key presses still require physical testing. Console switching and the stream mouse toggle were tested. Brightness and volume commands remain available from tty2.
+A local media-key service reads brightness, keyboard-light and volume events independently of X11, so streaming keyboard grabs do not bypass it. It does not grab input or change ordinary/game keys. The user confirmed brightness keys work on the Mac. Volume/mute keys and keyboard-light key presses still require physical testing. Console switching and the stream mouse toggle were tested. Brightness and volume commands remain available from tty2.
 
 ### 🛠️ Repairs for the original downloadable image
 
@@ -244,4 +244,4 @@ git clone https://github.com/th3d3ck3r/Moonlight-OS
 bash Moonlight-OS/scripts/install-media-keys.sh
 ```
 
-The helper installs the same Openbox bindings as new images, backs up any existing Openbox configuration, and reloads the running WM. It does not rebuild or reflash the USB. Test screen brightness, keyboard lighting, mute and volume in CocoOS first, then while streaming. If a key sends a function key rather than a media symbol, hold Fn. Volume increase is capped at 100%; use the saved hardware mixer adjustment if speakers remain quiet. Physical keypresses and stream interception must be confirmed on the Mac.
+The helper installs the same media-key service as new images, clears the older Openbox bindings to avoid applying each key twice, backs up the Openbox configuration, and reloads the running WM. It does not rebuild or reflash the USB. Test screen brightness, keyboard lighting, mute and volume in CocoOS first, then while streaming. If a key sends a function key rather than a media symbol, hold Fn. Volume increase is capped at 100%; use the saved hardware mixer adjustment if speakers remain quiet. Brightness key presses are confirmed on the Mac; volume/mute and behavior during a stream still need confirmation.

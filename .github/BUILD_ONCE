@@ -1,3 +1,2 @@
-Moonlight-OS v0.1 fresh image build after audit #66 passed all five jobs.
-2026-10-01: sysfs root identity, real GPT/XFS growth and retry tests, verified SBC/AAC plugins.
-Fresh installation required because the installed first-boot helper changed.
+2026-10-02: fresh image with confirmed Mac runtime fixes and local media-key service.
+Audit #78 passed all five jobs; preserve all source/kernel pins and strict OVMF gate.
