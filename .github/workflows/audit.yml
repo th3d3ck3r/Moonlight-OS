@@ -45,7 +45,7 @@ jobs:
       - name: Fedora 44 Kickstart and package audit
         run: |
           docker run --rm -v "$PWD:/workspace:ro" -w /workspace fedora:44 \
-            bash ./scripts/audit-packages.sh
+            bash -euc 'bash ./scripts/audit-packages.sh && bash ./scripts/audit-frontends.sh'
 
 
   audio:

@@ -60,6 +60,11 @@ xorg-x11-xinit
 xorg-x11-xauth
 openbox
 python3
+python3-pexpect
+unzip
+file
+gstreamer1
+gstreamer1-plugins-base
 xorg-x11-drv-libinput
 libinput-utils
 xinput
@@ -194,54 +199,7 @@ chmod 0755 /usr/local/bin/dualsense-check
 
 cat > /usr/local/bin/dualsense-pair <<'DUALPAIR'
 #!/usr/bin/env bash
-set -euo pipefail
-sudo systemctl start bluetooth
-sudo rfkill unblock bluetooth || true
-bluetoothctl power on >/dev/null || true
-
-clear
-printf '\033[40m\033[31m'
-cat <<'EOF'
-PS5 DUALSENSE PAIRING
-=====================
-
-Hold CREATE + PS until the light bar flashes rapidly.
-
-Scanning...
-EOF
-
-timeout 12s bluetoothctl scan on >/dev/null 2>&1 || true
-mapfile -t devices < <(bluetoothctl devices | grep -Ei 'Wireless Controller|DualSense' || true)
-
-if (( ${#devices[@]} == 0 )); then
-  echo
-  echo "No DualSense found. Put it in pairing mode again, then press Enter."
-  read -r _
-  timeout 12s bluetoothctl scan on >/dev/null 2>&1 || true
-  mapfile -t devices < <(bluetoothctl devices | grep -Ei 'Wireless Controller|DualSense' || true)
-fi
-
-if (( ${#devices[@]} == 0 )); then
-  echo "Still no DualSense found."
-  exit 1
-fi
-
-echo
-for i in "${!devices[@]}"; do
-  printf '  %d) %s\n' "$((i+1))" "${devices[$i]}"
-done
-printf 'Choose controller: '
-read -r choice
-[[ "$choice" =~ ^[0-9]+$ ]] || exit 2
-idx=$((choice-1))
-(( idx >= 0 && idx < ${#devices[@]} )) || exit 2
-mac=$(awk '{print $2}' <<<"${devices[$idx]}")
-
-bluetoothctl --agent NoInputNoOutput --timeout 30 pair "$mac"
-bluetoothctl trust "$mac" >/dev/null || true
-bluetoothctl connect "$mac" >/dev/null || true
-echo
-echo "DualSense paired and trusted."
+exec /usr/local/bin/moonlight-bluetooth --pair
 DUALPAIR
 chmod 0755 /usr/local/bin/dualsense-pair
 
@@ -370,56 +328,7 @@ chmod 0755 /usr/local/bin/airpods-mode
 
 cat > /usr/local/bin/airpods-pair <<'AIRPAIR'
 #!/usr/bin/env bash
-set -euo pipefail
-sudo systemctl start bluetooth
-sudo rfkill unblock bluetooth || true
-bluetoothctl power on >/dev/null || true
-clear
-printf '\033[40m\033[31m'
-cat <<'EOF'
-AIRPODS PRO 2 PAIRING
-=====================
-
-Put the AirPods in pairing mode:
-  • Open the charging case with the AirPods inside.
-  • Hold the case setup control until the status light flashes white.
-
-Scanning...
-EOF
-
-timeout 12s bluetoothctl scan on >/dev/null 2>&1 || true
-mapfile -t devices < <(bluetoothctl devices | grep -Ei 'AirPods' || true)
-
-if (( ${#devices[@]} == 0 )); then
-  echo
-  echo "No AirPods were found. Try pairing mode again, then press Enter to rescan."
-  read -r _
-  timeout 12s bluetoothctl scan on >/dev/null 2>&1 || true
-  mapfile -t devices < <(bluetoothctl devices | grep -Ei 'AirPods' || true)
-fi
-
-if (( ${#devices[@]} == 0 )); then
-  echo "Still no AirPods found."
-  exit 1
-fi
-
-echo
-for i in "${!devices[@]}"; do
-  printf '  %d) %s\n' "$((i+1))" "${devices[$i]}"
-done
-printf 'Choose AirPods: '
-read -r choice
-[[ "$choice" =~ ^[0-9]+$ ]] || exit 2
-idx=$((choice-1))
-(( idx >= 0 && idx < ${#devices[@]} )) || exit 2
-mac=$(awk '{print $2}' <<<"${devices[$idx]}")
-
-bluetoothctl --agent NoInputNoOutput --timeout 30 pair "$mac"
-bluetoothctl trust "$mac" >/dev/null || true
-bluetoothctl connect "$mac" >/dev/null || true
-airpods-mode low-latency
-echo
-echo "AirPods paired. Low Latency mode is active."
+exec /usr/local/bin/moonlight-bluetooth --pair --airpods
 AIRPAIR
 chmod 0755 /usr/local/bin/airpods-pair
 
@@ -482,54 +391,228 @@ WIFIMENU
 chmod 0755 /usr/local/bin/moonlight-wifi
 
 cat > /usr/local/bin/moonlight-bluetooth <<'BTMENU'
-#!/usr/bin/env bash
-set -u
-sudo systemctl start bluetooth
-sudo rfkill unblock bluetooth || true
-bluetoothctl power on >/dev/null || true
+#!/usr/bin/env python3
+"""Guided BlueZ pairing with one live agent; never filter by controller brand."""
+import argparse
+import re
+import subprocess
+import time
+import pexpect
 
-while true; do
-  clear
-  printf '\033[40m\033[31m'
-  cat <<'EOF'
-BLUETOOTH
-=========
+ANSI = re.compile(r'\x1b\[[0-?]*[ -/]*[@-~]')
+MAC = r'(?:[0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}'
 
-  1) Pair AirPods Pro 2
-  2) Pair PS5 DualSense
-  3) Scan / pair another Bluetooth device
-  4) Show paired devices
-  5) Reconnect a paired device
-  0) Back
 
-EOF
-  printf 'Choose: '
-  read -r choice
-  case "$choice" in
-    1) airpods-pair; read -r -p "Press Enter..." _ ;;
-    2) dualsense-pair; read -r -p "Press Enter..." _ ;;
-    3) bluetoothctl; ;;
-    4) bluetoothctl devices Paired 2>/dev/null || bluetoothctl paired-devices 2>/dev/null || true; read -r -p "Press Enter..." _ ;;
-    5)
-      mapfile -t devices < <(bluetoothctl devices Paired 2>/dev/null || bluetoothctl paired-devices 2>/dev/null || true)
-      if (( ${#devices[@]} == 0 )); then
-        echo "No paired devices."
-      else
-        for i in "${!devices[@]}"; do printf '  %d) %s\n' "$((i+1))" "${devices[$i]}"; done
-        printf 'Choose: '; read -r n
-        if [[ "$n" =~ ^[0-9]+$ ]]; then
-          idx=$((n-1))
-          if (( idx >= 0 && idx < ${#devices[@]} )); then
-            mac=$(awk '{print $2}' <<<"${devices[$idx]}")
-            bluetoothctl connect "$mac" || true
-          fi
-        fi
-      fi
-      read -r -p "Press Enter..." _
-      ;;
-    0) exit 0 ;;
-  esac
-done
+def clean(text):
+    return ANSI.sub('', text).replace('\r', '')
+
+
+def ctl(*args):
+    result = subprocess.run(['bluetoothctl', '--timeout', '12', *args],
+                            text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=16)
+    return clean(result.stdout)
+
+
+def valid_mac(address):
+    if not re.fullmatch(MAC, address):
+        raise ValueError('Invalid Bluetooth address')
+    return address.upper()
+
+
+def properties(address):
+    text = ctl('info', valid_mac(address))
+    return dict(re.findall(r'^\s*(Paired|Trusted|Connected):\s*(yes|no)\s*$', text, re.M))
+
+
+def devices(text):
+    # Names are presentation only; commands always use the separately validated MAC.
+    return [(m.group(1).upper(), m.group(2).strip()) for m in
+            re.finditer(r'^Device (' + MAC + r') (.+)$', clean(text), re.M)]
+
+
+class Agent:
+    def __init__(self, executable='bluetoothctl'):
+        self.child = pexpect.spawn(executable, ['--agent', 'KeyboardDisplay'], encoding='utf-8',
+                                   codec_errors='replace', timeout=12, echo=False)
+        try:
+            self.child.expect(r'Agent registered|Agent is already registered')
+            self.child.sendline('default-agent')
+            self.child.expect('Default agent request successful')
+        except pexpect.ExceptionPexpect:
+            self.child.terminate(force=True)
+            raise
+
+    def pair(self, address, answer=input):
+        self.child.sendline('pair ' + valid_mac(address))
+        deadline = time.monotonic() + 60
+        while time.monotonic() < deadline:
+            event = self.child.expect([
+                'Pairing successful', r'Failed to pair:[^\r\n]*',
+                r'\[agent\][^\r\n]*[:?]', pexpect.EOF, pexpect.TIMEOUT,
+            ], timeout=max(1, deadline - time.monotonic()))
+            if event == 0:
+                return True
+            if event == 1:
+                print(clean(self.child.after))
+                return False
+            if event == 2:
+                prompt = clean(self.child.after)
+                response = answer(prompt + ' ').strip()
+                # BlueZ validates PIN/passkey format; never log input or cache it.
+                self.child.sendline(response)
+                continue
+            print('Pairing timed out or the Bluetooth agent stopped. Put the device back in pairing mode.')
+            return False
+        return False
+
+    def close(self):
+        if self.child.isalive():
+            self.child.sendline('quit')
+            try:
+                self.child.expect(pexpect.EOF, timeout=3)
+            except pexpect.TIMEOUT:
+                self.child.terminate(force=True)
+
+
+def select_device(items, ask=input):
+    if not items:
+        print('No devices found. Check pairing mode, then scan again.')
+        return None
+    for i, (address, name) in enumerate(items, 1):
+        print(f'  {i}) {name} [{address}]')
+    value = ask('Device number (Enter cancels): ').strip()
+    if value.isdecimal() and 1 <= int(value) <= len(items):
+        return items[int(value) - 1][0]
+    return None
+
+
+def ready():
+    subprocess.run(['sudo', 'systemctl', 'start', 'bluetooth.service'], check=True)
+    subprocess.run(['sudo', 'rfkill', 'unblock', 'bluetooth'], check=True)
+    shown = ctl('show')
+    if not re.search(r'^Controller ' + MAC, shown, re.M):
+        raise RuntimeError('No Bluetooth adapter found. Open Status to inspect the service/radio.')
+    for command in [('power', 'on'), ('pairable', 'on')]:
+        output = ctl(*command)
+        if 'succeeded' not in output.lower() and 'successful' not in output.lower():
+            raise RuntimeError(output.strip() or 'Unable to configure Bluetooth adapter')
+
+
+def connect(address):
+    print(ctl('trust', address).strip())
+    print(ctl('connect', address).strip())
+    state = properties(address)
+    if state.get('Connected') != 'yes':
+        print('Device is not connected. Pairing may be saved; wake the device and use Reconnect.')
+        return False
+    if state.get('Trusted') != 'yes':
+        print('Connected, but trust was not saved. Reconnection may need confirmation.')
+        return False
+    print('Connected and trusted.')
+    return True
+
+
+def pair_device(airpods=False):
+    ready()
+    print('Put the device in pairing mode. Examples:')
+    print('  PS4: SHARE + PS; PS5: CREATE + PS; Xbox: pairing button; Switch Pro: SYNC.')
+    print('  AirPods: open the case and activate its setup control until the light flashes white.')
+    print('Controllers, headphones, keyboards and mice all appear in the same list.')
+    agent = Agent()
+    try:
+        # Keep this process and its default agent alive throughout discovery/selection/pairing.
+        agent.child.sendline('scan on')
+        event = agent.child.expect(['Discovery started', r'Failed to start discovery:[^\r\n]*',
+                                   pexpect.EOF, pexpect.TIMEOUT], timeout=15)
+        if event != 0:
+            raise RuntimeError(clean(str(agent.child.after)) if event == 1 else 'Bluetooth discovery did not start')
+        print('Scanning for 12 seconds...')
+        end = time.monotonic() + 12
+        while time.monotonic() < end:
+            try:
+                agent.child.read_nonblocking(4096, timeout=min(1, end-time.monotonic()))
+            except pexpect.TIMEOUT:
+                pass
+        address = select_device(devices(ctl('devices')))
+        if not address:
+            return False
+        if properties(address).get('Paired') != 'yes':
+            if not agent.pair(address) or properties(address).get('Paired') != 'yes':
+                print('Pairing was not completed. No bond was removed automatically.')
+                return False
+        if not connect(address):
+            return False
+        if airpods:
+            subprocess.run(['airpods-mode', 'low-latency'], check=True)
+        print('Pairing saved. Test input/audio; connection alone does not prove every device feature.')
+        return True
+    finally:
+        try:
+            agent.child.sendline('scan off')
+        finally:
+            agent.close()
+
+
+def saved():
+    return devices(ctl('devices', 'Paired'))
+
+
+def status():
+    print(ctl('show'))
+    subprocess.run(['rfkill'])
+    subprocess.run(['sudo', 'journalctl', '-u', 'bluetooth.service', '-n', '15', '--no-pager'])
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--pair', action='store_true')
+    parser.add_argument('--airpods', action='store_true')
+    args = parser.parse_args()
+    if args.pair:
+        return 0 if pair_device(args.airpods) else 1
+    while True:
+        print('\033[40m\033[1;31m\nBLUETOOTH • CONTROLLERS & AUDIO\033[0;31m')
+        print('1) Scan & pair any device\n2) Reconnect saved device\n3) Disconnect device\n4) Forget device\n5) AirPods audio mode\n6) Adapter status & errors\n0) Back')
+        choice = input('Choose: ').strip()
+        try:
+            if choice == '0':
+                return 0
+            if choice == '1':
+                pair_device()
+            elif choice in ('2', '3', '4'):
+                ready()
+                address = select_device(saved())
+                if address:
+                    if choice == '2':
+                        agent = Agent()
+                        try:
+                            connect(address)
+                        finally:
+                            agent.close()
+                    elif choice == '3':
+                        print(ctl('disconnect', address))
+                    elif input('Forget this device and its saved pairing? Type yes: ').strip().lower() == 'yes':
+                        print(ctl('remove', address))
+            elif choice == '5':
+                mode = input('1) Low latency  2) Quality: ').strip()
+                if mode in ('1', '2'):
+                    subprocess.run(['airpods-mode', 'low-latency' if mode == '1' else 'quality'], check=True)
+            elif choice == '6':
+                status()
+        except (RuntimeError, subprocess.SubprocessError, pexpect.ExceptionPexpect) as error:
+            print(f'Bluetooth error: {error}')
+        input('Press Enter to continue...')
+
+
+if __name__ == '__main__':
+    try:
+        raise SystemExit(main())
+    except (KeyboardInterrupt, EOFError):
+        print('\nCancelled.')
+        raise SystemExit(130)
+    except (RuntimeError, subprocess.SubprocessError, pexpect.ExceptionPexpect) as error:
+        print(f'Bluetooth error: {error}')
+        raise SystemExit(1)
 BTMENU
 chmod 0755 /usr/local/bin/moonlight-bluetooth
 
@@ -552,6 +635,7 @@ MOONLIGHT-OS SETTINGS
   6) Hardware diagnostics
   7) Use CocoOS
   8) Use vanilla Moonlight
+  9) Select any frontend
   9) Audio mixer (save on exit)
 
   AirPods mode: ${mode:-unknown}
@@ -570,6 +654,7 @@ EOF
     6) sudo moonlight-os-verify; read -r -p "Press Enter..." _ ;;
     7) sudo moonlight-os-client cocoos; read -r -p "Press Enter..." _ ;;
     8) sudo moonlight-os-client moonlight; read -r -p "Press Enter..." _ ;;
+    9) moonlight-frontend-select; read -r -p "Press Enter..." _ ;;
     9) moonlight-audio ;;
     0) exit 0 ;;
   esac
@@ -2310,6 +2395,161 @@ TimeoutStartSec=5
 APOLLO_TIMEOUT
 done
 
+# BEGIN FRONTEND INTEGRATION
+cat > /usr/local/share/moonlight-os/FRONTENDS.lock <<'FRONTENDS_LOCK'
+# Build inputs pinned 2026-10-01
+FEDORA_RELEASE=44
+FEDORA_COMPOSE=1.7
+FEDORA_ISO=Fedora-Everything-netinst-x86_64-44-1.7.iso
+FEDORA_ISO_SHA256=bd285201494dd0ba09b54d05ac707de1401668b8512a573edb5922dcf9d7067e
+FEDORA_ISO_URL=https://download.fedoraproject.org/pub/fedora/linux/releases/44/Everything/x86_64/iso/Fedora-Everything-netinst-x86_64-44-1.7.iso
+
+COCOOS_REPO=https://github.com/Djingerr/CocoOS.git
+COCOOS_COMMIT=8c22132f1ce4146c0d6bff812f6fc8f724fe0101
+
+MOONLIGHT_REPO=https://github.com/moonlight-stream/moonlight-qt.git
+MOONLIGHT_COMMIT=8369d1a0e11b999d4d1598f62ca5f6dea49602fb
+
+AUDIO_REPO=https://github.com/davidjo/snd_hda_macbookpro.git
+AUDIO_COMMIT=89b22ff90b86468b186706861dd18663562defa7
+
+# Kernel installed by pinned Fedora 44 Everything netinst 44-1.7 media during image build.
+INSTALLER_KERNEL=6.19.10-300.fc44.x86_64
+
+# Optional frontends pinned 2026-10-02; never resolve mutable "latest" during build.
+VIBEMIS_VERSION=0.5.0
+VIBEMIS_URL=https://github.com/navyas321/vibemis/releases/download/0.5.0/Vibemis-0.5.0-x86_64.AppImage
+VIBEMIS_SHA256=9f273d37b7afd5624d5cf5db38e5f377d1905093d545e40a560490095fb58e82
+ARTEMIS_REPO=https://github.com/wjbeckett/artemis.git
+ARTEMIS_COMMIT=afe2de7f2b24a2f6161f5672e8aa38450fa793ef
+PEGASUS_VERSION=alpha16-106-g83fd27f4
+PEGASUS_URL=https://github.com/mmatyas/pegasus-frontend/releases/download/continuous/pegasus-fe_alpha16-106-g83fd27f4_x11-static.zip
+PEGASUS_SHA256=85842b658796a67aeaefd2eeef8d3ee1999c675661bf443fa34e999e394bc550
+FRONTENDS_LOCK
+cat > /usr/local/share/moonlight-os/install-frontends.sh <<'FRONTENDS_INSTALL'
+#!/usr/bin/env bash
+# Run in Anaconda's installed root or a disposable Fedora test container.
+set -euo pipefail
+source "${FRONTENDS_LOCK:-/usr/local/share/moonlight-os/FRONTENDS.lock}"
+DEST=${FRONTENDS_DEST:-/usr/local/libexec/moonlight-os/frontends}
+CACHE=${FRONTENDS_CACHE:-/var/cache/moonlight-frontends}
+SRC=${ARTEMIS_SOURCE:-/usr/local/src/artemis}
+mkdir -p "$DEST" "$CACHE"
+fetch() {
+  local url=$1 sha=$2 output=$3
+  if [[ ! -f "$output" ]]; then curl -LfsS --retry 3 -o "$output" "$url"; fi
+  printf '%s  %s\n' "$sha" "$output" | sha256sum -c -
+}
+fetch "$VIBEMIS_URL" "$VIBEMIS_SHA256" "$CACHE/vibemis.AppImage"
+chmod +x "$CACHE/vibemis.AppImage"
+# Extract once at image creation; the installed system needs no FUSE mount.
+mkdir -p "$CACHE/vibemis-extract"
+(cd "$CACHE/vibemis-extract" && ../vibemis.AppImage --appimage-extract > extract.log)
+mkdir -p "$DEST/vibemis"
+cp -a "$CACHE/vibemis-extract/squashfs-root/." "$DEST/vibemis/"
+fetch "$PEGASUS_URL" "$PEGASUS_SHA256" "$CACHE/pegasus.zip"
+mkdir -p "$DEST/pegasus"
+unzip -qo "$CACHE/pegasus.zip" -d "$DEST/pegasus"
+chmod 0755 "$DEST/pegasus/pegasus-fe"
+if [[ ! -d "$SRC/.git" ]]; then git clone --no-checkout "$ARTEMIS_REPO" "$SRC"; fi
+git -C "$SRC" checkout --detach "$ARTEMIS_COMMIT"
+# Platform prebuilts are unnecessary on Linux; use exactly the source gitlinks.
+git -C "$SRC" submodule update --init --recursive -- \
+  moonlight-common-c/moonlight-common-c qmdnsengine/qmdnsengine app/SDL_GameControllerDB \
+  soundio/libsoundio h264bitstream/h264bitstream
+(cd "$SRC" && qmake6 artemis.pro CONFIG+=release && make -j2)
+install -m 0755 "$SRC/app/artemis" "$DEST/artemis"
+cat > "$DEST/versions.conf" <<VERSIONS
+VIBEMIS_VERSION=$VIBEMIS_VERSION
+VIBEMIS_SHA256=$VIBEMIS_SHA256
+ARTEMIS_COMMIT=$ARTEMIS_COMMIT
+PEGASUS_VERSION=$PEGASUS_VERSION
+PEGASUS_SHA256=$PEGASUS_SHA256
+VERSIONS
+# Fail rather than publish a selector that points to an unusable loader.
+for binary in "$DEST/artemis" "$DEST/pegasus/pegasus-fe"; do
+  file "$binary" | grep -q 'x86-64'
+  dependencies=$(ldd "$binary")
+  if grep -q 'not found' <<< "$dependencies"; then printf '%s\n' "$dependencies" >&2; exit 1; fi
+done
+rm -rf "$CACHE/vibemis-extract"
+FRONTENDS_INSTALL
+cat > /usr/local/bin/moonlight-launch <<'FRONTENDS_LAUNCH'
+#!/usr/bin/env bash
+set -euo pipefail
+# Keep each client's bundled Qt/SDL libraries confined to its own child process.
+unset LD_LIBRARY_PATH QT_PLUGIN_PATH QML2_IMPORT_PATH QML_IMPORT_PATH
+export QT_QPA_PLATFORM=xcb
+export LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8
+BASE=${MOONLIGHT_FRONTEND_BASE:-/usr/local/libexec/moonlight-os}
+case "${1:-}" in
+  moonlight|cocoos) exec "$BASE/$1" "${@:2}" ;;
+  artemis) exec "$BASE/frontends/artemis" "${@:2}" ;;
+  vibemis)
+    # The AppImage's default DRI hook otherwise selects Fedora's codec-restricted
+    # directory. Retain the tested full iHD driver on this Intel target.
+    if [[ -f /usr/lib64/dri-nonfree/iHD_drv_video.so ]]; then
+      export LIBVA_DRIVERS_PATH=/usr/lib64/dri-nonfree
+    fi
+    exec "$BASE/frontends/vibemis/AppRun" "${@:2}"
+    ;;
+  pegasus) exec "$BASE/frontends/pegasus/pegasus-fe" "${@:2}" ;;
+  *) echo 'usage: moonlight-launch {moonlight|cocoos|vibemis|artemis|pegasus}' >&2; exit 2 ;;
+esac
+FRONTENDS_LAUNCH
+cat > /usr/local/bin/moonlight-frontend-select <<'FRONTENDS_SELECT'
+#!/usr/bin/env bash
+# tty1 boot chooser. Selection is remembered; unattended boot has a short default.
+set -euo pipefail
+CONF=${MOONLIGHT_CLIENT_CONF:-/etc/moonlight-os-client.conf}
+CLIENT=moonlight
+if [[ -r "$CONF" ]]; then
+  saved=$(sed -n 's/^CLIENT=//p' "$CONF")
+  case "$saved" in moonlight|vibemis|artemis|pegasus|cocoos) CLIENT=$saved ;; esac
+fi
+printf '\033[40m\033[1;31m\n🌑 MOONLIGHT-OS • FRONTEND\033[0;31m\n'
+printf '  1) Vibemis\n  2) Artemis\n  3) Pegasus launcher\n  4) Moonlight\n  5) CocoOS\n'
+printf 'Enter keeps %s; auto-start in 8 seconds.\nChoose: ' "$CLIENT"
+choice=''
+read -r -t 8 choice || true
+case "$choice" in
+  1) CLIENT=vibemis ;; 2) CLIENT=artemis ;; 3) CLIENT=pegasus ;;
+  4) CLIENT=moonlight ;; 5) CLIENT=cocoos ;;
+  '' ) ;; *) printf '\nUnknown selection; keeping %s.\n' "$CLIENT" ;;
+esac
+# The settings helper validates the enum; do not source arbitrary user input.
+sudo "${MOONLIGHT_CLIENT_SETTER:-/usr/local/bin/moonlight-os-client}" "$CLIENT"
+FRONTENDS_SELECT
+chmod 0755 /usr/local/bin/moonlight-launch /usr/local/bin/moonlight-frontend-select
+bash /usr/local/share/moonlight-os/install-frontends.sh
+install -d -m 0755 /home/moonlight/.config/pegasus-frontend/metafiles
+cat > /home/moonlight/.config/pegasus-frontend/metafiles/metadata.pegasus.txt <<'PEGASUS_META'
+collection: Moonlight-OS Streaming
+shortname: pc
+
+game: Moonlight
+file: /usr/local/libexec/moonlight-os/moonlight
+launch: /usr/local/bin/moonlight-launch moonlight
+description: Browse paired hosts and stream games or the desktop with vanilla Moonlight.
+
+game: Vibemis
+file: /usr/local/libexec/moonlight-os/frontends/vibemis/usr/bin/vibemis
+launch: /usr/local/bin/moonlight-launch vibemis
+description: Controller-first streaming client with Vibepollo and Apollo extensions.
+
+game: Artemis
+file: /usr/local/libexec/moonlight-os/frontends/artemis
+launch: /usr/local/bin/moonlight-launch artemis
+description: Moonlight-derived client with an in-stream quick menu and host commands.
+
+game: CocoOS
+file: /usr/local/libexec/moonlight-os/cocoos
+launch: /usr/local/bin/moonlight-launch cocoos
+description: Existing console-style frontend, retained as an optional choice.
+PEGASUS_META
+chown -R moonlight:moonlight /home/moonlight/.config/pegasus-frontend
+# END FRONTEND INTEGRATION
+
 # Confirmed physical console geometry on this Retina panel, before either tty login path.
 cat > /etc/profile.d/moonlight-rows.sh <<'ROWS'
 case "$(tty 2>/dev/null)" in
@@ -2476,20 +2716,30 @@ xset s noblank || true
 
 CONF=/etc/moonlight-os-client.conf
 [[ -r "$CONF" ]] && source "$CONF"
-CLIENT=${CLIENT:-cocoos}
+CLIENT=${CLIENT:-moonlight}
 COCO=/usr/local/libexec/moonlight-os/cocoos
 MOON=/usr/local/libexec/moonlight-os/moonlight
 
-if [[ "$CLIENT" == "moonlight" ]]; then
-  "$MOON"
-  exit $?
+case "$CLIENT" in
+  moonlight|vibemis|artemis|pegasus|cocoos) ;;
+  *) CLIENT=moonlight ;;
+esac
+# Retain CocoOS's original restart/failure recovery behavior.
+if [[ "$CLIENT" == cocoos ]]; then
+  failures=0
+  while (( failures < 3 )); do
+    /usr/local/bin/moonlight-launch cocoos && failures=0 || failures=$((failures + 1))
+    sleep 1
+  done
+  exec /usr/local/bin/moonlight-launch moonlight
 fi
-failures=0
-while (( failures < 3 )); do
-  "$COCO" && failures=0 || failures=$((failures + 1))
-  sleep 1
-done
-"$MOON"
+if /usr/local/bin/moonlight-launch "$CLIENT"; then
+  exit 0
+else
+  echo "$CLIENT exited with an error; opening vanilla Moonlight." >&2
+  /usr/local/bin/moonlight-launch moonlight
+fi
+
 SESSION
 chmod 0755 /usr/local/bin/moonlight-session
 
@@ -2497,15 +2747,15 @@ cat > /usr/local/bin/moonlight-os-client <<'CLIENT'
 #!/usr/bin/env bash
 set -euo pipefail
 case "${1:-}" in
-  cocoos|moonlight)
+  cocoos|moonlight|vibemis|artemis|pegasus)
     printf 'CLIENT=%s\n' "$1" | sudo tee /etc/moonlight-os-client.conf >/dev/null
     echo "Default client set to $1"
     ;;
-  *) echo "usage: moonlight-os-client {cocoos|moonlight}" >&2; exit 2 ;;
+  *) echo "usage: moonlight-os-client {cocoos|moonlight|vibemis|artemis|pegasus}" >&2; exit 2 ;;
 esac
 CLIENT
 chmod 0755 /usr/local/bin/moonlight-os-client
-printf 'CLIENT=cocoos\n' > /etc/moonlight-os-client.conf
+printf 'CLIENT=moonlight\n' > /etc/moonlight-os-client.conf
 
 cat > /usr/local/bin/moonlight-os-verify <<'VERIFY'
 #!/usr/bin/env bash
@@ -2722,6 +2972,7 @@ if [[ -z "${DISPLAY:-}" && "$(tty 2>/dev/null)" == "/dev/tty1" ]]; then
     echo "No saved network connection found."
     moonlight-wifi || true
   fi
+  moonlight-frontend-select || true
   exec startx /usr/local/bin/moonlight-session -- :0 vt1 -keeptty -nolisten tcp
 elif [[ -z "${DISPLAY:-}" && "$(tty 2>/dev/null)" == "/dev/tty2" ]]; then
   moonlight-settings || true

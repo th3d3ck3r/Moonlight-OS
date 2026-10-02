@@ -125,7 +125,11 @@ for pkg in steam-devices joystick-support linuxconsoletools sdl2-compat; do
   need_pkg "$pkg"
 done
 need_text "hid_playstation" "$KS"
-need_text "--agent NoInputNoOutput --timeout 30 pair" "$KS"
+need_pkg "python3-pexpect"
+need_text "KeyboardDisplay" "$KS"
+need_text "Default agent request successful" "$KS"
+need_text "('pairable', 'on')" "$KS"
+need_text "state.get('Connected') != 'yes'" "$KS"
 need_text "52-disable-dualsense-audio.conf" "$KS"
 need_text 'device.bus = "usb"' "$KS"
 need_text "device.vendor.id = 1356" "$KS"
@@ -249,4 +253,5 @@ need_text "moonlight-audio-restore.service" "$KS"
 need_text "moonlight-media-keys.service" "$KS"
 need_text "Control + Option + Shift + M" "$README"
 python3 "$ROOT/scripts/audit-boot-animation.py"
+python3 "$ROOT/scripts/sync-frontend-payloads.py" --check
 echo "Static validation passed."

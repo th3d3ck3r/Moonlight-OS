@@ -80,6 +80,16 @@ grep -Eq 'plymouth/label-(pango|freetype)\.so' "$work/initramfs-list"
 grep -Fq 'usr/share/fonts/dejavu-sans-fonts/DejaVuSans.ttf' "$work/initramfs-list"
 test -x "$work/root/usr/local/libexec/moonlight-os/cocoos"
 test -x "$work/root/usr/local/libexec/moonlight-os/moonlight"
+for payload in frontends/artemis frontends/vibemis/AppRun frontends/vibemis/usr/bin/vibemis frontends/pegasus/pegasus-fe; do
+  test -x "$work/root/usr/local/libexec/moonlight-os/$payload"
+done
+for helper in moonlight-launch moonlight-frontend-select moonlight-bluetooth; do
+  test -x "$work/root/usr/local/bin/$helper"
+done
+cmp "$ROOT/SOURCES.lock" "$work/root/usr/local/share/moonlight-os/FRONTENDS.lock"
+grep -Fq "ARTEMIS_COMMIT=$ARTEMIS_COMMIT" "$work/root/usr/local/libexec/moonlight-os/frontends/versions.conf"
+chroot "$work/root" python3 -c 'import pexpect'
+test -f "$work/root/home/moonlight/.config/pegasus-frontend/metafiles/metadata.pegasus.txt"
 test -x "$work/root/usr/local/bin/moonlight-os-verify"
 test -x "$work/root/usr/local/bin/moonlight-settings"
 test -x "$work/root/usr/local/bin/airpods-mode"
