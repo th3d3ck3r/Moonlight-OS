@@ -19,8 +19,8 @@ INSTALLER_KERNEL=6.19.10-300.fc44.x86_64
 
 # Optional frontends pinned 2026-10-02; never resolve mutable "latest" during build.
 VIBEMIS_VERSION=0.5.0
-VIBEMIS_URL=https://github.com/navyas321/vibemis/releases/download/0.5.0/Vibemis-0.5.0-x86_64.AppImage
-VIBEMIS_SHA256=9f273d37b7afd5624d5cf5db38e5f377d1905093d545e40a560490095fb58e82
+VIBEMIS_REPO=https://github.com/navyas321/vibemis.git
+VIBEMIS_COMMIT=c3032fc8ee56188a91c1f5a3a8aeae6cf36fb6de
 ARTEMIS_REPO=https://github.com/wjbeckett/artemis.git
 ARTEMIS_COMMIT=afe2de7f2b24a2f6161f5672e8aa38450fa793ef
 PEGASUS_VERSION=alpha16-106-g83fd27f4

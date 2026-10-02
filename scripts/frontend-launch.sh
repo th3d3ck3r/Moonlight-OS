@@ -9,8 +9,7 @@ case "${1:-}" in
   moonlight|cocoos) exec "$BASE/$1" "${@:2}" ;;
   artemis) exec "$BASE/frontends/artemis" "${@:2}" ;;
   vibemis)
-    # The AppImage's default DRI hook otherwise selects Fedora's codec-restricted
-    # directory. Retain the tested full iHD driver on this Intel target.
+    # Retain the tested full iHD driver on this Intel target.
     if [[ -f /usr/lib64/dri-nonfree/iHD_drv_video.so ]]; then
       export LIBVA_DRIVERS_PATH=/usr/lib64/dri-nonfree
     fi

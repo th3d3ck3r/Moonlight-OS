@@ -61,6 +61,7 @@ xorg-x11-xauth
 openbox
 python3
 python3-pexpect
+glibc-langpack-en
 unzip
 file
 gstreamer1
@@ -2418,8 +2419,8 @@ INSTALLER_KERNEL=6.19.10-300.fc44.x86_64
 
 # Optional frontends pinned 2026-10-02; never resolve mutable "latest" during build.
 VIBEMIS_VERSION=0.5.0
-VIBEMIS_URL=https://github.com/navyas321/vibemis/releases/download/0.5.0/Vibemis-0.5.0-x86_64.AppImage
-VIBEMIS_SHA256=9f273d37b7afd5624d5cf5db38e5f377d1905093d545e40a560490095fb58e82
+VIBEMIS_REPO=https://github.com/navyas321/vibemis.git
+VIBEMIS_COMMIT=c3032fc8ee56188a91c1f5a3a8aeae6cf36fb6de
 ARTEMIS_REPO=https://github.com/wjbeckett/artemis.git
 ARTEMIS_COMMIT=afe2de7f2b24a2f6161f5672e8aa38450fa793ef
 PEGASUS_VERSION=alpha16-106-g83fd27f4
@@ -2440,13 +2441,20 @@ fetch() {
   if [[ ! -f "$output" ]]; then curl -LfsS --retry 3 -o "$output" "$url"; fi
   printf '%s  %s\n' "$sha" "$output" | sha256sum -c -
 }
-fetch "$VIBEMIS_URL" "$VIBEMIS_SHA256" "$CACHE/vibemis.AppImage"
-chmod +x "$CACHE/vibemis.AppImage"
-# Extract once at image creation; the installed system needs no FUSE mount.
-mkdir -p "$CACHE/vibemis-extract"
-(cd "$CACHE/vibemis-extract" && ../vibemis.AppImage --appimage-extract > extract.log)
-mkdir -p "$DEST/vibemis"
-cp -a "$CACHE/vibemis-extract/squashfs-root/." "$DEST/vibemis/"
+# The upstream AppImage crashes in FFmpeg CUDA probing without NVIDIA libraries.
+# Build the same stable tag against Fedora's tested Qt/SDL/FFmpeg stack instead.
+VIBSRC=${VIBEMIS_SOURCE:-/usr/local/src/vibemis}
+if [[ ! -d "$VIBSRC/.git" ]]; then git clone --no-checkout "$VIBEMIS_REPO" "$VIBSRC"; fi
+git -C "$VIBSRC" checkout --detach "$VIBEMIS_COMMIT"
+git -C "$VIBSRC" submodule update --init --recursive
+(cd "$VIBSRC" && qmake6 vibemis.pro CONFIG+=release 2>&1 | tee configure.log; for feature in "FFmpeg decoder selected" "VAAPI renderer selected" "EGL renderer selected"; do grep -Fq "$feature" configure.log; done; make release -j2)
+mkdir -p "$DEST/vibemis/usr/bin"
+install -m 0755 "$VIBSRC/app/vibemis" "$DEST/vibemis/usr/bin/vibemis"
+cat > "$DEST/vibemis/AppRun" <<'VIBRUN'
+#!/usr/bin/env bash
+exec "$(dirname "$(readlink -f "$0")")/usr/bin/vibemis" "$@"
+VIBRUN
+chmod 0755 "$DEST/vibemis/AppRun"
 fetch "$PEGASUS_URL" "$PEGASUS_SHA256" "$CACHE/pegasus.zip"
 mkdir -p "$DEST/pegasus"
 unzip -qo "$CACHE/pegasus.zip" -d "$DEST/pegasus"
@@ -2457,22 +2465,21 @@ git -C "$SRC" checkout --detach "$ARTEMIS_COMMIT"
 git -C "$SRC" submodule update --init --recursive -- \
   moonlight-common-c/moonlight-common-c qmdnsengine/qmdnsengine app/SDL_GameControllerDB \
   soundio/libsoundio h264bitstream/h264bitstream
-(cd "$SRC" && qmake6 artemis.pro CONFIG+=release && make -j2)
+(cd "$SRC" && qmake6 artemis.pro CONFIG+=release 2>&1 | tee configure.log; for feature in "FFmpeg decoder selected" "VAAPI renderer selected" "EGL renderer selected"; do grep -Fq "$feature" configure.log; done; make release -j2)
 install -m 0755 "$SRC/app/artemis" "$DEST/artemis"
 cat > "$DEST/versions.conf" <<VERSIONS
 VIBEMIS_VERSION=$VIBEMIS_VERSION
-VIBEMIS_SHA256=$VIBEMIS_SHA256
+VIBEMIS_COMMIT=$VIBEMIS_COMMIT
 ARTEMIS_COMMIT=$ARTEMIS_COMMIT
 PEGASUS_VERSION=$PEGASUS_VERSION
 PEGASUS_SHA256=$PEGASUS_SHA256
 VERSIONS
 # Fail rather than publish a selector that points to an unusable loader.
-for binary in "$DEST/artemis" "$DEST/pegasus/pegasus-fe"; do
+for binary in "$DEST/vibemis/usr/bin/vibemis" "$DEST/artemis" "$DEST/pegasus/pegasus-fe"; do
   file "$binary" | grep -q 'x86-64'
   dependencies=$(ldd "$binary")
   if grep -q 'not found' <<< "$dependencies"; then printf '%s\n' "$dependencies" >&2; exit 1; fi
 done
-rm -rf "$CACHE/vibemis-extract"
 FRONTENDS_INSTALL
 cat > /usr/local/bin/moonlight-launch <<'FRONTENDS_LAUNCH'
 #!/usr/bin/env bash
@@ -2486,8 +2493,7 @@ case "${1:-}" in
   moonlight|cocoos) exec "$BASE/$1" "${@:2}" ;;
   artemis) exec "$BASE/frontends/artemis" "${@:2}" ;;
   vibemis)
-    # The AppImage's default DRI hook otherwise selects Fedora's codec-restricted
-    # directory. Retain the tested full iHD driver on this Intel target.
+    # Retain the tested full iHD driver on this Intel target.
     if [[ -f /usr/lib64/dri-nonfree/iHD_drv_video.so ]]; then
       export LIBVA_DRIVERS_PATH=/usr/lib64/dri-nonfree
     fi

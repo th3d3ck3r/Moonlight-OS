@@ -15,7 +15,7 @@ spec = importlib.util.spec_from_file_location('bt', root/'scripts/bluetooth-menu
 bt = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(bt)
 compile((root/'scripts/bluetooth-menu.py').read_text(), 'bluetooth-menu.py', 'exec')
-address = '90:89:5F:F9:62:CE'
+address = 'AA:BB:CC:DD:EE:01'
 assert bt.devices(f'Device {address} Wireless Controller\nDevice AA:BB:CC:DD:EE:FF AirPods ✨') == [(address, 'Wireless Controller'), ('AA:BB:CC:DD:EE:FF', 'AirPods ✨')]
 assert bt.select_device([], lambda _: '1') is None
 assert bt.select_device([(address, 'Switch Pro')], lambda _: '1') == address

@@ -87,6 +87,7 @@ for helper in moonlight-launch moonlight-frontend-select moonlight-bluetooth; do
   test -x "$work/root/usr/local/bin/$helper"
 done
 cmp "$ROOT/SOURCES.lock" "$work/root/usr/local/share/moonlight-os/FRONTENDS.lock"
+grep -Fq "VIBEMIS_COMMIT=$VIBEMIS_COMMIT" "$work/root/usr/local/libexec/moonlight-os/frontends/versions.conf"
 grep -Fq "ARTEMIS_COMMIT=$ARTEMIS_COMMIT" "$work/root/usr/local/libexec/moonlight-os/frontends/versions.conf"
 chroot "$work/root" python3 -c 'import pexpect'
 test -f "$work/root/home/moonlight/.config/pegasus-frontend/metafiles/metadata.pegasus.txt"
