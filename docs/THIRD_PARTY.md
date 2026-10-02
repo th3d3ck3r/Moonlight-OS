@@ -5,6 +5,9 @@ Moonlight-OS is an integration/build project. It does not claim ownership of the
 - **Fedora Linux 44** — Fedora Project; packages retain their individual licenses.
 - **Moonlight-Qt** — moonlight-stream; GPL-3.0.
 - **CocoOS** — Djingerr; fork of Moonlight-Qt; GPL-3.0.
+- **Vibemis** — navyas321; Moonlight-derived streaming client, GPL-3.0; native pinned source build.
+- **Artemis** — wjbeckett; Moonlight-derived streaming client, GPL-3.0; native pinned source build.
+- **Pegasus Frontend** — mmatyas; GPL-3.0 launcher; checksum-pinned Linux X11 package.
 - **snd_hda_macbookpro** — davidjo; third-party MacBook Cirrus audio driver. See upstream repository for its license and notices.
 - **RPM Fusion packages** — individual package licenses apply.
 

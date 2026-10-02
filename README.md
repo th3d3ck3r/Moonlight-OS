@@ -3,17 +3,27 @@
 # 🌙 Moonlight-OS
 ### Your MacBook. A dedicated streaming console. 🎮
 
-**Fedora 44 · CocoOS + Moonlight · Intel x86_64 · Native UEFI**
+**Fedora 44 · Five frontend choices · Intel x86_64 · Native UEFI**
 
 A controller-friendly USB appliance for the **2017 13-inch non-Touch-Bar MacBook Pro — MacBookPro14,1**, connecting to **Vibepollo / Sunshine-compatible hosts**.
 
-**[⬇️ Download](https://github.com/th3d3ck3r/Moonlight-OS/actions/runs/36972953272/artifacts/11213197745) · [🚀 Setup](#quick-start) · [✨ Features](#features) · [🩺 Troubleshooting](#troubleshooting) · [🌑 Animation](#crimson-apollo-animation-preview) · [🧭 Roadmap](#independent-feature-plans) · [🧪 Test plan](docs/TEST_PLAN.md)**
+**[🧪 Experimental release](https://github.com/th3d3ck3r/Moonlight-OS/releases/tag/v0.1-experimental.20261002) · [⬇️ Previous repair download](https://github.com/th3d3ck3r/Moonlight-OS/actions/runs/36972953272/artifacts/11213197745) · [🚀 Setup](#quick-start) · [✨ Features](#features) · [🩺 Troubleshooting](#troubleshooting) · [🌑 Animation](#crimson-apollo-animation-preview) · [🧭 Roadmap](#independent-feature-plans) · [🧪 Test plan](docs/TEST_PLAN.md)**
 
 </div>
 
 ---
 
-## ✅ v0.1 — built, inspected, boot validated
+## 🧪 Experimental update — Apollo, Bluetooth & five frontends
+
+**[⬇️ Experimental prerelease](https://github.com/th3d3ck3r/Moonlight-OS/releases/tag/v0.1-experimental.20261002) · [📦 One-file Actions ZIP](https://github.com/th3d3ck3r/Moonlight-OS/actions/runs/36995905431/artifacts/11223945065) · [📖 Download / flashing guide](docs/releases/v0.1-experimental.20261002.md)**
+
+Includes the **black/crimson animated Apollo moon boot screen**, a remembered selector for **Vibemis / Artemis / Pegasus / Moonlight / CocoOS**, and generic guided Bluetooth pairing with confirmation prompts and verified connection state. All Intel, English UI, Openbox/display, audio, Mac media-key and console repairs remain included.
+
+**All six audits, installed-image inspection and strict OVMF boot passed** for image commit `32bc89855f8bac3caf90b9d5177ae583bc50313d`. Physical Mac boot of this candidate, animation handoff, controller/AirPods pairing and new-client streaming remain unverified. The previous repair download below stays available as a fallback; this update is explicitly experimental.
+
+**One complete download; no split files.** The experimental prerelease links to the original Actions ZIP (about **3.62 GiB**), containing the compressed image and checksum. GitHub may require sign-in; the artifact expires October 16. No image is attached as a release asset because it exceeds GitHub's per-file limit. Do not flash GitHub's automatic source-code ZIP.
+
+## ✅ Previous v0.1 repair — built, inspected, boot validated
 
 **Validated on October 2, 2026.** [Repair image build](https://github.com/th3d3ck3r/Moonlight-OS/actions/runs/36972953272) installed Fedora, compiled both pinned clients and Cirrus audio, passed read-only image inspection, and booted through QEMU/OVMF with the required `MOONLIGHT_OS_BOOT_OK` gate. All five jobs in [audit #79](https://github.com/th3d3ck3r/Moonlight-OS/actions/runs/36972953285) passed on the exact build commit. This download includes the Intel, English UI, window-sizing, console, audio-helper and media-key repairs.
 
@@ -49,7 +59,9 @@ The new download passed image inspection and OVMF. Your physical test results ca
 
 | Feature | Included configuration |
 | --- | --- |
-| 🎮 Console interface | **CocoOS** controller-first UI, with pinned upstream **Moonlight** as a fallback/reference client |
+| 🎮 Frontend choices | Experimental: **Vibemis, Artemis, Pegasus, Moonlight, CocoOS**; previous repair: CocoOS/Moonlight |
+| 🌑 Boot animation | Experimental: **Crimson Apollo**, black/red moon and orbiting spacecraft; Escape for details |
+| 🛜 Bluetooth pairing | Experimental: generic scan/pair/reconnect/disconnect/confirmed forget, with live confirmation agent |
 | ⚡ Intel acceleration | Kernel `i915`, Intel VA-API H.264/HEVC decode stack, Mesa, and GPU diagnostics for Iris Plus 640 |
 | 🖥️ Lean graphics session | Native **X11**, with no desktop environment or compositor |
 | 📶 Wi-Fi setup | NetworkManager, guided first-boot connection, saved networks, and Wi-Fi power saving disabled |
@@ -63,9 +75,9 @@ The new download passed image inspection and OVMF. Your physical test results ca
 | 🌡️ Diagnostics | Hardware verifier, VA-API checks, `intel_gpu_top`, input tools, and thermal management |
 | 🔒 Reproducible builds | Pinned upstream commits and Fedora installer checksum in [SOURCES.lock](SOURCES.lock) |
 
-**Boot flow:** Apple EFI → Fedora 44 → NetworkManager → Xorg → CocoOS → your streaming host.
+**Experimental boot flow:** Apple EFI → Fedora 44 / Crimson Apollo → Wi-Fi setup → remembered frontend chooser → X11/Openbox → selected client → streaming host. Initial default is Moonlight. The previous repair starts CocoOS.
 
-CocoOS is a Moonlight-Qt fork whose interface is still evolving. After repeated client failures, the launcher falls back to upstream Moonlight. You can also select either client manually.
+CocoOS is a Moonlight-Qt fork whose interface is still evolving. After repeated client failures, the launcher falls back to upstream Moonlight. The experimental selector remembers all five choices. Pegasus launches the four clients; it does not stream by itself. Vibemis and Artemis require their own host pairing.
 
 **Performance targets:** idle memory below 2 GB and a low-latency streaming session. These are targets, not measured physical-hardware results. An 8 GB MacBook is the intended class of device.
 
@@ -113,7 +125,7 @@ diskutil eject /dev/diskN
 1. Insert the USB into the target MacBook.
 2. Hold **Option (⌥)** at power-on and select **EFI Boot**.
 3. If no network is saved, use the Wi-Fi helper's **Connect** option, powered by `nmtui-connect`.
-4. Once networking is configured, the appliance starts CocoOS. Add/discover your host and complete its pairing flow.
+4. Experimental: choose a frontend (Enter/eight-second timeout keeps the saved choice; first boot defaults to Moonlight). Previous repair starts CocoOS. Add/discover your host and complete pairing in the chosen client.
 5. Start with **1080p60, H.264, hardware decoding, V-Sync, and frame pacing enabled**. Compare HEVC and network options after confirming a stable stream.
 
 The appliance is designed to run from USB without installing to the internal SSD. Saved settings survive reboots.
@@ -131,21 +143,26 @@ The appliance is designed to run from USB without installing to the internal SSD
 | `moonlight-audio save` | Save the current hardware mixer levels |
 | `sudo moonlight-os-verify` | Inspect hardware, graphics, networking, audio, input, clients, and memory |
 | `dualsense-check` | Inspect controller support |
-| `dualsense-pair` | Start guided Bluetooth controller pairing |
+| `moonlight-bluetooth` | Generic guided Bluetooth pairing and connection management (experimental) |
+| `dualsense-pair` / `airpods-pair` | Compatibility entry points for the same guided pairing flow |
 
-### 🎮 Start either frontend
+### 🎮 Start any frontend
 
-**CocoOS starts automatically by default.** From tty2 settings, choose **Use CocoOS** or **Use vanilla Moonlight**, or run:
+The experimental boot chooser offers **1 Vibemis · 2 Artemis · 3 Pegasus · 4 Moonlight · 5 CocoOS**. Enter or the eight-second timeout keeps the remembered choice. Initial default and launch-failure fallback are vanilla Moonlight.
+
+From tty2, settings option **9** opens selection; options **7/8** still select CocoOS/Moonlight. Save a choice with one of:
 
 ```bash
-# Select CocoOS for the next appliance session
-sudo moonlight-os-client cocoos
-
-# Or select upstream Moonlight instead
+sudo moonlight-os-client vibemis
+sudo moonlight-os-client artemis
+sudo moonlight-os-client pegasus
 sudo moonlight-os-client moonlight
+sudo moonlight-os-client cocoos
 ```
 
-Selection is saved on the USB; it does not immediately replace a running client. When ready, end your stream and run `sudo reboot` to launch the selected frontend. On the Mac, return to the streaming console with **Control + Option + F1**, adding Fn if needed. CocoOS also falls back to upstream Moonlight after repeated failures.
+Run only the command for the frontend you want. End the stream, then `sudo reboot` to apply it. On the Mac, **Control + Option + F1** returns to the graphical session (add Fn if needed). Pegasus offers launch entries for the four clients. Pair your host separately in each streaming client; their settings and credentials are independent. The previous repair supports only CocoOS/Moonlight and starts CocoOS by default.
+
+**Generic Bluetooth pairing:** run `moonlight-bluetooth`, put the device in pairing mode, choose it and respond to confirmation/PIN prompts. Reconnect/disconnect and explicitly confirmed forget are available. DualShock 4: **SHARE + PS**. DualSense: **CREATE + PS**. AirPods Pro 2: hold the case pairing button. This flow checks paired/trusted/connected state and is not restricted to a controller brand; wireless support still requires Linux-compatible Bluetooth protocols. Proprietary radio devices require their dongle.
 
 **DualSense pairing:** hold **CREATE + PS** until the light bar flashes rapidly, then use the pairing helper. The USB audio endpoints are suppressed; actual haptics and other controller features depend on the client and host.
 
@@ -180,7 +197,7 @@ Selection is saved on the USB; it does not immediately replace a running client.
 
 1. **Repository checks:** shell/Kickstart validation, embedded helpers, source pins, and configuration checks.
 2. **Fedora checks:** package dependencies, accelerated client configuration, exact-kernel Cirrus compilation, and SBC/AAC plugins.
-3. **Installed-image inspection:** GPT/EFI/boot/XFS layout, removable-media bootloader, both clients, settings helpers, policies, and hardware modules.
+3. **Installed-image inspection:** GPT/EFI/boot/XFS layout, removable-media bootloader, all selected-release client binaries, settings helpers, policies, and hardware modules.
 4. **Boot check:** QEMU/OVMF boots a copy-on-write overlay and requires `MOONLIGHT_OS_BOOT_OK` before compression and upload.
 
 The overlay preserves the release raw image. The root-growth audit also checks actual partition/filesystem expansion, unchanged EFI/boot partitions, NOCHANGE handling, and retry after failure.
@@ -220,7 +237,7 @@ The development image stays **under 14,000 MiB raw** while retaining Git, GCC, D
 - [Planned host stats overlay and dashboard button](docs/HOST_OVERLAY_PLAN.md) — follow-up after physical boot validation
 - [Liquid Glass–inspired GUI plan](docs/LIQUID_GLASS_GUI_PLAN.md) — cohesive client and appliance settings redesign
 - [Black-and-red terminal settings plan](CODEX_CLI_INTERFACE_PROMPT.md) — independent, self-contained execution prompt; no new image build
-- [Crimson Apollo boot animation](CODEX_BOOT_ANIMATION_PROMPT.md) — animated preview and source integration; no new image build
+- [Crimson Apollo boot animation](CODEX_BOOT_ANIMATION_PROMPT.md) — included in experimental; physical splash validation pending
 - [Pinned sources](SOURCES.lock)
 - [Third-party software](docs/THIRD_PARTY.md)
 
@@ -278,7 +295,7 @@ The helper installs the same media-key service as new images, clears the older O
 
 [▶️ Open / save the animated GIF](https://raw.githubusercontent.com/th3d3ck3r/Moonlight-OS/main/assets/boot/crimson-apollo/preview.gif) · [🖼️ Still preview](assets/boot/crimson-apollo/poster.png)
 
-Original artwork and a native Plymouth script theme are integrated into the image recipe: a crimson moon, orbiting Apollo-inspired spacecraft and subtle loading lights. The script caches rotations, handles masked prompts and messages, and fits the display without changing its mode. **The current downloadable image does not contain this integration.** No new image build was started. See [activation, recovery and validation](docs/BOOT_ANIMATION.md) and the [separate integration prompt](CODEX_BOOT_ANIMATION_PROMPT.md).
+Original artwork and a native Plymouth script theme are integrated into the image recipe: a crimson moon, orbiting Apollo-inspired spacecraft and subtle loading lights. The script caches rotations, handles masked prompts and messages, and fits the display without changing its mode. **The experimental release includes this animation and passed installed-image/OVMF validation.** The previous repair download predates it. The GIF is an artwork preview, not a recording of the Mac boot; physical splash/handoff testing is pending. See [activation, recovery and validation](docs/BOOT_ANIMATION.md) and the [separate integration prompt](CODEX_BOOT_ANIMATION_PROMPT.md).
 
 <a id="independent-feature-plans"></a>
 
@@ -287,11 +304,11 @@ Original artwork and a native Plymouth script theme are integrated into the imag
 | Project | Status | Self-contained plan |
 | --- | --- | --- |
 | 🖤🔴 Crimson Console | Planned terminal settings interface; not implemented | [CODEX_CLI_INTERFACE_PROMPT.md](CODEX_CLI_INTERFACE_PROMPT.md) |
-| 🌑🚀 Crimson Apollo | Source integration added; native script checks pass; future image/Mac validation required | [CODEX_BOOT_ANIMATION_PROMPT.md](CODEX_BOOT_ANIMATION_PROMPT.md) |
+| 🌑🚀 Crimson Apollo | Included in experimental; native script/image/OVMF checks pass; Mac splash test pending | [CODEX_BOOT_ANIMATION_PROMPT.md](CODEX_BOOT_ANIMATION_PROMPT.md) |
 | 💎 Crimson Glass | Planned black/crimson graphical redesign; not implemented | [GUI plan](docs/LIQUID_GLASS_GUI_PLAN.md) |
 | 📊 Host overlay / dashboard | Planned remote stats and host dashboard feature; not implemented | [Host plan](docs/HOST_OVERLAY_PLAN.md) |
 
-Each project stays separate. The terminal and animation prompts explicitly prohibit starting an image build without a later build request. The current repaired download does not activate either feature.
+Each project stays separate. The terminal and animation prompts explicitly prohibit starting an image build without a later build request. The previous repair activates neither feature. The experimental release includes Crimson Apollo; Crimson Console remains planning only.
 
 ---
 

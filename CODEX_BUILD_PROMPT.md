@@ -22,7 +22,7 @@ v0.1 is intentionally a larger development/debug image and may use a normal **16
 
 ## Current checkpoint — do not rediscover solved work
 
-Read `BUILD_STATUS.md`, `SOURCES.lock`, `docs/FRONTEND_BLUETOOTH_INTEGRATION.md`, the current GitHub Actions history, and the current scripts before changing anything. Keep each task prompt self-contained; do not combine the separate GUI, telemetry or minimization plans. Published download links, README and release-facing status must remain unchanged until the user validates this candidate on the physical Mac.
+Read `BUILD_STATUS.md`, `SOURCES.lock`, `docs/FRONTEND_BLUETOOTH_INTEGRATION.md`, the current GitHub Actions history, and the current scripts before changing anything. Keep each task prompt self-contained; do not combine the separate GUI, telemetry or minimization plans. The user authorized publication as an [experimental prerelease](https://github.com/th3d3ck3r/Moonlight-OS/releases/tag/v0.1-experimental.20261002), alongside the previous repair download. Keep it explicitly experimental until physical validation; do not replace the previous fallback or claim hardware success.
 
 Already proven in previous CI work:
 
@@ -172,7 +172,7 @@ If the driver is genuinely incompatible with the chosen current kernel after a f
 9. Run raw-image inspection.
 10. Run the OVMF boot gate.
 11. Confirm compressed `.raw.xz` + SHA-256 artifact exists.
-12. Record candidate build/audit evidence in the internal integration document and report the artifact to the user. Hold published download links, `BUILD_STATUS.md` and `README.md` promotion until the user confirms physical boot. Distinguish OVMF and fixture results from real Bluetooth, AirPods and streaming tests.
+12. Record candidate build/audit evidence in the internal integration document and report the artifact to the user. Keep README/BUILD_STATUS accurate about the experimental release and preserve the previous fallback; stable/hardware-validated promotion requires user-confirmed physical boot. Distinguish OVMF and fixture results from real Bluetooth, AirPods and streaming tests.
 
 ## Definition of done
 

@@ -1,6 +1,6 @@
 # 🌑🚀 Crimson Apollo — self-contained boot-animation integration prompt
 
-**Status:** artwork and native theme are integrated in source; native script-engine checks pass. The existing downloadable image predates this integration. Daemon/KMS, future image/OVMF and Mac boot validation remain required. No new image build is authorized by this prompt.
+**Status:** animation is included in the [experimental release](https://github.com/th3d3ck3r/Moonlight-OS/releases/tag/v0.1-experimental.20261002); native script, installed-image and OVMF checks pass. Physical Mac graphical splash/handoff validation remains pending. This prompt alone does not authorize another image build.
 
 Read `docs/BOOT_ANIMATION.md` for the current integration, audit commands and recovery instructions. Do not duplicate completed integration steps; inspect the current implementation and address actual remaining failures.
 
@@ -27,7 +27,7 @@ Assets live in `assets/boot/crimson-apollo/`. `scripts/render-boot-animation.py`
 
 [Animated preview](assets/boot/crimson-apollo/preview.gif) · [Still preview](assets/boot/crimson-apollo/poster.png)
 
-The GIF is an art preview, **not a recording of a successful boot**. Native script-engine behavior is checked by `scripts/audit-boot-animation.sh`; daemon/KMS behavior still needs a future boot test. The existing downloadable image does not install or activate this theme.
+The GIF is an art preview, **not a recording of a successful boot**. Native script-engine behavior is checked by `scripts/audit-boot-animation.sh`; physical Mac daemon/KMS behavior still needs testing. The experimental image installs and activates this theme; the previous repair download predates it.
 
 ## Integration steps
 

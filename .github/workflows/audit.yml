@@ -3,6 +3,10 @@ name: Audit Moonlight-OS
 on:
   push:
     branches: [main]
+    paths-ignore:
+      - "**/*.md"
+      - ".github/workflows/publish-experimental.yml"
+      - ".github/PUBLISH_EXPERIMENTAL"
   workflow_dispatch:
 
 permissions:

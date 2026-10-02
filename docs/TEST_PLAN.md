@@ -1,5 +1,7 @@
 # Test plan — MacBookPro14,1
 
+Current experimental release: [v0.1-experimental.20261002](https://github.com/th3d3ck3r/Moonlight-OS/releases/tag/v0.1-experimental.20261002). Automated gates passed for build 36995905431; physical tests below remain required. See the [unsplit download guide](releases/v0.1-experimental.20261002.md).
+
 ## Gate 0: automated image/UEFI preflight
 
 Before any physical USB test, CI must pass both `scripts/inspect-image.sh` and `scripts/test-ovmf.sh`.
@@ -8,7 +10,7 @@ Require:
 
 - GPT contains EFI, /boot, and XFS root partitions.
 - `EFI/BOOT/BOOTX64.EFI` exists.
-- CocoOS, upstream Moonlight, settings/diagnostic helpers, and audio policies are present in the installed root.
+- CocoOS, upstream Moonlight, Vibemis, Artemis, Pegasus, selector/launcher/Bluetooth helpers, pinned receipts, and audio policies are present in the installed root.
 - QEMU/OVMF boots the raw image and the guest emits `MOONLIGHT_OS_BOOT_OK` after reaching the multi-user boot path.
 - The OVMF test uses a qcow2 overlay so the release raw image remains unchanged.
 - The first-boot root expansion service must either grow the XFS root partition or explicitly detect NOCHANGE; other failures must remain retryable.
@@ -25,7 +27,7 @@ Require:
 
 Run `sudo moonlight-os-verify` and require:
 
-- `i915` available, bound to the Intel DRM device, with both `/dev/dri/card0` and `/dev/dri/renderD128`.
+- `i915` available, bound to the Intel DRM device, with its discovered card and render node (the tested Mac used `card1` and `renderD128`; do not require `card0`).
 - VA-API H.264 and HEVC profiles visible over the DRM render node.
 - OpenGL/Mesa and Vulkan diagnostic stacks installed; `igt-gpu-tools` is the current Fedora updates build and `intel_gpu_top` can observe GPU/video-engine activity during a stream.
 - VA-API advertises H.264 and HEVC decode profiles.
@@ -62,16 +64,28 @@ With CocoOS or Moonlight running on X display `:0`, run `sudo moonlight-os-verif
 - A pointing device (Apple trackpad or external mouse) is visible through XInput.
 - `intel_gpu_top` shows GPU/video engine activity during an active Moonlight stream.
 
-## Gate 3: client A/B
+## Gate 3: frontend selection and client comparison
 
 Test the same Vibepollo host and stream settings using:
 
-1. CocoOS.
-2. Upstream Moonlight.
+1. Upstream Moonlight.
+2. CocoOS.
+3. Vibemis.
+4. Artemis.
+5. Pegasus: launch each of its four client entries and repeat the streaming tests inside that client.
+
+Verify initial Moonlight default, all five boot selections, Enter/eight-second saved selection, settings option 9, reboot persistence and launch-failure fallback. Pair the host separately in each client. Check English labels and native Retina/fullscreen sizing.
 
 Start at 1920×1080, 60 FPS, H.264, 30–50 Mbps, hardware decode, V-Sync on, frame pacing on.
 
 Record network latency, decode time, render time, dropped frames, and visible frame-time spikes. Repeat with HEVC and then Wi-Fi vs Ethernet.
+
+## Gate 3b: splash and generic Bluetooth
+
+- Confirm Crimson Apollo appears without artificial delay, Escape reveals details and splash ends before networking/X11. Test one-time text recovery and tty2.
+- Pair DualShock 4, DualSense and AirPods Pro 2 independently through `moonlight-bluetooth`; respond to confirmation/PIN prompts. Test rejection, retry, disconnect/reconnect and confirmed forget without deleting other bonds.
+- Verify controller input, AirPods playback/codec, reboot reconnection and radio recovery on the real Mac. A fixture connection state is not a hardware result.
+- Test volume, mute, display and keyboard brightness both in the UI and during streaming; check no duplicate key handling.
 
 ## Gate 4: stability
 

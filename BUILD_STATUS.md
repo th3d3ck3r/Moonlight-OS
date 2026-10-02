@@ -1,6 +1,17 @@
 # Build status
 
-Status: **v0.1 image built; installed-payload inspection and OVMF boot passed**
+Status: **experimental prerelease published from a completed image; six audits, installed-payload inspection and OVMF boot passed; physical candidate validation pending**
+
+## Current experimental release — 2026-10-02
+
+- [Experimental prerelease](https://github.com/th3d3ck3r/Moonlight-OS/releases/tag/v0.1-experimental.20261002); [original Actions artifact](https://github.com/th3d3ck3r/Moonlight-OS/actions/runs/36995905431/artifacts/11223945065). Previous repair links remain available below.
+- Image commit `32bc89855f8bac3caf90b9d5177ae583bc50313d`; successful build **36995905431** and all six audits **36995905423**.
+- Installed-image inspection passed at 10:52:00 UTC; strict OVMF passed at 10:52:11 UTC. The publishing workflow verifies the successful source build/audits and artifact identity, then publishes notes linking to the original unsplit artifact; it performs no OS build or image repackaging.
+- Includes Crimson Apollo animation, five-way remembered selector, native Vibemis/Artemis, checksum-pinned Pegasus and generic Bluetooth confirmation/reconnect flow, plus all previous repairs.
+- ZIP size **3,882,747,742 bytes (~3.62 GiB)**; raw image **13,147,045,888 bytes / 12.24 GiB**. The prerelease links to the unsplit Actions ZIP (expires October 16), with no image asset attached; see [download guide](docs/releases/v0.1-experimental.20261002.md).
+- Physical candidate boot, splash/X11 handoff, Bluetooth controllers/AirPods and live new-client streaming remain pending. This is not a stable/hardware-validated promotion.
+
+## Historical checkpoints
 
 Validated before the first CI image build:
 
@@ -75,7 +86,7 @@ User booted the October 1 image on MacBookPro14,1 and streamed the Windows host 
 - `stty rows 100` worked at native resolution and has a target-console login setting.
 - CocoOS embedded console labels were French in the pinned source; an explicit English translation is now applied before compilation, with placeholders and source expectations checked.
 
-The repair image is **built, inspected and OVMF-validated**. Current README links point to the repaired image. The fresh build ran from `eb907394d62f6245bfeae971155a3c7dc15e89e3` after audit #78 passed all five jobs. The exact build commit also passed all five jobs in audit #79. Source/kernel pins and both independent feature plans remain unchanged.
+The repair image is **built, inspected and OVMF-validated**. The previous repair link remains in README alongside the newer experimental link. The fresh build ran from `eb907394d62f6245bfeae971155a3c7dc15e89e3` after audit #78 passed all five jobs. The exact build commit also passed all five jobs in audit #79. Source/kernel pins and both independent feature plans remain unchanged.
 
 The media-key service reads only seven Linux brightness/volume event codes independently of X11 keyboard grabs. It ignores releases and repeated mute toggles, without grabbing input or changing game capture. Synthetic event checks and systemd unit checks pass. On October 2 the user confirmed **screen brightness, keyboard brightness and volume keys work on the Mac**. Mute and these keys during an active stream were not explicitly reported.
 
@@ -90,8 +101,8 @@ Saved-state behavior across reboot, AirPods modes, DualSense, sustained game per
 - Raw size remains **13,147,045,888 bytes / 12.24 GiB**, below 14,000 MiB. [Artifact 11213197745](https://github.com/th3d3ck3r/Moonlight-OS/actions/runs/36972953272/artifacts/11213197745) is **3,463,708,878 bytes** and contains the compressed raw image plus SHA-256 file. Retention ends October 16, 2026.
 - Four passes covered structure/generated scripts/systemd units, full Fedora/source/audio audits and client compilation, installed payload, then the strict boot gate. Physical evidence is listed above; OVMF does not substitute for Mac hardware tests.
 
-The separate terminal-interface prompt remains planning only. Crimson Apollo is now integrated in source for a later explicitly authorized image build; **the repaired download above does not contain the theme**. No additional image build has been started.
+The separate terminal-interface prompt remains planning only. Crimson Apollo is now integrated in source for a later explicitly authorized image build; **the repaired download above does not contain the theme**. That source-only checkpoint was followed by the separately authorized experimental build above; the experimental image includes the theme.
 
 ### Crimson Apollo source integration — 2026-10-02
 
-The offline Kickstart payload installs the theme/plugin, selects it and regenerates the exact pinned kernel initramfs after DKMS. Serial diagnostics are retained; a bounded Plymouth quit precedes the tty1 network setup/X11 session. The future image inspector requires the theme and plugin in the initramfs. Native Plymouth 24.004.60 script/image/font/sprite execution passes at 320×200 through 2560×1600, including an offset viewport, two orbits, masked passwords, question/message ordering and a display-change callback. The local engine is the Ubuntu-packaged upstream version; the added audit job exercises the Fedora package independently. These checks are **not a daemon/KMS, OVMF or Mac boot validation**. Those require a later authorized build and physical test. See `docs/BOOT_ANIMATION.md`.
+The offline Kickstart payload installs the theme/plugin, selects it and regenerates the exact pinned kernel initramfs after DKMS. Serial diagnostics are retained; a bounded Plymouth quit precedes the tty1 network setup/X11 session. The future image inspector requires the theme and plugin in the initramfs. Native Plymouth 24.004.60 script/image/font/sprite execution passes at 320×200 through 2560×1600, including an offset viewport, two orbits, masked passwords, question/message ordering and a display-change callback. The local engine is the Ubuntu-packaged upstream version; the added audit job exercises the Fedora package independently. These checks are **not a daemon/KMS, OVMF or Mac boot validation**. The current experimental image has since passed installed-payload inspection and OVMF; physical splash/hardware tests remain pending. See `docs/BOOT_ANIMATION.md`.

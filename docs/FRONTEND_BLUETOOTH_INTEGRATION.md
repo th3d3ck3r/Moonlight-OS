@@ -1,6 +1,6 @@
 # Frontend selection and Bluetooth candidate
 
-This change is a candidate for physical Mac validation. Public download links remain unchanged.
+This change is a candidate for physical Mac validation. Published as an [experimental prerelease](https://github.com/th3d3ck3r/Moonlight-OS/releases/tag/v0.1-experimental.20261002), alongside the previous repair download.
 
 The tty1 chooser offers Vibemis, Artemis, Pegasus, vanilla Moonlight and CocoOS. Enter or an eight-second timeout retains the saved selection; the initial default is vanilla Moonlight. Change it through settings option 9 or `sudo moonlight-os-client <name>`. Existing settings options 7 and 8 still select CocoOS and Moonlight. The selected client starts inside the existing X11/Openbox session. Launch failures fall back to vanilla Moonlight.
 
@@ -18,4 +18,4 @@ Build [36995905431](https://github.com/th3d3ck3r/Moonlight-OS/actions/runs/36995
 
 Candidate artifact [11223945065](https://github.com/th3d3ck3r/Moonlight-OS/actions/runs/36995905431/artifacts/11223945065) contains the compressed raw image and its checksum. The uploaded ZIP is 3,882,747,742 bytes; its SHA-256 is `96554f84507bd04637d6e55a83effc2dfa5a8cc9beecef4a6c62503fa9767554` (this is the ZIP digest, not the image digest). GitHub reports expiry on 2026-10-16.
 
-Physical Mac boot, Bluetooth controller/AirPods pairing and real frontend streaming remain pending user validation. No published download link has been promoted.
+Physical Mac boot, Bluetooth controller/AirPods pairing and real frontend streaming remain pending user validation. The user authorized experimental publication; the previous repair remains available and this candidate is not promoted as hardware-validated.

@@ -1,5 +1,6 @@
 # 🖤🔴 Crimson Console — self-contained Moonlight-OS implementation plan
 
+**Current baseline:** [experimental release](https://github.com/th3d3ck3r/Moonlight-OS/releases/tag/v0.1-experimental.20261002) adds five frontend choices (initial default/fallback Moonlight), generic Bluetooth and Crimson Apollo. This plan remains independent and unimplemented; preserve all five choices and their existing settings. Earlier source findings below apply to the inspected CocoOS/Moonlight revisions, not automatically to the added forks.
 **Status: plan only; not implemented.** Created October 2, 2026.
 **Current request: write this plan without implementing it or starting an image build.**
 
@@ -15,7 +16,7 @@ Suggested future invocation:
 
 ## Product goal and visual direction
 
-Replace the plain numbered `moonlight-settings` menu on **tty2** with a polished, fast **terminal user interface (TUI)**. Keep `moonlight-settings` as its entry command and retain a working plain-text menu and diagnostic shell as recovery paths. CocoOS remains the default streaming frontend, with upstream Moonlight as fallback. This is a settings console, not a replacement graphical streaming client.
+Replace the plain numbered `moonlight-settings` menu on **tty2** with a polished, fast **terminal user interface (TUI)**. Keep `moonlight-settings` as its entry command and retain a working plain-text menu and diagnostic shell as recovery paths. Preserve the remembered five-way frontend selector, with upstream Moonlight as initial default and fallback. This is a settings console, not a replacement graphical streaming client.
 
 Use a predominantly black canvas, deep-crimson selected panels, bright-red focus markers and a small monochrome Moonlight title. Near-white primary text and gray secondary text keep settings readable. Use compact status chips, tidy borders, consistent spacing, sliders, toggles, searchable lists and a persistent key legend. No constant animation, blur, compositor or full desktop. Emoji belong in documentation; console icons must have text/ASCII fallbacks because Linux-console fonts may not contain them.
 
