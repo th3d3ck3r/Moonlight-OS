@@ -216,6 +216,16 @@ The overlay preserves the release raw image. The root-growth audit also checks a
 
 **Continue physical validation.** Booting, desktop streaming and the reported controls already work on the Mac. Follow [docs/TEST_PLAN.md](docs/TEST_PLAN.md) for GPU decode, Apple input, networking, audio, AirPods, controller behavior, and sustained streams. Compare CocoOS/upstream Moonlight and Wi-Fi/Ethernet using the performance overlay.
 
+## 🌿 Separate development tracks
+
+| Branch | Purpose |
+| --- | --- |
+| [`main`](https://github.com/th3d3ck3r/Moonlight-OS/tree/main) | Current release baseline and shared fixes |
+| [`mac-minimal`](https://github.com/th3d3ck3r/Moonlight-OS/tree/mac-minimal) | Future Vibemis-focused MacBookPro14,1 minimization after physical validation |
+| [`generic-hardware`](https://github.com/th3d3ck3r/Moonlight-OS/tree/generic-hardware) | Preserve the current broader package/driver baseline for future generic x86-64 work |
+
+Both development branches start with the same current source. **The generic branch is a baseline, not a hardware-compatible release yet:** Mac-specific boot options, audio/input policies and validation must be generalized separately. No drivers/packages were removed during this split. [Branch workflow and validation](docs/DEVELOPMENT_BRANCHES.md).
+
 ## 🏗️ Build your own image
 
 ### GitHub Actions
