@@ -78,4 +78,10 @@ jobs:
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y qt6-base-dev qt6-declarative-dev qml6-module-qtquick qml6-module-qtquick-controls qml6-module-qtquick-layouts qml6-module-qtquick-window qml6-module-qtquick-templates qml6-module-qtqml-workerscript xvfb
-          bash scripts/audit-vibemis-crimson.sh
+          CRIMSON_SCREENSHOTS="$PWD/out/crimson-previews" bash scripts/audit-vibemis-crimson.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: vibemis-crimson-panel-previews
+          path: out/crimson-previews/*.png
+          if-no-files-found: error
+          retention-days: 3

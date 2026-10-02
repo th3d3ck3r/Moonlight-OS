@@ -435,10 +435,10 @@ index 9bce5105..ba1f4ad0 100644
                  visible: false // Temporarily disabled for Vibemis
 diff --git a/app/moonlightos/crimsonstatus.cpp b/app/moonlightos/crimsonstatus.cpp
 new file mode 100644
-index 00000000..9382ef59
+index 00000000..dafca2ee
 --- /dev/null
 +++ b/app/moonlightos/crimsonstatus.cpp
-@@ -0,0 +1,212 @@
+@@ -0,0 +1,222 @@
 +#include "crimsonstatus.h"
 +#include <QDateTime>
 +#include <QDir>
@@ -485,6 +485,10 @@ index 00000000..9382ef59
 +        }
 +    });
 +    m_localTimer.start(10000); m_statsTimer.setInterval(2000); refreshLocal();
++}
++CrimsonStatus::~CrimsonStatus() {
++    m_statsTimer.stop(); m_localTimer.stop(); cancel();
++    if (m_wifi.state() != QProcess::NotRunning) { m_wifi.kill(); m_wifi.waitForFinished(500); }
 +}
 +QString CrimsonStatus::configFile() const {
 +    return QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation) + "/crimson-hosts.json";
@@ -536,6 +540,7 @@ index 00000000..9382ef59
 +        fail(tr("Could not save host access settings")); return false;
 +    }
 +    cancel(); m_network.clearConnectionCache(); m_endpoint = url; m_token = token; m_pin = pin;
++    m_statsTimer.setInterval(2000);
 +    m_stats.clear(); m_status = tr("Connecting to host stats…");
 +    emit configChanged(); emit statsChanged(); refresh(); return true;
 +}
@@ -545,7 +550,9 @@ index 00000000..9382ef59
 +    else { m_statsTimer.stop(); cancel(); }
 +}
 +void CrimsonStatus::fail(QString message) {
-+    m_stats.clear(); m_status = message; emit statsChanged();
++    m_stats.clear(); m_status = message;
++    m_statsTimer.setInterval(qMin(30000, qMax(4000, m_statsTimer.interval() * 2)));
++    emit statsChanged();
 +}
 +QVariantMap CrimsonStatus::parseStats(const QByteArray& bytes, QString* error) {
 +    if (bytes.size() > 65536) { *error = "Oversized host stats response"; return {}; }
@@ -580,9 +587,10 @@ index 00000000..9382ef59
 +    req.setTransferTimeout(3000);
 +    req.setRawHeader("Authorization", "Bearer " + m_token.toUtf8());
 +    req.setRawHeader("Accept", "application/json");
-+    auto reply = m_network.get(req); m_reply = reply;
++    auto reply = m_network.get(req); reply->setReadBufferSize(65536); m_reply = reply;
 +    auto data = std::make_shared<QByteArray>();
 +    auto invalidPin = std::make_shared<bool>(false);
++    auto oversized = std::make_shared<bool>(false);
 +    auto certMatches = [this, reply] {
 +        return normalizedPin(QString::fromLatin1(reply->sslConfiguration().peerCertificate().digest(QCryptographicHash::Sha256).toHex())) == m_pin;
 +    };
@@ -597,14 +605,16 @@ index 00000000..9382ef59
 +        }
 +        reply->ignoreSslErrors(errors); // Only this explicitly pinned host certificate.
 +    });
-+    connect(reply, &QNetworkReply::readyRead, this, [reply, data] {
-+        if (data->size() + reply->bytesAvailable() > 65536) { reply->abort(); return; }
++    connect(reply, &QNetworkReply::readyRead, this, [reply, data, oversized] {
++        if (*oversized || reply->isFinished()) return;
++        if (data->size() + reply->bytesAvailable() > 65536) { *oversized = true; reply->abort(); return; }
 +        data->append(reply->readAll());
 +    });
-+    connect(reply, &QNetworkReply::finished, this, [this, reply, data, invalidPin] {
++    connect(reply, &QNetworkReply::finished, this, [this, reply, data, invalidPin, oversized] {
 +        m_reply = nullptr;
 +        int status = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
-+        if (*invalidPin) fail(tr("Host certificate changed; verify the saved fingerprint"));
++        if (*oversized) fail(tr("Host stats response exceeded the size limit"));
++        else if (*invalidPin) fail(tr("Host certificate changed; verify the saved fingerprint"));
 +        else if (status == 401 || status == 403) fail(tr("Host stats access denied: check the read-only token"));
 +        else if (status == 404) fail(tr("This host does not provide Vibepollo hardware stats"));
 +        else if (reply->error() == QNetworkReply::SslHandshakeFailedError) fail(tr("Verify the host certificate fingerprint in Configure"));
@@ -613,7 +623,7 @@ index 00000000..9382ef59
 +            data->append(reply->readAll()); QString error;
 +            auto parsed = parseStats(*data, &error);
 +            if (!error.isEmpty()) fail(error);
-+            else { m_stats = parsed; m_status = tr("HOST • received %1").arg(QDateTime::currentDateTime().toString("hh:mm:ss")); emit statsChanged(); }
++            else { m_statsTimer.setInterval(2000); m_stats = parsed; m_status = tr("HOST • received %1").arg(QDateTime::currentDateTime().toString("hh:mm:ss")); emit statsChanged(); }
 +        }
 +        reply->deleteLater();
 +    });
@@ -653,10 +663,10 @@ index 00000000..9382ef59
 +Q_COREAPP_STARTUP_FUNCTION(registerCrimsonStatus)
 diff --git a/app/moonlightos/crimsonstatus.h b/app/moonlightos/crimsonstatus.h
 new file mode 100644
-index 00000000..29b05e13
+index 00000000..2dac0d1c
 --- /dev/null
 +++ b/app/moonlightos/crimsonstatus.h
-@@ -0,0 +1,51 @@
+@@ -0,0 +1,52 @@
 +#pragma once
 +#include <QObject>
 +#include <QVariantMap>
@@ -677,6 +687,7 @@ index 00000000..29b05e13
 +    Q_PROPERTY(bool configured READ configured NOTIFY configChanged)
 +public:
 +    explicit CrimsonStatus(QObject* parent = nullptr);
++    ~CrimsonStatus() override;
 +    QVariantMap local() const { return m_local; }
 +    QVariantMap stats() const { return m_stats; }
 +    QString status() const { return m_status; }
@@ -738,10 +749,10 @@ index 00000000..dfdaf02c
 +QtObject { property int uiAccentIndex: 4; property bool uiShowHints: true }
 diff --git a/app/moonlightos/tests/test-crimson.cpp b/app/moonlightos/tests/test-crimson.cpp
 new file mode 100644
-index 00000000..14c0c95a
+index 00000000..a8985c75
 --- /dev/null
 +++ b/app/moonlightos/tests/test-crimson.cpp
-@@ -0,0 +1,146 @@
+@@ -0,0 +1,152 @@
 +#include <QtTest>
 +#include <QTemporaryDir>
 +#include <QQmlEngine>
@@ -882,6 +893,12 @@ index 00000000..14c0c95a
 +            QVERIFY(panel->setProperty("kind", kind));
 +            QVERIFY(QMetaObject::invokeMethod(panel, "open")); QTest::qWait(30);
 +            QVERIFY(panel->property("visible").toBool());
++            QString out = qEnvironmentVariable("CRIMSON_SCREENSHOTS");
++            if (!out.isEmpty()) {
++                QDir().mkpath(out);
++                auto window = qobject_cast<QQuickWindow*>(root.data()); QVERIFY(window);
++                QVERIFY(window->grabWindow().save(out + "/" + kind + ".png"));
++            }
 +            QVERIFY(QMetaObject::invokeMethod(panel, "close")); QTest::qWait(30);
 +        }
 +    }
