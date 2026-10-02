@@ -16,13 +16,13 @@ Hardware: **MacBookPro14,1 — 2017 13-inch non-Touch-Bar MacBook Pro, Intel i5 
 
 Server target: **Vibepollo / Sunshine-compatible host**.
 
-OS goal: Fedora 44 x86_64 appliance/live USB that boots through UEFI directly into **CocoOS Embedded**, with pinned upstream **Moonlight-Qt** installed as fallback/reference.
+OS goal: Fedora 44 x86_64 appliance/live USB with a remembered boot selector for **Vibemis, Artemis, Pegasus, vanilla Moonlight and CocoOS**. Initial default and launch-failure fallback are vanilla Moonlight. Pegasus launches the four streaming clients; it is not itself a streaming decoder.
 
 v0.1 is intentionally a larger development/debug image and may use a normal **16 GB-or-larger USB**. Runtime should remain comfortable on the MacBook's 8 GB RAM.
 
 ## Current checkpoint — do not rediscover solved work
 
-Read `BUILD_STATUS.md`, `SOURCES.lock`, the current GitHub Actions history, and the current scripts before changing anything.
+Read `BUILD_STATUS.md`, `SOURCES.lock`, `docs/FRONTEND_BLUETOOTH_INTEGRATION.md`, the current GitHub Actions history, and the current scripts before changing anything. Keep each task prompt self-contained; do not combine the separate GUI, telemetry or minimization plans. Published download links, README and release-facing status must remain unchanged until the user validates this candidate on the physical Mac.
 
 Already proven in previous CI work:
 
@@ -35,9 +35,9 @@ Already proven in previous CI work:
 - Explicit X11/libinput, GPU diagnostic, root-growth, kmod and hardware-payload checks have already been added.
 - Automatic image-build spam was disabled; use the controlled one-shot build path.
 - Recent audits added/fixed the Cirrus DKMS GCC16 path. **Verify the current repo state rather than reverting to older audio attempts.**
-- Audit run #47 passed before the repository-handoff documentation commit. Re-run the current audit after your edits.
+- All six source audits passed in run **36994719874**. All six audits also passed for build commit **32bc89855f8bac3caf90b9d5177ae583bc50313d**, in run **36995905423**. Re-run checks appropriate to any subsequent code changes.
 
-The last full image got through Fedora installation, IGT, CocoOS and Moonlight compilation before failing at the MacBook Cirrus audio/DKMS stage. Treat later commits as attempts to fix that specific blocker.
+Candidate build **36995905431** completed successfully from commit **32bc89855f8bac3caf90b9d5177ae583bc50313d**. Installed-image inspection and strict OVMF UEFI validation passed. Artifact **11223945065** contains the compressed raw image and checksum. Physical testing of this candidate is pending. Reuse this candidate when available; do not trigger another full build without an authorized source change, missing artifact or explicit user request. The historical Cirrus build blocker is resolved; inspect current evidence before changing that path.
 
 ## Required invariants — do not regress these
 
@@ -59,7 +59,10 @@ The last full image got through Fedora installation, IGT, CocoOS and Moonlight c
 - MacBook Cirrus internal-audio driver if it can be made reliable on the selected Fedora kernel.
 - Red text on black diagnostic console.
 - Easy settings menu from tty2.
-- CocoOS default; upstream Moonlight fallback.
+- Preserve the remembered five-way boot selector; vanilla Moonlight is the initial default and fallback. Preserve CocoOS restart handling and English labels.
+- Preserve full Intel nonfree iHD hardware decode, native Retina/Openbox fullscreen handling, stream-only mouse shortcut, 100-row console, speaker restore and Mac volume/display/keyboard-backlight shortcuts.
+- Build pinned Vibemis and Artemis natively; do not restore the crashing Vibemis AppImage. Keep Pegasus checksum-pinned with four explicit collection members.
+- Generic Bluetooth pairing must retain one live confirmation-capable agent and verify paired/trusted/connected states. Forgetting requires explicit confirmation; do not silently erase bonds or restrict device names by brand.
 - Vibepollo must work through standard Sunshine/GameStream behavior. Do not require CocoOS Companion/Apollo-only APIs.
 - SSH disabled by default.
 - Do not bundle FaceTime camera firmware.
@@ -117,7 +120,7 @@ Perform four explicit passes:
 - GPT/EFI/boot/root partitions
 - `EFI/BOOT/BOOTX64.EFI`
 - kernel/initramfs
-- both client binaries
+- all five frontend executables, selector/launcher/Bluetooth helpers and pinned installation receipts
 - i915/VA-API userspace
 - libinput/input tools
 - brcmfmac/network tools
@@ -160,7 +163,7 @@ If the driver is genuinely incompatible with the chosen current kernel after a f
 
 1. Inspect current repository/head and Actions history.
 2. Run/fix `./scripts/validate.sh`.
-3. Run/fix the Fedora package + pinned-source configure audit.
+3. Run/fix the Fedora package + pinned-source configure audit and `scripts/audit-frontends.sh` in the same Fedora container. Run Bluetooth/selector PTY fixtures. Software-rendered X11 startup is a CI smoke test only; keep runtime hardware diagnostics strict.
 4. Run/fix the isolated Cirrus audio audit.
 5. Quadruple-check the repository as described above.
 6. Trigger one full image build.
@@ -169,7 +172,7 @@ If the driver is genuinely incompatible with the chosen current kernel after a f
 9. Run raw-image inspection.
 10. Run the OVMF boot gate.
 11. Confirm compressed `.raw.xz` + SHA-256 artifact exists.
-12. Update `BUILD_STATUS.md` and `README.md` with factual final status and flashing/test instructions.
+12. Record candidate build/audit evidence in the internal integration document and report the artifact to the user. Hold published download links, `BUILD_STATUS.md` and `README.md` promotion until the user confirms physical boot. Distinguish OVMF and fixture results from real Bluetooth, AirPods and streaming tests.
 
 ## Definition of done
 
