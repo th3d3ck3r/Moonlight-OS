@@ -1,3 +1,5 @@
-2026-10-02: recover the installed animation image and rerun corrected read-only inspection plus strict OVMF.
-REVALIDATE_RUN_ID=36981134962
-Keep download links and release-facing documentation unchanged pending user physical boot validation.
+2026-10-02: fresh image with guided Bluetooth, five-client boot selector and native Vibemis/Artemis plus Pegasus.
+Source commit: 6652af369596fa99ee1b1eedbc6cdd6653da3c19
+All six audit jobs passed: https://github.com/th3d3ck3r/Moonlight-OS/actions/runs/36994719874
+Require installed-payload inspection and strict OVMF MOONLIGHT_OS_BOOT_OK before artifact upload.
+Keep published download links and release-facing documentation unchanged pending user physical boot validation.
