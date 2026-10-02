@@ -1,6 +1,8 @@
 # 🌑🚀 Crimson Apollo — self-contained boot-animation integration prompt
 
-**Status:** original animation assets and preview created; Plymouth theme is an **inactive prototype**, not runtime-validated or enabled. No new image build is authorized by this prompt.
+**Status:** artwork and native theme are integrated in source; native script-engine checks pass. The existing downloadable image predates this integration. Daemon/KMS, future image/OVMF and Mac boot validation remain required. No new image build is authorized by this prompt.
+
+Read `docs/BOOT_ANIMATION.md` for the current integration, audit commands and recovery instructions. Do not duplicate completed integration steps; inspect the current implementation and address actual remaining failures.
 
 ## Future execution contract
 
@@ -25,7 +27,7 @@ Assets live in `assets/boot/crimson-apollo/`. `scripts/render-boot-animation.py`
 
 [Animated preview](assets/boot/crimson-apollo/preview.gif) · [Still preview](assets/boot/crimson-apollo/poster.png)
 
-The GIF is an art preview, **not a recording of a successful boot**. The prototype theme's script/daemon behavior still needs testing on the selected Fedora Plymouth version. The existing image does not install or activate this theme.
+The GIF is an art preview, **not a recording of a successful boot**. Native script-engine behavior is checked by `scripts/audit-boot-animation.sh`; daemon/KMS behavior still needs a future boot test. The existing downloadable image does not install or activate this theme.
 
 ## Integration steps
 

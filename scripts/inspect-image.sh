@@ -62,6 +62,18 @@ test -f "$work/root/boot/efi/EFI/BOOT/BOOTX64.EFI"
 test -d "$work/root/boot/efi/EFI/fedora"
 test -s "$work/root/boot/vmlinuz-$INSTALLER_KERNEL"
 test -s "$work/root/boot/initramfs-$INSTALLER_KERNEL.img"
+# Future animation-enabled images must contain both the selected theme and its
+# exact initramfs copy. The existing published image predates this source change.
+for asset in background.png apollo.png crimson-apollo.script crimson-apollo.plymouth; do
+  test -s "$work/root/usr/share/plymouth/themes/crimson-apollo/$asset"
+done
+test -s "$work/root/usr/lib64/plymouth/script.so"
+grep -Eq '^[[:space:]]*Theme=crimson-apollo[[:space:]]*$' "$work/root/etc/plymouth/plymouthd.conf"
+chroot "$work/root" /usr/bin/lsinitrd "/boot/initramfs-$INSTALLER_KERNEL.img" > "$work/initramfs-list"
+for asset in background.png apollo.png crimson-apollo.script crimson-apollo.plymouth; do
+  grep -Fq "usr/share/plymouth/themes/crimson-apollo/$asset" "$work/initramfs-list"
+done
+grep -Fq 'plymouth/script.so' "$work/initramfs-list"
 test -x "$work/root/usr/local/libexec/moonlight-os/cocoos"
 test -x "$work/root/usr/local/libexec/moonlight-os/moonlight"
 test -x "$work/root/usr/local/bin/moonlight-os-verify"

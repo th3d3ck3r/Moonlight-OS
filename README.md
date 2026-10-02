@@ -220,7 +220,7 @@ The development image stays **under 14,000 MiB raw** while retaining Git, GCC, D
 - [Planned host stats overlay and dashboard button](docs/HOST_OVERLAY_PLAN.md) — follow-up after physical boot validation
 - [Liquid Glass–inspired GUI plan](docs/LIQUID_GLASS_GUI_PLAN.md) — cohesive client and appliance settings redesign
 - [Black-and-red terminal settings plan](CODEX_CLI_INTERFACE_PROMPT.md) — independent, self-contained execution prompt; no new image build
-- [Crimson Apollo boot animation](CODEX_BOOT_ANIMATION_PROMPT.md) — animated preview and inactive theme; separate integration prompt, no new image build
+- [Crimson Apollo boot animation](CODEX_BOOT_ANIMATION_PROMPT.md) — animated preview and source integration; no new image build
 - [Pinned sources](SOURCES.lock)
 - [Third-party software](docs/THIRD_PARTY.md)
 
@@ -278,7 +278,7 @@ The helper installs the same media-key service as new images, clears the older O
 
 [▶️ Open / save the animated GIF](https://raw.githubusercontent.com/th3d3ck3r/Moonlight-OS/main/assets/boot/crimson-apollo/preview.gif) · [🖼️ Still preview](assets/boot/crimson-apollo/poster.png)
 
-Original animated artwork and a Plymouth theme prototype are included in the repository. **The theme is not activated in the downloadable image.** See the [separate integration prompt](CODEX_BOOT_ANIMATION_PROMPT.md); no additional build was started for this artwork or the terminal-interface plan.
+Original artwork and a native Plymouth script theme are integrated into the image recipe: a crimson moon, orbiting Apollo-inspired spacecraft and subtle loading lights. The script caches rotations, handles masked prompts and messages, and fits the display without changing its mode. **The current downloadable image does not contain this integration.** No new image build was started. See [activation, recovery and validation](docs/BOOT_ANIMATION.md) and the [separate integration prompt](CODEX_BOOT_ANIMATION_PROMPT.md).
 
 <a id="independent-feature-plans"></a>
 
@@ -287,7 +287,7 @@ Original animated artwork and a Plymouth theme prototype are included in the rep
 | Project | Status | Self-contained plan |
 | --- | --- | --- |
 | 🖤🔴 Crimson Console | Planned terminal settings interface; not implemented | [CODEX_CLI_INTERFACE_PROMPT.md](CODEX_CLI_INTERFACE_PROMPT.md) |
-| 🌑🚀 Crimson Apollo | Animated artwork created; Plymouth prototype inactive and not runtime-validated | [CODEX_BOOT_ANIMATION_PROMPT.md](CODEX_BOOT_ANIMATION_PROMPT.md) |
+| 🌑🚀 Crimson Apollo | Source integration added; native script checks pass; future image/Mac validation required | [CODEX_BOOT_ANIMATION_PROMPT.md](CODEX_BOOT_ANIMATION_PROMPT.md) |
 | 💎 Crimson Glass | Planned black/crimson graphical redesign; not implemented | [GUI plan](docs/LIQUID_GLASS_GUI_PLAN.md) |
 | 📊 Host overlay / dashboard | Planned remote stats and host dashboard feature; not implemented | [Host plan](docs/HOST_OVERLAY_PLAN.md) |
 

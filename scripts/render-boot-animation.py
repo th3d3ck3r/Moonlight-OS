@@ -76,6 +76,9 @@ sd.polygon([(31,61),(45,61),(50,68),(26,68)],fill='#65505a',outline='#dcb8c4')
 sd.polygon([(33,69),(43,69),(38,83)],fill='#de3457')
 sd.line((17,42,22,42),fill='#ec879c',width=2)
 sd.line((54,42,59,42),fill='#ec879c',width=2)
+padded = Image.new('RGBA', (128, 128))
+padded.paste(ship, (26, 20), ship)
+ship = padded
 ship.save(OUT/'apollo.png',optimize=True)
 # A faint red lunar-module silhouette anchors the moon's Apollo motif.
 # No NASA logos, downloaded artwork or photorealistic mission footage.

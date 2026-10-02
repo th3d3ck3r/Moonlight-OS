@@ -56,3 +56,12 @@ jobs:
         run: |
           docker run --rm -v "$PWD:/workspace:ro" -w /workspace fedora:44 \
             bash ./scripts/audit-audio.sh
+
+  boot-animation:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fedora Plymouth native theme and offline payload audit
+        run: |
+          docker run --rm -v "$PWD:/workspace:ro" -w /workspace fedora:44 \
+            bash scripts/audit-boot-animation.sh --install-tools

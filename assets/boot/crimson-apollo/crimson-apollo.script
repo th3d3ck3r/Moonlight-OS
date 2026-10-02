@@ -1,8 +1,12 @@
-# Inactive theme prototype; activation requires the separate integration prompt.
+# Moonlight-OS Crimson Apollo boot theme.
 Window.SetBackgroundTopColor(0, 0, 0);
 Window.SetBackgroundBottomColor(0, 0, 0);
 
 pi = 3.141592653589793;
+scale = 1; background = NULL; back = NULL; origin_x = 0; origin_y = 0;
+base_ship = NULL; rotated = []; ship = NULL; dots = []; dot_image = [];
+angle = 0; status = "normal";
+fun layout_callback() {
 scale = Window.GetWidth() / 1024;
 if (Window.GetHeight() / 640 < scale) scale = Window.GetHeight() / 640;
 if (scale > 2) scale = 2;
@@ -12,13 +16,11 @@ back.SetPosition(Window.GetX() + (Window.GetWidth() - background.GetWidth()) / 2
                  Window.GetY() + (Window.GetHeight() - background.GetHeight()) / 2, -100);
 origin_x = Window.GetX() + (Window.GetWidth() - 1024 * scale) / 2;
 origin_y = Window.GetY() + (Window.GetHeight() - 640 * scale) / 2;
-base_ship = Image("apollo.png").Scale(76 * scale, 88 * scale);
+base_ship = Image("apollo.png").Scale(128 * scale, 128 * scale);
 # Cache small rotations once; no frame-sized image decoding in the refresh loop.
 for (i = 0; i < 72; i++) rotated[i] = base_ship.Rotate((i / 72) * 2 * pi + pi);
 ship = Sprite(rotated[0]);
 ship.SetZ(10);
-angle = 0;
-status = "normal";
 
 for (i = 0; i < 3; i++) {
     dot_image[i] = Image.Text(".", 0.93, 0.32, 0.45);
@@ -26,14 +28,18 @@ for (i = 0; i < 3; i++) {
     dots[i].SetPosition(origin_x + (494 + i * 15) * scale, origin_y + 602 * scale, 20);
 }
 
+}
+layout_callback();
+Plymouth.SetRefreshRate(20);
+
 fun refresh_callback() {
     if (status != "normal") {
         ship.SetOpacity(0);
         return;
     }
     ship.SetOpacity(1);
-    # Reference script cadence is 50 Hz. Confirm actual duration in Fedora audit.
-    angle += 2 * pi / 360;
+    # 20 callbacks/second, approximately one 7.2-second orbit.
+    angle += 2 * pi / 144;
     if (angle >= 2 * pi) angle -= 2 * pi;
     index = Math.Int(angle * 72 / (2 * pi)) % 72;
     ship.SetImage(rotated[index]);
@@ -46,37 +52,97 @@ fun refresh_callback() {
 }
 Plymouth.SetRefreshFunction(refresh_callback);
 
-# Keep prompt/error text visible; never retain or print password contents.
-prompt_sprite = Sprite();
+# Prompts use a clear black screen, independent of the decorative composition.
+# Wrap complete words before measuring UTF-8 text; cap work for untrusted messages.
+prompt_lines = [];
 answer_sprite = Sprite();
+message = ""; active_prompt = ""; active_answer = "";
+fun fit_text(text, red, green, blue) {
+    image = Image.Text(text, red, green, blue);
+    factor = 1;
+    if (image.GetWidth() > Window.GetWidth() * 0.9) factor = Window.GetWidth() * 0.9 / image.GetWidth();
+    if (image.GetHeight() * factor > Window.GetHeight() * 0.06) factor = Window.GetHeight() * 0.06 / image.GetHeight();
+    if (factor < 1) image = image.Scale(image.GetWidth() * factor, image.GetHeight() * factor);
+    return image;
+}
+fun hide_prompt() {
+    for (j = 0; j < 8; j++) if (prompt_lines[j]) prompt_lines[j].SetOpacity(0);
+    answer_sprite.SetOpacity(0);
+}
+fun set_art(opacity) {
+    back.SetOpacity(opacity);
+    ship.SetOpacity(opacity);
+    for (j = 0; j < 3; j++) dots[j].SetOpacity(opacity);
+}
 fun show_prompt(prompt, answer) {
-    status = "prompt";
-    prompt_image = Image.Text(prompt, 1, 1, 1);
-    answer_image = Image.Text(answer, 1, 0.3, 0.4);
-    prompt_sprite.SetImage(prompt_image);
+    active_prompt = prompt; active_answer = answer;
+    hide_prompt();
+    set_art(0);
+    available = Window.GetWidth() * 0.9;
+    line = "";
+    word = "";
+    count = 0;
+    for (j = 0; j < 4096 && count < 8; j++) {
+        char = prompt.CharAt(j);
+        if (char != " " && char != "\n" && char != "") { word += char; continue; }
+        candidate = line + word;
+        if (line != "" && Image.Text(candidate, 1, 1, 1).GetWidth() > available) {
+            image = fit_text(line, 1, 1, 1);
+            prompt_lines[count] = Sprite(image);
+            prompt_lines[count].SetPosition(Window.GetX() + (Window.GetWidth() - image.GetWidth()) / 2,
+                Window.GetY() + Window.GetHeight() * 0.2 + count * Window.GetHeight() * 0.065, 100);
+            count++;
+            line = "";
+        }
+        line += word + " ";
+        word = "";
+        if (char == "" || char == "\n") {
+            image = fit_text(line, 1, 1, 1);
+            prompt_lines[count] = Sprite(image);
+            prompt_lines[count].SetPosition(Window.GetX() + (Window.GetWidth() - image.GetWidth()) / 2,
+                Window.GetY() + Window.GetHeight() * 0.2 + count * Window.GetHeight() * 0.065, 100);
+            count++;
+            line = "";
+            if (char == "") break;
+        }
+    }
+    answer_image = fit_text(answer, 1, 0.3, 0.4);
     answer_sprite.SetImage(answer_image);
-    prompt_sprite.SetPosition(Window.GetX() + (Window.GetWidth() - prompt_image.GetWidth()) / 2,
-                              Window.GetY() + Window.GetHeight() - 75, 100);
     answer_sprite.SetPosition(Window.GetX() + (Window.GetWidth() - answer_image.GetWidth()) / 2,
-                              Window.GetY() + Window.GetHeight() - 45, 100);
-    prompt_sprite.SetOpacity(1);
+                              Window.GetY() + Window.GetHeight() * 0.8, 100);
     answer_sprite.SetOpacity(1);
 }
 fun display_password_callback(prompt, bullets) {
+    status = "password";
     masked = "";
-    for (i = 0; i < bullets; i++) masked += "*";
+    for (j = 0; j < bullets && j < 32; j++) masked += "*";
     show_prompt(prompt, masked);
 }
-fun display_question_callback(prompt, entry) { show_prompt(prompt, entry); }
+fun display_question_callback(prompt, entry) { status = "question"; show_prompt(prompt, entry); }
 fun display_normal_callback() {
     status = "normal";
-    prompt_sprite.SetOpacity(0);
-    answer_sprite.SetOpacity(0);
+    active_prompt = ""; active_answer = "";
+    hide_prompt();
+    set_art(1);
+    if (message != "") { status = "message"; show_prompt(message, ""); }
 }
-fun message_callback(text) { show_prompt(text, ""); }
+fun message_callback(text) {
+    message = text;
+    if (status == "normal" || status == "message") { status = "message"; show_prompt(text, ""); }
+}
+fun hide_message_callback(text) {
+    if (text != message) return;
+    message = "";
+    if (status == "message") display_normal_callback();
+}
 Plymouth.SetDisplayPasswordFunction(display_password_callback);
 Plymouth.SetDisplayQuestionFunction(display_question_callback);
 Plymouth.SetDisplayNormalFunction(display_normal_callback);
 Plymouth.SetDisplayMessageFunction(message_callback);
-fun hide_message_callback(text) { display_normal_callback(); }
 Plymouth.SetHideMessageFunction(hide_message_callback);
+
+fun hotplug_callback() {
+    layout_callback();
+    if (status != "normal") show_prompt(active_prompt, active_answer);
+}
+Plymouth.SetDisplayHotplugFunction(hotplug_callback);
