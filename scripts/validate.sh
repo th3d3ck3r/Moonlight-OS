@@ -246,6 +246,6 @@ for name in ("ROWS", "AUDIOHELP", "SESSION", "VERIFY"):
 PAYLOADCHECK
 need_text "stty rows 100" "$KS"
 need_text "moonlight-audio-restore.service" "$KS"
-need_text "XF86KbdBrightnessUp" "$KS"
+need_text "moonlight-media-keys.service" "$KS"
 need_text "Control + Option + Shift + M" "$README"
 echo "Static validation passed."

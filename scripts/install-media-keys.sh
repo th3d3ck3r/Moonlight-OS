@@ -25,6 +25,16 @@ ET.fromstring(xml)
 Path(sys.argv[2]).write_text(xml)
 PY
 chown moonlight:moonlight "$config"
+install -m 0755 "$ROOT/scripts/media-keys.py" /usr/local/bin/moonlight-media-keys
+python3 - "$ROOT/config/moonlight-os.ks" <<'UNITPY'
+from pathlib import Path
+import sys
+ks = Path(sys.argv[1]).read_text()
+unit = ks.split("<<'MEDIAUNIT'\n", 1)[1].split('\nMEDIAUNIT', 1)[0] + '\n'
+Path('/etc/systemd/system/moonlight-media-keys.service').write_text(unit)
+UNITPY
+systemctl daemon-reload
+systemctl enable --now moonlight-media-keys.service
 sudo -u moonlight env DISPLAY=:0 XAUTHORITY=/home/moonlight/.Xauthority openbox --reconfigure
 printf '%s\n' 'Media-key configuration installed. Return to tty1 and test brightness and volume.'
 printf '%s\n' 'Test in CocoOS first, then during a stream. Use Fn if the key sends F1/F2 rather than a brightness symbol.'

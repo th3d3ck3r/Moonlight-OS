@@ -221,7 +221,7 @@ Built for a dedicated streaming setup — with the diagnostics to keep improving
 | Keyboard lighting | Keyboard-light keys (F5/F6 media functions) |
 | Mute / quieter / louder | Audio keys (F10/F11/F12 media functions) |
 
-Openbox binds the brightness, keyboard-light and volume **media key symbols**. These new bindings still require physical testing; a streaming client may capture keys before Openbox receives them. Console switching and the stream mouse toggle were tested. Brightness and volume commands remain available from tty2.
+A local media-key service reads brightness, keyboard-light and volume events independently of X11, so streaming keyboard grabs do not bypass it. It does not grab input or change ordinary/game keys. Actual key presses still require physical testing. Console switching and the stream mouse toggle were tested. Brightness and volume commands remain available from tty2.
 
 ### 🛠️ Repairs for the original downloadable image
 

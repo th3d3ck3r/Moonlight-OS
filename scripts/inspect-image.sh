@@ -84,8 +84,8 @@ test -f "$work/root/etc/profile.d/moonlight-rows.sh"
 test -f "$work/root/etc/systemd/system/moonlight-audio-restore.service"
 test -L "$work/root/etc/systemd/system/multi-user.target.wants/moonlight-audio-restore.service"
 test -f "$work/root/home/moonlight/.config/openbox/rc.xml"
-grep -q 'XF86MonBrightnessUp' "$work/root/home/moonlight/.config/openbox/rc.xml"
-grep -q 'XF86AudioRaiseVolume' "$work/root/home/moonlight/.config/openbox/rc.xml"
+test -x "$work/root/usr/local/bin/moonlight-media-keys"
+test -L "$work/root/etc/systemd/system/multi-user.target.wants/moonlight-media-keys.service"
 grep -Rq 'spi::kbd_backlight' "$work/root/etc/udev/rules.d"
 
 # Require the hardware-specific runtime payload, not merely package metadata.

@@ -60,32 +60,25 @@ printf 'RESULT %s %s %d %d\\n' "$(basename "$intel_card")" "$(basename "$render_
             subprocess.run(['bash', '-n'], input=content, text=True, check=True)
     print('Generated Bash helpers passed syntax checks')
 
-# Exercise the seven media-key actions against recording tools; no real device writes.
-import xml.etree.ElementTree as ET
-xml = ks.split("<<'OPENBOX'\n", 1)[1].split("\nOPENBOX", 1)[0]
-ns = {"o": "http://openbox.org/3.4/rc"}
-bindings = ET.fromstring(xml).findall("o:keyboard/o:keybind", ns)
-assert len(bindings) == 7
-with tempfile.TemporaryDirectory() as tmp:
-    base = Path(tmp)
-    for name in ("brightnessctl", "wpctl"):
-        tool = base / name
-        tool.write_text('#!/bin/bash\nprintf "%s\\n" "$*" >> "$KEY_LOG"\n')
-        tool.chmod(0o755)
-    sudo = base / "sudo"
-    sudo.write_text('#!/bin/bash\nexec "$@"\n')
-    sudo.chmod(0o755)
-    log = base / "log"
-    env = dict(os.environ, PATH=str(base) + ':' + os.environ['PATH'], KEY_LOG=str(log))
-    for binding in bindings:
-        command = binding.find("o:action/o:command", ns).text
-        subprocess.run(['bash', '-c', command], env=env, check=True)
-    actions = log.read_text().splitlines()
-    assert '-d acpi_video0 set +5%' in actions
-    assert '-d acpi_video0 set 5%-' in actions
-    assert 'set-volume -l 1 @DEFAULT_AUDIO_SINK@ 5%+' in actions
-    assert 'set-volume @DEFAULT_AUDIO_SINK@ 5%-' in actions
-    assert 'set-mute @DEFAULT_AUDIO_SINK@ toggle' in actions
-    assert '-d spi::kbd_backlight set +10%' in actions
-    assert '-d spi::kbd_backlight set 10%-' in actions
-print('All seven media-key command actions passed')
+# Exercise actual Linux media events, including releases and mute repeat suppression.
+import runpy
+from unittest.mock import patch
+media = runpy.run_path(str(root / 'scripts/media-keys.py'))
+assert len(media['ACTIONS']) == 7
+embedded = ks.split("<<'MEDIAKEYS'\n", 1)[1].split('\nMEDIAKEYS', 1)[0] + '\n'
+assert embedded == (root / 'scripts/media-keys.py').read_text()
+calls = []
+with patch('subprocess.run', side_effect=lambda args, **kwargs: calls.append(args)):
+    for code in media['ACTIONS']:
+        for value in (0, 1, 2):
+            event = media['EVENT'].pack(0, 0, 1, code, value)
+            _, _, kind, actual_code, actual_value = media['EVENT'].unpack(event)
+            media['dispatch'](kind, actual_code, actual_value)
+    media['dispatch'](1, 30, 1)  # Ordinary A key must not run anything.
+    media['dispatch'](0, 115, 1)  # Non-key event must not run anything.
+assert len(calls) == 13
+assert calls.count(['wpctl', 'set-mute', '@DEFAULT_AUDIO_SINK@', 'toggle']) == 1
+assert ['wpctl', 'set-volume', '-l', '1', '@DEFAULT_AUDIO_SINK@', '5%+'] in calls
+assert ['sudo', 'brightnessctl', '-d', 'spi::kbd_backlight', 'set', '+10%'] in calls
+assert ['sudo', 'brightnessctl', '-d', 'acpi_video0', 'set', '5%-'] in calls
+print('All seven Linux media-key actions, releases and repeats passed')

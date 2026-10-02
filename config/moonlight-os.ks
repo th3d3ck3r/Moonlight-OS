@@ -711,24 +711,113 @@ WantedBy=multi-user.target
 AUDIORESTORE
 systemctl enable moonlight-audio-restore.service
 
-# Minimal WM: fullscreen and media keys, without a desktop or compositor.
+# Minimal WM: fullscreen, without a desktop or compositor.
 install -d -m 0755 /home/moonlight/.config/openbox
 cat > /home/moonlight/.config/openbox/rc.xml <<'OPENBOX'
 <?xml version="1.0" encoding="UTF-8"?>
 <openbox_config xmlns="http://openbox.org/3.4/rc">
   <focus><focusNew>yes</focusNew><followMouse>no</followMouse></focus>
-  <keyboard>
-    <keybind key="XF86MonBrightnessUp"><action name="Execute"><command>sudo brightnessctl -d acpi_video0 set +5%</command></action></keybind>
-    <keybind key="XF86MonBrightnessDown"><action name="Execute"><command>sudo brightnessctl -d acpi_video0 set 5%-</command></action></keybind>
-    <keybind key="XF86KbdBrightnessUp"><action name="Execute"><command>sudo brightnessctl -d spi::kbd_backlight set +10%</command></action></keybind>
-    <keybind key="XF86KbdBrightnessDown"><action name="Execute"><command>sudo brightnessctl -d spi::kbd_backlight set 10%-</command></action></keybind>
-    <keybind key="XF86AudioRaiseVolume"><action name="Execute"><command>wpctl set-volume -l 1 @DEFAULT_AUDIO_SINK@ 5%+</command></action></keybind>
-    <keybind key="XF86AudioLowerVolume"><action name="Execute"><command>wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-</command></action></keybind>
-    <keybind key="XF86AudioMute"><action name="Execute"><command>wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle</command></action></keybind>
-  </keyboard>
+  <keyboard />
 </openbox_config>
 OPENBOX
 chown -R moonlight:moonlight /home/moonlight/.config/openbox
+
+# Read local media events independently of X11 keyboard grabs during streaming.
+cat > /usr/local/bin/moonlight-media-keys <<'MEDIAKEYS'
+#!/usr/bin/env python3
+"""Handle only local media keys, including when a streaming client grabs X11 input."""
+import fcntl
+import glob
+import os
+import selectors
+import shlex
+import struct
+import subprocess
+import time
+
+# Linux input-event codes. No key capture/grab, text logging or remote commands.
+ACTIONS = {
+    225: 'sudo brightnessctl -d acpi_video0 set +5%',
+    224: 'sudo brightnessctl -d acpi_video0 set 5%-',
+    230: 'sudo brightnessctl -d spi::kbd_backlight set +10%',
+    229: 'sudo brightnessctl -d spi::kbd_backlight set 10%-',
+    115: 'wpctl set-volume -l 1 @DEFAULT_AUDIO_SINK@ 5%+',
+    114: 'wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-',
+    113: 'wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle',
+}
+EVENT = struct.Struct('@llHHi')
+
+
+def dispatch(kind, code, value):
+    # Ignore release; mute toggles once per press, brightness/volume can repeat.
+    if kind != 1 or code not in ACTIONS or value not in (1, 2):
+        return
+    if code == 113 and value == 2:
+        return
+    try:
+        subprocess.run(shlex.split(ACTIONS[code]), timeout=2, check=False,
+                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    except (OSError, subprocess.TimeoutExpired):
+        pass
+
+
+def main():
+    os.environ.setdefault('XDG_RUNTIME_DIR', '/run/user/' + str(os.getuid()))
+    selector = selectors.DefaultSelector()
+    devices = {}
+    refresh = 0
+    while True:
+        if time.monotonic() >= refresh:
+            for path in glob.glob('/dev/input/event*'):
+                if path in devices:
+                    continue
+                fd = None
+                try:
+                    fd = os.open(path, os.O_RDONLY | os.O_NONBLOCK)
+                    bits = bytearray(96)
+                    # EVIOCGBIT(EV_KEY, 96); listen only to media-capable devices.
+                    fcntl.ioctl(fd, 0x80000000 | (len(bits) << 16) | (ord('E') << 8) | 0x21, bits)
+                    if not any(bits[c // 8] & (1 << (c % 8)) for c in ACTIONS):
+                        os.close(fd)
+                        continue
+                    selector.register(fd, selectors.EVENT_READ, path)
+                    devices[path] = fd
+                except OSError:
+                    if fd is not None:
+                        os.close(fd)
+            refresh = time.monotonic() + 2
+        for key, _ in selector.select(timeout=1):
+            try:
+                data = os.read(key.fd, EVENT.size * 64)
+                if not data:
+                    raise OSError('Input device disconnected')
+                for offset in range(0, len(data), EVENT.size):
+                    _, _, kind, code, value = EVENT.unpack_from(data, offset)
+                    dispatch(kind, code, value)
+            except (OSError, struct.error):
+                selector.unregister(key.fd)
+                os.close(key.fd)
+                devices.pop(key.data, None)
+
+
+if __name__ == '__main__':
+    main()
+MEDIAKEYS
+chmod 0755 /usr/local/bin/moonlight-media-keys
+cat > /etc/systemd/system/moonlight-media-keys.service <<'MEDIAUNIT'
+[Unit]
+Description=Moonlight local brightness and volume keys
+After=systemd-udevd.service
+[Service]
+User=moonlight
+SupplementaryGroups=input
+ExecStart=/usr/local/bin/moonlight-media-keys
+Restart=always
+RestartSec=2
+[Install]
+WantedBy=multi-user.target
+MEDIAUNIT
+systemctl enable moonlight-media-keys.service
 
 cat > /usr/local/bin/moonlight-session <<'SESSION'
 #!/usr/bin/env bash
