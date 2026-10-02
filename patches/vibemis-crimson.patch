@@ -721,10 +721,10 @@ index 00000000..2dac0d1c
 +};
 diff --git a/app/moonlightos/tests/Harness.qml b/app/moonlightos/tests/Harness.qml
 new file mode 100644
-index 00000000..d15a4741
+index 00000000..09a245de
 --- /dev/null
 +++ b/app/moonlightos/tests/Harness.qml
-@@ -0,0 +1,13 @@
+@@ -0,0 +1,18 @@
 +import QtQuick 2.9
 +import QtQuick.Controls 2.5
 +import QtQuick.Controls.Material 2.2
@@ -732,6 +732,11 @@ index 00000000..d15a4741
 +import StreamingPreferences 1.0
 +import "../../gui"
 +ApplicationWindow {
++    Material.theme: Material.Dark
++    Material.accent: VbTokens.accent
++    Material.background: VbTokens.bgWindow
++    Material.foreground: VbTokens.text
++    color: VbTokens.bgApp
 +    width: 1280; height: 800; visible: true
 +    function chooseAccent(i) { StreamingPreferences.uiAccentIndex = i }
 +    Item { id: stackView }
@@ -749,10 +754,10 @@ index 00000000..dfdaf02c
 +QtObject { property int uiAccentIndex: 4; property bool uiShowHints: true }
 diff --git a/app/moonlightos/tests/test-crimson.cpp b/app/moonlightos/tests/test-crimson.cpp
 new file mode 100644
-index 00000000..a8985c75
+index 00000000..58a995b0
 --- /dev/null
 +++ b/app/moonlightos/tests/test-crimson.cpp
-@@ -0,0 +1,152 @@
+@@ -0,0 +1,153 @@
 +#include <QtTest>
 +#include <QTemporaryDir>
 +#include <QQmlEngine>
@@ -889,9 +894,10 @@ index 00000000..a8985c75
 +            QVERIFY(state->property("accent").value<QColor>().isValid());
 +            QVERIFY(state->property("pressed").value<QColor>().isValid());
 +        }
++        QVERIFY(QMetaObject::invokeMethod(root.data(), "chooseAccent", Q_ARG(QVariant, 4)));
 +        for (QString kind : {"network", "battery", "host"}) {
 +            QVERIFY(panel->setProperty("kind", kind));
-+            QVERIFY(QMetaObject::invokeMethod(panel, "open")); QTest::qWait(30);
++            QVERIFY(QMetaObject::invokeMethod(panel, "open")); QTest::qWait(300);
 +            QVERIFY(panel->property("visible").toBool());
 +            QString out = qEnvironmentVariable("CRIMSON_SCREENSHOTS");
 +            if (!out.isEmpty()) {
@@ -899,7 +905,7 @@ index 00000000..a8985c75
 +                auto window = qobject_cast<QQuickWindow*>(root.data()); QVERIFY(window);
 +                QVERIFY(window->grabWindow().save(out + "/" + kind + ".png"));
 +            }
-+            QVERIFY(QMetaObject::invokeMethod(panel, "close")); QTest::qWait(30);
++            QVERIFY(QMetaObject::invokeMethod(panel, "close")); QTest::qWait(300);
 +        }
 +    }
 +};
