@@ -2447,7 +2447,7 @@ VIBSRC=${VIBEMIS_SOURCE:-/usr/local/src/vibemis}
 if [[ ! -d "$VIBSRC/.git" ]]; then git clone --no-checkout "$VIBEMIS_REPO" "$VIBSRC"; fi
 git -C "$VIBSRC" checkout --detach "$VIBEMIS_COMMIT"
 git -C "$VIBSRC" submodule update --init --recursive
-(cd "$VIBSRC" && qmake6 vibemis.pro CONFIG+=release 2>&1 | tee configure.log; for feature in "FFmpeg decoder selected" "VAAPI renderer selected" "EGL renderer selected"; do grep -Fq "$feature" configure.log; done; make release -j2)
+(cd "$VIBSRC" && { qmake6 vibemis.pro CONFIG+=release; (cd app && qmake6 app.pro CONFIG+=release); } 2>&1 | tee configure.log; for feature in "FFmpeg decoder selected" "VAAPI renderer selected" "EGL renderer selected"; do grep -Fq "$feature" configure.log; done; make release -j2)
 mkdir -p "$DEST/vibemis/usr/bin"
 install -m 0755 "$VIBSRC/app/vibemis" "$DEST/vibemis/usr/bin/vibemis"
 cat > "$DEST/vibemis/AppRun" <<'VIBRUN'
@@ -2465,7 +2465,7 @@ git -C "$SRC" checkout --detach "$ARTEMIS_COMMIT"
 git -C "$SRC" submodule update --init --recursive -- \
   moonlight-common-c/moonlight-common-c qmdnsengine/qmdnsengine app/SDL_GameControllerDB \
   soundio/libsoundio h264bitstream/h264bitstream
-(cd "$SRC" && qmake6 artemis.pro CONFIG+=release 2>&1 | tee configure.log; for feature in "FFmpeg decoder selected" "VAAPI renderer selected" "EGL renderer selected"; do grep -Fq "$feature" configure.log; done; make release -j2)
+(cd "$SRC" && { qmake6 artemis.pro CONFIG+=release; (cd app && qmake6 app.pro CONFIG+=release); } 2>&1 | tee configure.log; for feature in "FFmpeg decoder selected" "VAAPI renderer selected" "EGL renderer selected"; do grep -Fq "$feature" configure.log; done; make release -j2)
 install -m 0755 "$SRC/app/artemis" "$DEST/artemis"
 cat > "$DEST/versions.conf" <<VERSIONS
 VIBEMIS_VERSION=$VIBEMIS_VERSION
