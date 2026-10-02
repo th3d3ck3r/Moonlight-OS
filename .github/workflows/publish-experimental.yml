@@ -25,6 +25,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          git fetch --no-tags origin "$SOURCE_SHA"
+          git diff --exit-code "$SOURCE_SHA" HEAD -- config scripts assets SOURCES.lock .github/BUILD_ONCE
           for run_id in 36995905431 36995905423; do
             gh api "repos/$GH_REPO/actions/runs/$run_id" > run.json
             jq -e --arg sha "$SOURCE_SHA" '.head_sha == $sha and .conclusion == "success"' run.json
@@ -38,5 +40,5 @@ jobs:
           if gh release view "$TAG" --json tagName >/dev/null 2>&1; then
             gh release edit "$TAG" --draft=false --prerelease --latest=false --notes-file docs/releases/v0.1-experimental.20261002.md
           else
-            gh release create "$TAG" --target "$SOURCE_SHA" --prerelease --latest=false --title '🌑 Moonlight-OS experimental — Apollo, frontends & Bluetooth' --notes-file docs/releases/v0.1-experimental.20261002.md
+            gh release create "$TAG" --target "$GITHUB_SHA" --prerelease --latest=false --title '🌑 Moonlight-OS experimental — Apollo, frontends & Bluetooth' --notes-file docs/releases/v0.1-experimental.20261002.md
           fi
