@@ -47,7 +47,13 @@ jobs:
           run-id: ${{ steps.mode.outputs.run_id }}
       - name: Decompress recovered image
         if: steps.mode.outputs.run_id != ''
-        run: xz -dk out/moonlight-os-mbp14-1.raw.xz
+        run: |
+          if [ -f out/moonlight-os-mbp14-1.img.xz ]; then
+            xz -dk out/moonlight-os-mbp14-1.img.xz
+          else
+            # Legacy recovery artifacts retain their old filename.
+            xz -dk out/moonlight-os-mbp14-1.raw.xz
+          fi
       - name: Enable KVM when available
         run: |
           if [ -e /dev/kvm ]; then
@@ -74,8 +80,8 @@ jobs:
       - name: Preserve installed image after a validation failure
         if: failure()
         run: |
-          if [ -f out/moonlight-os-mbp14-1.raw ] && [ -f out/build-inputs.sha256 ] && [ ! -f out/moonlight-os-mbp14-1.raw.xz ]; then
-            sudo xz -T2 -1 out/moonlight-os-mbp14-1.raw
+          if [ -f out/moonlight-os-mbp14-1.img ] && [ -f out/build-inputs.sha256 ] && [ ! -f out/moonlight-os-mbp14-1.img.xz ]; then
+            sudo xz -T2 -1 out/moonlight-os-mbp14-1.img
           fi
       - name: Upload unvalidated recovery image
         if: failure()
@@ -83,7 +89,7 @@ jobs:
         with:
           name: moonlight-os-unvalidated-raw
           path: |
-            out/moonlight-os-mbp14-1.raw.xz
+            out/moonlight-os-mbp14-1.img.xz
             out/build-inputs.sha256
           compression-level: 0
           if-no-files-found: ignore
@@ -119,8 +125,8 @@ jobs:
         with:
           name: moonlight-os-mbp14-1
           path: |
-            out/moonlight-os-mbp14-1.raw.xz
-            out/moonlight-os-mbp14-1.raw.xz.sha256
+            out/moonlight-os-mbp14-1.img.xz
+            out/moonlight-os-mbp14-1.img.xz.sha256
           if-no-files-found: error
           compression-level: 0
           retention-days: 14

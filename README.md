@@ -127,6 +127,10 @@ xzcat moonlight-os-mbp14-1.raw.xz | sudo dd of=/dev/rdiskN bs=16m
 diskutil eject /dev/diskN
 ```
 
+**Windows — your tested method:** extract the Actions ZIP with **WinRAR**, verify the included compressed-image checksum, then extract the `.raw.xz`. Rename the resulting `.raw` to `.img` and select it in **Rufus**; use raw/DD writing when offered. Choose the external drive carefully, wait for completion and safely eject.
+
+**Future builds produce `.img.xz` directly:** WinRAR extraction yields an `.img` ready for Rufus, with no rename needed. The currently published downloads still contain `.raw.xz`; both names represent the same raw disk-image format.
+
 ### 3. Boot and connect 📶
 
 1. Insert the USB into the target MacBook.
@@ -230,9 +234,11 @@ sudo ./scripts/build-image.sh
 Outputs:
 
 ```text
-out/moonlight-os-mbp14-1.raw.xz
-out/moonlight-os-mbp14-1.raw.xz.sha256
+out/moonlight-os-mbp14-1.img.xz
+out/moonlight-os-mbp14-1.img.xz.sha256
 ```
+
+The `.img.xz` archive extracts to `moonlight-os-mbp14-1.img`; it uses the same raw disk format and the same image-inspection/OVMF gates. Existing `.raw` recovery artifacts remain supported.
 
 The development image stays **under 14,000 MiB raw** while retaining Git, GCC, DKMS, kernel headers, source trees, and diagnostic tools. A smaller appliance image is a future goal.
 
