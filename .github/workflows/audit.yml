@@ -34,7 +34,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Shell and repository validation
-        run: bash ./scripts/validate.sh
+        run: |
+          bash ./scripts/validate.sh
+          python3 ./scripts/audit-runtime.py
 
   fedora:
     runs-on: ubuntu-latest

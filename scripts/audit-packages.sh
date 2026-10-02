@@ -67,6 +67,11 @@ command -v glxinfo >/dev/null
 command -v vulkaninfo >/dev/null
 command -v intel_gpu_top >/dev/null
 
+rpm -q intel-media-driver
+test -s /usr/lib64/dri-nonfree/iHD_drv_video.so
+command -v openbox >/dev/null
+command -v xprop >/dev/null
+
 echo "Fedora 44 full package transaction and Moonlight build-capability audit passed."
 
 # qmake configure-only feature probe: no compilation is performed here.
@@ -84,6 +89,7 @@ probe_qmake() {
 
   pushd "$dir" >/dev/null
   if [[ "$mode" == "embedded" ]]; then
+    python3 "$ROOT/scripts/patch-cocoos-english.py" "$dir"
     qmake6 "CONFIG+=embedded" moonlight-qt.pro > qmake-root.log 2>&1
     (cd app && qmake6 "CONFIG+=embedded" app.pro > ../qmake-app.log 2>&1)
   else

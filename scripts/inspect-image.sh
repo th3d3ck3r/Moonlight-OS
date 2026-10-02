@@ -79,9 +79,17 @@ test -f "$work/root/etc/NetworkManager/conf.d/99-moonlight-wifi.conf"
 test -f "$work/root/etc/modprobe.d/brcmfmac-moonlight.conf"
 test -f "$work/root/home/moonlight/.config/wireplumber/wireplumber.conf.d/51-moonlight-airpods.conf"
 test -f "$work/root/home/moonlight/.config/wireplumber/wireplumber.conf.d/52-disable-dualsense-audio.conf"
+test -x "$work/root/usr/local/bin/moonlight-audio"
+test -f "$work/root/etc/profile.d/moonlight-rows.sh"
+test -f "$work/root/etc/systemd/system/moonlight-audio-restore.service"
+test -L "$work/root/etc/systemd/system/multi-user.target.wants/moonlight-audio-restore.service"
+test -f "$work/root/home/moonlight/.config/openbox/rc.xml"
+grep -q 'XF86MonBrightnessUp' "$work/root/home/moonlight/.config/openbox/rc.xml"
+grep -q 'XF86AudioRaiseVolume' "$work/root/home/moonlight/.config/openbox/rc.xml"
+grep -Rq 'spi::kbd_backlight' "$work/root/etc/udev/rules.d"
 
 # Require the hardware-specific runtime payload, not merely package metadata.
-test -f "$work/root/usr/lib64/dri/iHD_drv_video.so"
+test -f "$work/root/usr/lib64/dri-nonfree/iHD_drv_video.so"
 for codec in sbc aac; do
   test -s "$work/root/usr/lib64/spa-0.2/bluez5/libspa-codec-bluez5-$codec.so"
   echo "Installed Bluetooth codec plugin verified: $codec"
@@ -94,9 +102,9 @@ chroot "$work/root" /bin/bash -ec '
     command -v "$tool" || { echo "Required installed tool missing: $tool" >&2; missing=1; }
   done
   exit "$missing"
-' bash Xorg libinput xinput evtest nmcli nmtui-connect bluetoothctl \
+' bash Xorg openbox xprop python3 libinput xinput evtest nmcli nmtui-connect bluetoothctl \
   pipewire wireplumber wpctl intel_gpu_top vainfo glxinfo growpart xfs_growfs \
-  gcc git dkms modinfo
+  gcc git dkms modinfo brightnessctl alsamixer alsactl
 find "$work/root/usr/lib/modules/$INSTALLER_KERNEL" -name 'i915.ko*' -print -quit | grep -q .
 find "$work/root/usr/lib/modules/$INSTALLER_KERNEL" -name 'applespi.ko*' -print -quit | grep -q .
 find "$work/root/usr/lib/modules/$INSTALLER_KERNEL" -name 'brcmfmac.ko*' -print -quit | grep -q .

@@ -26,7 +26,7 @@ A controller-friendly USB appliance for the **2017 13-inch non-Touch-Bar MacBook
 | USB requirement | **16 GB or larger** |
 | Artifact expires | **October 15, 2026** — run the build workflow for a fresh artifact |
 
-> 🧪 **Physical MacBook testing is still required.** OVMF proves generic x86_64 UEFI boot. It does not confirm real Intel GPU decoding, Apple keyboard/trackpad, Wi-Fi, Bluetooth, internal audio, AirPods latency, DualSense behavior, or end-to-end streaming. The drivers and tools are installed; verify their behavior using the [hardware test plan](docs/TEST_PLAN.md).
+> 🛠️ **October 2 physical testing found fixes missing from the downloadable October 1 image.** Installing the full Intel media driver exposed H.264/HEVC decode profiles; Openbox fixed client/stream sizing at native resolution; direct mouse control fixed desktop pointer speed; mixer adjustment fixed quiet speakers; keyboard backlight control worked. The repository includes these repairs and English CocoOS labels, but **a new image has not yet been built or OVMF-validated**. AirPods and DualSense remain untested on this Mac.
 
 <a id="features"></a>
 
@@ -203,3 +203,45 @@ Moonlight-OS build scripts are **GPL-3.0**. Included third-party software retain
 Built for a dedicated streaming setup — with the diagnostics to keep improving it.
 
 </div>
+
+## ⌨️ Mac keyboard shortcuts and confirmed repairs
+
+**Option = Alt; Control = Ctrl.** Use Fn for F-keys when your keyboard sends media keys instead. Command is not a substitute for Control. These shortcuts apply to the Linux USB appliance.
+
+| Action | Mac keyboard |
+| --- | --- |
+| Return to CocoOS/Moonlight | Control + Option + F1 (add Fn if needed) |
+| Open settings/diagnostic console | Control + Option + F2 (add Fn if needed) |
+| Toggle direct desktop pointer / captured game mouse during a stream | **Control + Option + Shift + M** |
+| Stop a console command | Control + C |
+| Finish saving text entered with `tee` | Enter, then Control + D |
+| Choose the internal sound card in `alsamixer` | F6 (add Fn if needed) |
+| Mixer level / mute / exit | Arrow keys / M / Esc |
+| Screen brightness | Brightness keys (F1/F2 media functions) |
+| Keyboard lighting | Keyboard-light keys (F5/F6 media functions) |
+| Mute / quieter / louder | Audio keys (F10/F11/F12 media functions) |
+
+Openbox binds the brightness, keyboard-light and volume **media key symbols**. These new bindings still require physical testing; a streaming client may capture keys before Openbox receives them. Console switching and the stream mouse toggle were tested. Brightness and volume commands remain available from tty2.
+
+### 🛠️ Repairs for the original downloadable image
+
+- **Codecs:** `sudo dnf install intel-media-driver`, then `sudo vainfo --display drm --device /dev/dri/renderD128`. Require H.264 and HEVC **VLD** entries; installing a module alone is insufficient.
+- **Sizing:** install Openbox with `sudo dnf install openbox`; start it with `DISPLAY=:0 openbox &`. Keep native **2560×1600**. A mode change from tty2 may fail while X11 is inactive; schedule it with `sleep 10; DISPLAY=:0 xrandr --output eDP-1 --mode 2560x1600`, then return to tty1 during the delay. New images start Openbox before either client and do not force a reduced display resolution.
+- **Desktop pointer:** use the mouse-mode shortcut above. Keep captured mode available for games; local UI pointer speed needs no change.
+- **Quiet speakers:** select the internal sound card in `alsamixer`, adjust available Master/Speaker/PCM controls, then run `sudo alsactl store`. New images offer `moonlight-audio` and settings option 9 to open the mixer and save on exit, and restore existing saved mixer state at boot. No untested maximum mixer level is forced.
+- **Keyboard lighting:** `sudo brightnessctl -d spi::kbd_backlight set 50%`. New images initialize this LED at 50%; systemd can subsequently restore saved brightness.
+- **Console:** `stty rows 100` was confirmed at native panel resolution. New images apply it on tty1/tty2 login for this target. It is a console geometry setting, not a graphical scale setting.
+- **English:** the pinned CocoOS console has French source labels. The build applies a checked English source translation before compilation. OS locale changes alone do not translate the original binary. Host-provided app names and artwork remain host data.
+
+The full Intel driver replaces Fedora's codec-restricted driver in the package manifest and read-only image check. GPU diagnostics now locate i915 and its corresponding render node dynamically rather than assuming `card0`, and require successful VA-API initialization plus decode entrypoints. AirPods testing is still pending.
+
+### 🔆 Test brightness and volume keys on the existing USB
+
+Run these from the diagnostic shell (a new repository folder is required only once):
+
+```bash
+git clone https://github.com/th3d3ck3r/Moonlight-OS
+bash Moonlight-OS/scripts/install-media-keys.sh
+```
+
+The helper installs the same Openbox bindings as new images, backs up any existing Openbox configuration, and reloads the running WM. It does not rebuild or reflash the USB. Test screen brightness, keyboard lighting, mute and volume in CocoOS first, then while streaming. If a key sends a function key rather than a media symbol, hold Fn. Volume increase is capped at 100%; use the saved hardware mixer adjustment if speakers remain quiet. Physical keypresses and stream interception must be confirmed on the Mac.

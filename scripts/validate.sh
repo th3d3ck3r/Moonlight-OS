@@ -80,13 +80,19 @@ need_text "--vcpus=2" "$BUILD"
 for pkg in \
   mesa-dri-drivers mesa-libGL mesa-libEGL mesa-libGL-devel mesa-libEGL-devel \
   mesa-vulkan-drivers libdrm libva libva-utils libva-intel-driver \
-  libva-intel-media-driver mesa-demos glx-utils vulkan-tools \
+  intel-media-driver mesa-demos glx-utils vulkan-tools \
   libX11-devel; do
   need_pkg "$pkg"
 done
-! need_pkg "intel-media-driver"
-need_text "vainfo --display drm --device /dev/dri/renderD128" "$KS"
-need_text "readlink -f /sys/class/drm/card0/device/driver" "$KS"
+! need_pkg "libva-intel-media-driver"
+need_pkg openbox
+need_pkg xprop
+need_pkg python3
+need_text 'vainfo --display drm --device "$render_node"' "$KS"
+need_text 'readlink -f "$card/device/driver"' "$KS"
+need_text "VAEntrypointVLD" "$KS"
+need_text "openbox --sm-disable" "$KS"
+need_text "spi::kbd_backlight" "$KS"
 need_text "OpenGL renderer string" "$KS"
 need_text "llvmpipe|softpipe|software rasterizer" "$KS"
 need_text "xrandr --query" "$KS"
@@ -224,4 +230,22 @@ need_text 'num=$(<"$sysnode/partition")' "$KS"
 ! grep -Fq 'lsblk -n -o PARTN' "$KS"
 need_text 'StandardOutput=journal+console' "$KS"
 
+# Match the embedded translation payload to the audited standalone script.
+python3 - "$ROOT" <<'PAYLOADCHECK'
+from pathlib import Path
+import sys
+import xml.etree.ElementTree as ET
+root = Path(sys.argv[1])
+ks = (root / "config/moonlight-os.ks").read_text()
+embedded = ks.split("<<'COCO_ENGLISH'\n", 1)[1].split("\nCOCO_ENGLISH", 1)[0] + "\n"
+assert embedded == (root / "scripts/patch-cocoos-english.py").read_text()
+compile(embedded, "patch-cocoos-english.py", "exec")
+ET.fromstring(ks.split("<<'OPENBOX'\n", 1)[1].split("\nOPENBOX", 1)[0])
+for name in ("ROWS", "AUDIOHELP", "SESSION", "VERIFY"):
+    assert ks.count("<<'" + name + "'") == 1
+PAYLOADCHECK
+need_text "stty rows 100" "$KS"
+need_text "moonlight-audio-restore.service" "$KS"
+need_text "XF86KbdBrightnessUp" "$KS"
+need_text "Control + Option + Shift + M" "$README"
 echo "Static validation passed."

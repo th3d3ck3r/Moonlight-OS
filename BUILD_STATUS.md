@@ -61,3 +61,18 @@ Real i915/VA-API decode, OpenGL rendering, Apple SPI keyboard/trackpad, generic 
 The diagnostic Anaconda run exposed Fedora 44's known broken base-media `igt-gpu-tools 2.2-2.fc44`, which requires the obsolete `libproc2.so.0`. Moonlight-OS no longer asks Anaconda to solve that package from base media. The image installs `igt-gpu-tools` during `%post` with refreshed Fedora updates, where the audited package is `2.4-1.fc44`. This keeps `intel_gpu_top` without blocking installation.
 
 The installer VM is allocated 4096 MiB RAM and 2 vCPUs for the Qt source builds. This is a build-time setting only; it does not change the 8 GB physical-RAM target.
+
+## Physical Mac checkpoint — 2026-10-02
+
+User booted the October 1 image on MacBookPro14,1 and streamed the Windows host desktop. Initial runtime defects were diagnosed on the actual device:
+
+- i915 binds to **card1**, with **renderD128**; previous card0 checks were false failures.
+- Fedora iHD 25.4.6 loaded but exposed no H.264/HEVC profiles. Installing RPM Fusion **intel-media-driver** loaded iHD 26.1.5 from `dri-nonfree`, exposing H.264 and HEVC/Main10 **VAEntrypointVLD** profiles. Actual hardware-decoder usage still needs an in-stream telemetry check.
+- X11 already used native **2560×1600**. Reducing resolution was only a temporary workaround. Installing and starting **Openbox**, then restoring native resolution, fixed UI/stream sizing according to the user.
+- **Control + Option + Shift + M** fixed stream-only desktop pointer speed. The UI pointer was already correct; game capture is preserved.
+- Internal speakers became audible at the expected level after hardware mixer adjustment. Exact mixer values were not supplied; do not invent universal mixer defaults.
+- **spi::kbd_backlight** exists, was off, and setting it to 50% worked.
+- `stty rows 100` worked at native resolution and has a target-console login setting.
+- CocoOS embedded console labels were French in the pinned source; an explicit English translation is now applied before compilation, with placeholders and source expectations checked.
+
+This repair source is **not yet a newly built/OVMF-validated downloadable image**. Existing artifact links still point to the old image. New media-key bindings, saved-state behavior across reboot, AirPods modes, DualSense, sustained game performance, and actual decoder telemetry remain physical validation items. Original source/kernel pins and both independent feature plans remain unchanged.

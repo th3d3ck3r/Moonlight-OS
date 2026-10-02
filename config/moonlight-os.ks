@@ -53,11 +53,14 @@ alsa-utils
 xorg-x11-server-Xorg
 xorg-x11-xinit
 xorg-x11-xauth
+openbox
+python3
 xorg-x11-drv-libinput
 libinput-utils
 xinput
 xrandr
 xset
+xprop
 mesa-demos
 glx-utils
 vulkan-tools
@@ -73,7 +76,7 @@ libdrm
 libva
 libva-utils
 libva-intel-driver
-libva-intel-media-driver
+intel-media-driver
 ffmpeg-libs
 sdl2-compat
 SDL2_ttf
@@ -287,6 +290,12 @@ wireplumber.settings = {
 }
 WPCONF
 chown -R moonlight:moonlight /home/moonlight/.config
+
+# Initialize the confirmed SPI keyboard LED; systemd may restore its saved state afterward.
+install -d /etc/udev/rules.d
+cat > /etc/udev/rules.d/90-moonlight-keyboard-backlight.rules <<'KBDRULE'
+ACTION=="add", SUBSYSTEM=="leds", KERNEL=="spi::kbd_backlight", ATTR{brightness}="128"
+KBDRULE
 
 # MacBookPro14,1 X11 input defaults: clickfinger right-click, tap-to-click, natural scrolling.
 install -d -m 0755 /etc/X11/xorg.conf.d
@@ -538,6 +547,7 @@ MOONLIGHT-OS SETTINGS
   6) Hardware diagnostics
   7) Use CocoOS
   8) Use vanilla Moonlight
+  9) Audio mixer (save on exit)
 
   AirPods mode: ${mode:-unknown}
 
@@ -555,6 +565,7 @@ EOF
     6) sudo moonlight-os-verify; read -r -p "Press Enter..." _ ;;
     7) sudo moonlight-os-client cocoos; read -r -p "Press Enter..." _ ;;
     8) sudo moonlight-os-client moonlight; read -r -p "Press Enter..." _ ;;
+    9) moonlight-audio ;;
     0) exit 0 ;;
   esac
 done
@@ -566,6 +577,49 @@ git clone --recursive https://github.com/Djingerr/CocoOS.git cocoos
 cd cocoos
 git checkout --detach 8c22132f1ce4146c0d6bff812f6fc8f724fe0101
 git submodule update --init --recursive
+# Embedded console labels in this source pin are French, independent of LANG.
+cat > /usr/local/share/moonlight-os/patch-cocoos-english.py <<'COCO_ENGLISH'
+#!/usr/bin/env python3
+"""Translate the pinned CocoOS console without changing behavior or host data."""
+import json
+from pathlib import Path
+import re
+import sys
+
+TRANSLATIONS = {'Options du flux': 'Stream options', 'Confirmer : oublier %1 ?': 'Forget %1?', 'Oublier ce PC': 'Forget this PC', 'Fermer': 'Close', 'Changer': 'Change', 'Le lancement a échoué': 'Launch failed', 'Annuler': 'Cancel', 'Confirmer': 'Confirm', 'Valider': 'Confirm', 'Liaison avec %1': 'Pair with %1', 'votre PC': 'your PC', 'Saisissez le code à 6 chiffres affiché sur votre PC.': 'Enter the six-digit code shown on your PC.', 'Vérification…': 'Verifying…', 'Chiffre': 'Digit', 'Case': 'Position', 'Un jeu est déjà en cours': 'A game is already running', '%1 est en cours sur votre PC. Le fermer et lancer %2 ? Toute progression non sauvegardée sera perdue.': '%1 is running on your PC. Close it and launch %2? Unsaved progress will be lost.', 'Fermer et jouer': 'Close and play', 'Préparation de %1': 'Preparing %1', 'Reprise de %1': 'Resuming %1', 'Lancement de %1': 'Launching %1', 'Ouverture du flux %1': 'Starting stream %1', "Start + Select + L1 + R1 : revenir à l'accueil": 'Start + Select + L1 + R1: return home', 'Natif %1×%2': 'Native %1×%2', 'Désactivé': 'Off', 'Activé': 'On', 'Activés': 'On', 'Coupés': 'Off', 'Résolution': 'Resolution', 'Images par seconde': 'Frame rate', 'Débit': 'Bitrate', 'Sons': 'UI sounds', 'Recherche…': 'Searching…', 'Recherche de votre PC': 'Searching for your PC', 'Chargement de vos jeux': 'Loading your games', "Vérifiez qu'il est allumé et sur le même réseau que la console.": 'Make sure your PC is on and connected to the same network.', 'Saisissez ce code sur votre PC. La console se connectera ensuite toute seule.': 'Enter this code on your PC. The console will connect automatically.', 'La liaison a échoué. Nouvelle tentative dans un instant…': 'Pairing failed. Retrying shortly…', 'En attente de votre PC…': 'Waiting for your PC…', 'Mettre à jour': 'Update', 'Mise à jour de %1 sur le PC': 'Updating %1 on your PC', 'Mise à jour sur le PC': 'Updating on your PC', 'Code expiré — relancez la liaison depuis le PC.': 'Code expired. Start pairing again from your PC.', 'Code incorrect — réessayez.': 'Incorrect code. Try again.', 'Mise à jour requise': 'Update required', "Ce jeu doit être mis à jour (%1) avant d'y jouer.": 'Update this game (%1) before playing.', "Ce jeu doit être mis à jour avant d'y jouer.": 'Update this game before playing.', 'connexion…': 'connecting…', 'Reprendre': 'Resume', 'Jouer': 'Play', 'Aucun host joignable': 'No reachable host', 'Aucun appairage en cours': 'No pairing in progress', 'Certificat du host inattendu (appairage compromis ?)': 'Unexpected host certificate. Pairing may be compromised.', 'non appairé au host': 'Not paired with the host'}
+
+def main():
+    root = Path(sys.argv[1])
+    files = sorted((root / "app/gui/console").rglob("*.qml"))
+    files += sorted((root / "app/gui/console/backend").glob("*.cpp"))
+    found = set()
+    changes = []
+    # Replace only complete string literals, never comments or identifiers.
+    literal = re.compile(r'"(?:[^"\\]|\\.)*"')
+    for path in files:
+        original = path.read_text()
+        def translate(match):
+            value = json.loads(match.group())
+            if value not in TRANSLATIONS:
+                return match.group()
+            found.add(value)
+            replacement = TRANSLATIONS[value]
+            assert re.findall(r"%[0-9]+", value) == re.findall(r"%[0-9]+", replacement)
+            return json.dumps(replacement, ensure_ascii=False)
+        updated = literal.sub(translate, original)
+        if updated != original:
+            changes.append((path, updated))
+    missing = set(TRANSLATIONS) - found
+    if missing:
+        raise SystemExit("Pinned CocoOS strings changed: " + repr(sorted(missing)))
+    for path, updated in changes:
+        path.write_text(updated)
+    print(f"Translated {len(found)} console strings in {len(changes)} files")
+
+if __name__ == "__main__":
+    main()
+COCO_ENGLISH
+python3 /usr/local/share/moonlight-os/patch-cocoos-english.py /usr/local/src/cocoos
 qmake6 "CONFIG+=embedded" moonlight-qt.pro
 make release -j2
 install -m 0755 app/moonlight /usr/local/libexec/moonlight-os/cocoos
@@ -623,12 +677,77 @@ if ! dkms install -m snd_hda_macbookpro -v 1.0 -k "$KVER" --force --verbose; the
 fi
 depmod -a "$KVER"
 
+# Confirmed physical console geometry on this Retina panel, before either tty login path.
+cat > /etc/profile.d/moonlight-rows.sh <<'ROWS'
+case "$(tty 2>/dev/null)" in
+  /dev/tty1|/dev/tty2) stty rows 100 2>/dev/null || true ;;
+esac
+ROWS
+
+# Keep mixer changes explicit: hardware mixer levels vary between machines.
+cat > /usr/local/bin/moonlight-audio <<'AUDIOHELP'
+#!/usr/bin/env bash
+set -euo pipefail
+case "${1:-mixer}" in
+  mixer) alsamixer; sudo alsactl store ;;
+  save) sudo alsactl store ;;
+  status) wpctl status ;;
+  *) echo "usage: moonlight-audio {mixer|save|status}" >&2; exit 2 ;;
+esac
+AUDIOHELP
+chmod 0755 /usr/local/bin/moonlight-audio
+cat > /etc/systemd/system/moonlight-audio-restore.service <<'AUDIORESTORE'
+[Unit]
+Description=Restore saved Moonlight-OS hardware mixer levels
+After=sound.target
+ConditionPathExists=/var/lib/alsa/asound.state
+
+[Service]
+Type=oneshot
+ExecStart=/usr/sbin/alsactl restore
+
+[Install]
+WantedBy=multi-user.target
+AUDIORESTORE
+systemctl enable moonlight-audio-restore.service
+
+# Minimal WM: fullscreen and media keys, without a desktop or compositor.
+install -d -m 0755 /home/moonlight/.config/openbox
+cat > /home/moonlight/.config/openbox/rc.xml <<'OPENBOX'
+<?xml version="1.0" encoding="UTF-8"?>
+<openbox_config xmlns="http://openbox.org/3.4/rc">
+  <focus><focusNew>yes</focusNew><followMouse>no</followMouse></focus>
+  <keyboard>
+    <keybind key="XF86MonBrightnessUp"><action name="Execute"><command>sudo brightnessctl -d acpi_video0 set +5%</command></action></keybind>
+    <keybind key="XF86MonBrightnessDown"><action name="Execute"><command>sudo brightnessctl -d acpi_video0 set 5%-</command></action></keybind>
+    <keybind key="XF86KbdBrightnessUp"><action name="Execute"><command>sudo brightnessctl -d spi::kbd_backlight set +10%</command></action></keybind>
+    <keybind key="XF86KbdBrightnessDown"><action name="Execute"><command>sudo brightnessctl -d spi::kbd_backlight set 10%-</command></action></keybind>
+    <keybind key="XF86AudioRaiseVolume"><action name="Execute"><command>wpctl set-volume -l 1 @DEFAULT_AUDIO_SINK@ 5%+</command></action></keybind>
+    <keybind key="XF86AudioLowerVolume"><action name="Execute"><command>wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-</command></action></keybind>
+    <keybind key="XF86AudioMute"><action name="Execute"><command>wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle</command></action></keybind>
+  </keyboard>
+</openbox_config>
+OPENBOX
+chown -R moonlight:moonlight /home/moonlight/.config/openbox
+
 cat > /usr/local/bin/moonlight-session <<'SESSION'
 #!/usr/bin/env bash
 set -u
 export QT_QPA_PLATFORM=xcb
 export SDL_VIDEODRIVER=x11
 export XDG_SESSION_TYPE=x11
+# A lightweight, non-compositing WM honors Qt and SDL fullscreen requests.
+# Starting before the client avoids its original 1280x600 window on Retina panels.
+openbox --sm-disable &
+wm_pid=$!
+trap 'kill "$wm_pid" 2>/dev/null || true' EXIT
+# Wait for the WM selection, not an arbitrary startup delay.
+for ((attempt=0; attempt<50; attempt++)); do
+  xprop -root _NET_SUPPORTING_WM_CHECK 2>/dev/null | grep -q 'window id' && break
+  kill -0 "$wm_pid" 2>/dev/null || { echo "Openbox failed to start" >&2; exit 1; }
+  sleep 0.1
+done
+xprop -root _NET_SUPPORTING_WM_CHECK 2>/dev/null | grep -q 'window id' || exit 1
 xset s off || true
 xset -dpms || true
 xset s noblank || true
@@ -640,14 +759,15 @@ COCO=/usr/local/libexec/moonlight-os/cocoos
 MOON=/usr/local/libexec/moonlight-os/moonlight
 
 if [[ "$CLIENT" == "moonlight" ]]; then
-  exec "$MOON"
+  "$MOON"
+  exit $?
 fi
 failures=0
 while (( failures < 3 )); do
   "$COCO" && failures=0 || failures=$((failures + 1))
   sleep 1
 done
-exec "$MOON"
+"$MOON"
 SESSION
 chmod 0755 /usr/local/bin/moonlight-session
 
@@ -677,15 +797,38 @@ echo "Moonlight-OS verification"
 model=$(cat /sys/class/dmi/id/product_name 2>/dev/null || true)
 [[ "$model" == "MacBookPro14,1" ]] && pass "model MacBookPro14,1" || fail "model is ${model:-unknown}"
 check modinfo i915
-readlink -f /sys/class/drm/card0/device/driver 2>/dev/null | grep -q '/i915$' && pass "i915 bound to DRM display device" || fail "i915 DRM binding"
-[[ -e /dev/dri/card0 ]] && pass "DRM display node" || fail "DRM display node"
-[[ -e /dev/dri/renderD128 ]] && pass "DRM render node" || fail "DRM render node"
+# DRM card numbering is dynamic: find i915 and its render node on the same PCI device.
+intel_card=; render_node=
+for card in /sys/class/drm/card[0-9]*; do
+  [[ $(basename "$card") =~ ^card[0-9]+$ ]] || continue
+  driver=$(readlink -f "$card/device/driver" 2>/dev/null || true)
+  [[ "$driver" == */i915 ]] || continue
+  intel_card=$card
+  for render in "$card"/device/drm/renderD*; do
+    [[ -e "$render" ]] && render_node="/dev/dri/$(basename "$render")" && break
+  done
+  break
+done
+[[ -n "$intel_card" ]] && pass "i915 bound to DRM display device" || fail "i915 DRM binding"
+[[ -n "$intel_card" && -e "/dev/dri/$(basename "$intel_card")" ]] && pass "DRM display node" || fail "DRM display node"
+[[ -n "$render_node" && -e "$render_node" ]] && pass "DRM render node" || fail "DRM render node"
 
-if command -v vainfo >/dev/null; then
-  va=$(vainfo --display drm --device /dev/dri/renderD128 2>&1 || vainfo 2>&1 || true)
-  grep -q 'VAProfileH264' <<<"$va" && pass "VA-API H.264 hardware decode profile" || fail "VA-API H.264"
-  grep -q 'VAProfileHEVC' <<<"$va" && pass "VA-API HEVC hardware decode profile" || fail "VA-API HEVC"
-else fail "vainfo installed"; fi
+if command -v vainfo >/dev/null && [[ -n "$render_node" ]]; then
+  va_rc=0
+  va=$(vainfo --display drm --device "$render_node" 2>&1) || va_rc=$?
+  if (( va_rc != 0 )); then
+    fail "VA-API initialization (exit $va_rc)"
+    printf '%s\n' "$va"
+  fi
+  for codec in H264 HEVC; do
+    if (( va_rc == 0 )) && grep -Eq "VAProfile${codec}[^:]*:[[:space:]]*VAEntrypointVLD" <<<"$va"; then
+      pass "VA-API $codec hardware decode profile"
+    else
+      fail "VA-API $codec hardware decode profile"
+      printf '%s\n' "$va"
+    fi
+  done
+else fail "vainfo and Intel render node available"; fi
 
 command -v vulkaninfo >/dev/null 2>&1 && pass "Vulkan diagnostics installed" || fail "vulkaninfo installed"
 command -v glxinfo >/dev/null 2>&1 && pass "OpenGL diagnostics installed" || fail "glxinfo installed"
