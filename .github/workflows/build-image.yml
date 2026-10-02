@@ -63,7 +63,7 @@ jobs:
             -e VALIDATION_RUN_ID="${{ steps.mode.outputs.run_id }}" \
             -v "$PWD:/workspace" -w /workspace \
             fedora:44 bash -euxo pipefail -c '
-              dnf -y install lorax-lmc-virt qemu-kvm qemu-img edk2-ovmf curl xz util-linux findutils xfsprogs e2fsprogs dosfstools pykickstart &&
+              dnf -y install lorax-lmc-virt qemu-kvm qemu-img edk2-ovmf curl xz util-linux findutils xfsprogs e2fsprogs dosfstools pykickstart dracut &&
               ksvalidator ./config/moonlight-os.ks &&
               if [ -n "$VALIDATION_RUN_ID" ]; then
                 bash ./scripts/build-image.sh --validate-only

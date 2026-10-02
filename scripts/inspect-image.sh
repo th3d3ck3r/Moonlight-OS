@@ -69,7 +69,9 @@ for asset in background.png apollo.png crimson-apollo.script crimson-apollo.plym
 done
 test -s "$work/root/usr/lib64/plymouth/script.so"
 grep -Eq '^[[:space:]]*Theme=crimson-apollo[[:space:]]*$' "$work/root/etc/plymouth/plymouthd.conf"
-chroot "$work/root" /usr/bin/lsinitrd "/boot/initramfs-$INSTALLER_KERNEL.img" > "$work/initramfs-list"
+# Run from the disposable build host: lsinitrd needs writable temporary files
+# and /dev/null, while the release image stays mounted strictly read-only.
+TMPDIR="$work" lsinitrd "$work/root/boot/initramfs-$INSTALLER_KERNEL.img" > "$work/initramfs-list"
 for asset in background.png apollo.png crimson-apollo.script crimson-apollo.plymouth; do
   grep -Fq "usr/share/plymouth/themes/crimson-apollo/$asset" "$work/initramfs-list"
 done

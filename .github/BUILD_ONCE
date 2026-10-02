@@ -1,4 +1,3 @@
-2026-10-02T07:54Z: explicitly authorized fresh image with Crimson Apollo boot animation.
-All six audits passed for d91e2eae12523faee4dec020b82621c9756becd2.
-Preserve source/kernel pins, installed-image inspection and strict OVMF gate.
-Do not update download links or release-facing documentation until the user validates physical boot.
+2026-10-02: recover the installed animation image and rerun corrected read-only inspection plus strict OVMF.
+REVALIDATE_RUN_ID=36981134962
+Keep download links and release-facing documentation unchanged pending user physical boot validation.
