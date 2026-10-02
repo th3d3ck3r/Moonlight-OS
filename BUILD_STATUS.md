@@ -1,20 +1,17 @@
 # Build status
 
-Current downloadable image: promoted to regular release after user-confirmed Mac boot, animation and Bluetooth pairing. Image commit remains `32bc89855f8bac3caf90b9d5177ae583bc50313d`.
+## New experimental — Vibemis Crimson, 2026-10-02
 
-Next candidate: Vibemis Crimson source implemented, awaiting focused Qt/full audit results and a separately authorized fresh experimental build. No new candidate is hardware-validated yet. See [implementation](docs/VIBEMIS_CRIMSON.md).
+- [Experimental release](https://github.com/th3d3ck3r/Moonlight-OS/releases/tag/v0.2-experimental.20261002) · [complete unsplit image ZIP](https://github.com/th3d3ck3r/Moonlight-OS/actions/runs/37022392821/artifacts/11235677661).
+- Source `ebce257c6429f5b363ba0ec6a17815e524d87f29`: [all seven audits](https://github.com/th3d3ck3r/Moonlight-OS/actions/runs/37022392830) passed. Native Fedora frontend startup/Bluetooth fixtures passed; eight focused Qt tests passed; rendered panels reviewed.
+- [Build 37022392821](https://github.com/th3d3ck3r/Moonlight-OS/actions/runs/37022392821) succeeded. Installed-image inspection passed at 15:10:20 UTC; strict OVMF at 15:10:31 UTC, before compression/upload.
+- Artifact 11235677661: 4,143,326,454 bytes (~3.86 GiB), expiry October 16. ZIP SHA-256 `8342975be540c06929057766e298254a59ce1292ac65e590ce613ba4d47da1f3`. Raw size 13,147,045,888 bytes / 12.24 GiB; 16 GB drive minimum. Included checksum verifies the compressed image separately.
+- Full Vibemis black/crimson theme, sixteen accents, local network/battery and Vibepollo host hardware panels; six-second initial Bluetooth scan. All existing hardware/frontend/animation policies retained. [Setup and remaining physical tests](docs/VIBEMIS_CRIMSON.md).
+- Physical validation pending. No minimization has been implemented. User prefers a future Vibemis-focused minimal image, reducing installed size, unnecessary packages and background work after this candidate works on the Mac.
 
+## Regular release — Apollo, frontends & Bluetooth
 
-Status: **experimental prerelease published from a completed image; six audits, installed-payload inspection and OVMF boot passed; physical candidate validation pending**
-
-## Current experimental release — 2026-10-02
-
-- [Experimental prerelease](https://github.com/th3d3ck3r/Moonlight-OS/releases/tag/v0.1-experimental.20261002); [original Actions artifact](https://github.com/th3d3ck3r/Moonlight-OS/actions/runs/36995905431/artifacts/11223945065). Previous repair links remain available below.
-- Image commit `32bc89855f8bac3caf90b9d5177ae583bc50313d`; successful build **36995905431** and all six audits **36995905423**.
-- Installed-image inspection passed at 10:52:00 UTC; strict OVMF passed at 10:52:11 UTC. The publishing workflow verifies the successful source build/audits and artifact identity, then publishes notes linking to the original unsplit artifact; it performs no OS build or image repackaging.
-- Includes Crimson Apollo animation, five-way remembered selector, native Vibemis/Artemis, checksum-pinned Pegasus and generic Bluetooth confirmation/reconnect flow, plus all previous repairs.
-- ZIP size **3,882,747,742 bytes (~3.62 GiB)**; raw image **13,147,045,888 bytes / 12.24 GiB**. The prerelease links to the unsplit Actions ZIP (expires October 16), with no image asset attached; see [download guide](docs/releases/v0.1-experimental.20261002.md).
-- Physical candidate boot, splash/X11 handoff, Bluetooth controllers/AirPods and live new-client streaming remain pending. This is not a stable/hardware-validated promotion.
+[Regular release](https://github.com/th3d3ck3r/Moonlight-OS/releases/tag/v0.1-experimental.20261002) was promoted after the user confirmed Mac boot, animation and Bluetooth pairing. Its historical tag retains the experimental name. Source `32bc89855f8bac3caf90b9d5177ae583bc50313d`, build 36995905431 and all six audits 36995905423 passed; inspection and strict OVMF passed. [Unsplit artifact 11223945065](https://github.com/th3d3ck3r/Moonlight-OS/actions/runs/36995905431/artifacts/11223945065) remains available (3,882,747,742 bytes, expires October 16). Exact device-by-device features, decoder telemetry and sustained streaming still need explicit results.
 
 ## Historical checkpoints
 

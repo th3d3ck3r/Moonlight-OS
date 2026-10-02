@@ -1,4 +1,3 @@
-Publish v0.1-experimental.20261002 from validated build 36995905431.
-Original unsplit artifact 11223945065; no OS rebuild or image splitting.
-User authorized experimental publication on 2026-10-02.
-Retry publication with a current-commit tag; runtime inputs must match validated image commit.
+2026-10-02: publish separate v0.2-experimental.20261002 Vibemis Crimson candidate.
+Source ebce257c6429f5b363ba0ec6a17815e524d87f29; build 37022392821 and all seven audits 37022392830 passed.
+Artifact 11235677661 stays unsplit. Preserve the regular v0.1 release and older repair fallback.

@@ -35,10 +35,12 @@ Already proven in previous CI work:
 - Explicit X11/libinput, GPU diagnostic, root-growth, kmod and hardware-payload checks have already been added.
 - Automatic image-build spam was disabled; use the controlled one-shot build path.
 - Recent audits added/fixed the Cirrus DKMS GCC16 path. **Verify the current repo state rather than reverting to older audio attempts.**
-- A new Vibemis Crimson patch and focused Qt audit are being added; see `docs/VIBEMIS_CRIMSON.md`. Require the current seven audit jobs before the next build.
+- Vibemis Crimson is implemented and built; see `docs/VIBEMIS_CRIMSON.md`. All seven audit jobs passed for its exact build source. Require appropriate audits for any subsequent changes.
 - All six source audits passed in run **36994719874**. All six audits also passed for build commit **32bc89855f8bac3caf90b9d5177ae583bc50313d**, in run **36995905423**. Re-run checks appropriate to any subsequent code changes.
 
-Candidate build **36995905431** completed successfully from commit **32bc89855f8bac3caf90b9d5177ae583bc50313d**. Installed-image inspection and strict OVMF UEFI validation passed. Artifact **11223945065** contains the compressed raw image and checksum. Physical testing of this candidate is pending. Reuse this candidate when available; do not trigger another full build without an authorized source change, missing artifact or explicit user request. The historical Cirrus build blocker is resolved; inspect current evidence before changing that path.
+New experimental build **37022392821** completed from **ebce257c6429f5b363ba0ec6a17815e524d87f29**. All seven audits **37022392830**, installed-image inspection and strict OVMF passed. Artifact **11235677661** contains the compressed raw image/checksum; [experimental notes](docs/releases/v0.2-experimental.20261002.md) distinguish it from the regular image. Physical validation is pending. The regular Apollo/frontends/Bluetooth image is user-tested and remains available. Reuse validated artifacts; do not rebuild without an authorized source change, missing artifact or explicit request. The Cirrus blocker is resolved.
+
+The next requested project, after successful physical testing, is a **Vibemis-focused minimal image**: minimize installed size, unnecessary packages and idle background work while retaining streaming/hardware/theme/settings/recovery. Measure package, source-tree and service costs first; show the space/functionality tradeoff of retaining Moonlight fallback. No minimization changes have been made, and this conditional next phase must remain separate from the current completed build and other feature prompts.
 
 ## Required invariants — do not regress these
 

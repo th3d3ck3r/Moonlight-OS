@@ -17,8 +17,8 @@ jobs:
     env:
       GH_TOKEN: ${{ github.token }}
       GH_REPO: ${{ github.repository }}
-      SOURCE_SHA: 32bc89855f8bac3caf90b9d5177ae583bc50313d
-      TAG: v0.1-experimental.20261002
+      SOURCE_SHA: ebce257c6429f5b363ba0ec6a17815e524d87f29
+      TAG: v0.2-experimental.20261002
     steps:
       - uses: actions/checkout@v4
       - name: Verify successful source build and audits
@@ -26,19 +26,19 @@ jobs:
         run: |
           set -euo pipefail
           git fetch --no-tags origin "$SOURCE_SHA"
-          git diff --exit-code "$SOURCE_SHA" HEAD -- config scripts assets SOURCES.lock .github/BUILD_ONCE
-          for run_id in 36995905431 36995905423; do
+          git diff --exit-code "$SOURCE_SHA" HEAD -- config scripts assets patches SOURCES.lock .github/BUILD_ONCE
+          for run_id in 37022392821 37022392830; do
             gh api "repos/$GH_REPO/actions/runs/$run_id" > run.json
             jq -e --arg sha "$SOURCE_SHA" '.head_sha == $sha and .conclusion == "success"' run.json
           done
-          gh api "repos/$GH_REPO/actions/artifacts/11223945065" > artifact.json
-          jq -e --arg sha "$SOURCE_SHA" '.expired == false and .workflow_run.head_sha == $sha and .workflow_run.id == 36995905431 and .name == "moonlight-os-mbp14-1"' artifact.json
+          gh api "repos/$GH_REPO/actions/artifacts/11235677661" > artifact.json
+          jq -e --arg sha "$SOURCE_SHA" '.expired == false and .workflow_run.head_sha == $sha and .workflow_run.id == 37022392821 and .name == "moonlight-os-mbp14-1"' artifact.json
       - name: Publish experimental prerelease with unsplit download link
         shell: bash
         run: |
           set -euo pipefail
           if gh release view "$TAG" --json tagName >/dev/null 2>&1; then
-            gh release edit "$TAG" --draft=false --prerelease --latest=false --notes-file docs/releases/v0.1-experimental.20261002.md
+            gh release edit "$TAG" --draft=false --prerelease --latest=false --notes-file docs/releases/v0.2-experimental.20261002.md
           else
-            gh release create "$TAG" --target "$GITHUB_SHA" --prerelease --latest=false --title '🌑 Moonlight-OS experimental — Apollo, frontends & Bluetooth' --notes-file docs/releases/v0.1-experimental.20261002.md
+            gh release create "$TAG" --target "$GITHUB_SHA" --prerelease --latest=false --title '🖤🔴 Moonlight-OS v0.2 experimental — Vibemis Crimson' --notes-file docs/releases/v0.2-experimental.20261002.md
           fi

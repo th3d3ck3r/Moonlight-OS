@@ -1,6 +1,6 @@
 # 🖤🔴 Vibemis Crimson — theme and status update
 
-Status: source implemented, validation in progress; not present in the current downloadable image yet. The user authorized a new experimental build after four review passes.
+Status: included in the [new experimental release](https://github.com/th3d3ck3r/Moonlight-OS/releases/tag/v0.2-experimental.20261002). All seven audits, installed-image inspection and strict OVMF boot passed for build 37022392821 / source `ebce257c6429f5b363ba0ec6a17815e524d87f29`. The regular release remains unchanged; physical testing of this candidate is pending.
 
 The Moonlight-OS patch for pinned Vibemis 0.5.0 supplies one mostly-black palette across the launcher, settings, dialogs, popups and existing token-based quick-menu surfaces. Crimson is the default for new preferences. Existing accent indices 0–3 retain their colors; users with saved settings can select Crimson explicitly. Sixteen choices: Teal, Indigo, Green, Amber, Crimson, Red, Orange, Gold, Lime, Mint, Cyan, Blue, Violet, Pink, Silver and Rose. Highlight/pressed colors follow the active accent, including Material controls; existing shapes, typography, focus handling and streaming shortcuts are preserved. No compositor or blur dependency is added.
 
@@ -24,6 +24,6 @@ Generic Bluetooth's initial scan is shortened from twelve to six seconds. Discov
 
 The reviewed patch is stored in `patches/vibemis-crimson.patch`, SHA-256-pinned in `SOURCES.lock`, embedded offline into Kickstart and verified before application. The image inspector requires its installed receipt. Recovery manifests include the changed Kickstart/lock, preventing reuse of an older installed image.
 
-Four passes: structure/payload/patch checks; focused Qt parser/TLS/palette/panel tests plus Fedora native compilation; installed-payload inspection; strict OVMF boot validation. Final two gates necessarily follow the new image build. Current physical success belongs to the existing download, not this source revision. New colors/panels, host API setup, Wi-Fi/battery readouts, Bluetooth discovery timing and streaming regression still need a physical test after flashing the new experimental build.
+Four passes: structure/payload/patch checks; focused Qt parser/TLS/palette/panel tests plus Fedora native compilation; installed-payload inspection; strict OVMF boot validation. All four passes completed; installed-image inspection passed at 15:10:20 UTC and OVMF at 15:10:31 UTC. Current physical success belongs to the existing download, not this source revision. New colors/panels, host API setup, Wi-Fi/battery readouts, Bluetooth discovery timing and streaming regression still need a physical test after flashing the new experimental build.
 
 The five-way selector, other clients, Intel decode, native Retina/Openbox session, confirmed Mac media keys, speaker save/restore, 100-row console, AirPods policy, DualSense HID/audio policy, animation, root growth and recovery consoles remain in scope for regression checks. No browser/dashboard launch, graphical appliance settings redesign or OS minimization is included here.

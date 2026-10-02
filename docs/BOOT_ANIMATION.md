@@ -2,7 +2,7 @@
 
 The source recipe now installs an original black/crimson Plymouth script theme. A spacecraft orbits the moon while three restrained lights indicate activity. There is no progress percentage, required full orbit, artificial boot wait or video decoder.
 
-**Included in the [experimental release](https://github.com/th3d3ck3r/Moonlight-OS/releases/tag/v0.1-experimental.20261002). Build 36995905431 passed installed-image inspection and strict OVMF validation. The previous repair download predates the theme. Physical Mac splash/KMS and X11 handoff testing remain pending.**
+**Included in the [regular release](https://github.com/th3d3ck3r/Moonlight-OS/releases/tag/v0.1-experimental.20261002). Build 36995905431 passed installed-image inspection and strict OVMF validation. The previous repair download predates the theme. The user confirmed the boot animation working on the Mac. The newer experimental image retains it and needs a separate physical handoff test.**
 
 ## How it is installed
 
@@ -25,7 +25,7 @@ On a disposable Fedora 44 environment, run `bash scripts/audit-boot-animation.sh
 
 After editing the artwork/theme, run `python3 scripts/sync-boot-theme.py --write`. The audit requires byte-for-byte equality between repository files and their embedded Kickstart copies. GIF/poster previews are not installed into the initramfs.
 
-## Recovery on the animation-enabled experimental image
+## Recovery on the animation-enabled image
 
 Press **Escape** during the splash to inspect boot details. Use the existing diagnostic tty or serial output if needed. At GRUB, edit the selected boot entry and append `plymouth.enable=0` for a one-time text boot; remove `rhgb` as well if graphics are unavailable. This does not modify the stored entry.
 

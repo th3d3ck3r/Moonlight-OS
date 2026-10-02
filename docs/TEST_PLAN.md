@@ -1,6 +1,6 @@
 # Test plan — MacBookPro14,1
 
-Current experimental release: [v0.1-experimental.20261002](https://github.com/th3d3ck3r/Moonlight-OS/releases/tag/v0.1-experimental.20261002). Automated gates passed for build 36995905431; physical tests below remain required. See the [unsplit download guide](releases/v0.1-experimental.20261002.md).
+Regular release: [Apollo/frontends/Bluetooth](https://github.com/th3d3ck3r/Moonlight-OS/releases/tag/v0.1-experimental.20261002), with user-confirmed Mac boot, animation and Bluetooth pairing. New experimental candidate: [Vibemis Crimson](releases/v0.2-experimental.20261002.md); build 37022392821 and all seven exact-source audits passed, including inspection and OVMF. Its physical checks below remain required. See [host-stats setup](VIBEMIS_CRIMSON.md).
 
 ## Gate 0: automated image/UEFI preflight
 
@@ -86,6 +86,16 @@ Record network latency, decode time, render time, dropped frames, and visible fr
 - Pair DualShock 4, DualSense and AirPods Pro 2 independently through `moonlight-bluetooth`; respond to confirmation/PIN prompts. Test rejection, retry, disconnect/reconnect and confirmed forget without deleting other bonds.
 - Verify controller input, AirPods playback/codec, reboot reconnection and radio recovery on the real Mac. A fixture connection state is not a hardware result.
 - Test volume, mute, display and keyboard brightness both in the UI and during streaming; check no duplicate key handling.
+
+## Gate 3c: Vibemis Crimson experimental
+
+- On fresh preferences, confirm Crimson is selected; an existing accent is preserved. Select all sixteen accents and check launcher, settings, help, dialogs, popups and quick-menu controls share the dark palette and active accent.
+- Check the three header icons at native Retina resolution and smaller window widths; keyboard/controller focus must still reach every existing header button and page.
+- Compare network icon/readout against NetworkManager, connected/disconnected Wi-Fi and an offline link. Compare battery percentage/charging state against the Mac; missing sensors must show unavailable.
+- Select a host and configure its HTTPS management URL, a read-only token scoped to GET `/api/host/stats`, and a verified certificate fingerprint when self-signed. Compare CPU, RAM, GPU, VRAM, encoder, temperatures and network values with Vibepollo. Missing metrics must show N/A.
+- Close the host panel and verify requests stop. Reopen, switch hosts, disconnect networking, reject/change the certificate, and test an unsupported Sunshine host; ensure clear errors and no stale values or forwarded credentials.
+- Reboot and confirm per-host access persists privately. Stream normally with the panel closed, check no extra input latency, and repeat existing streaming/quick-menu/Intel/media-key tests.
+- Compare the shorter six-second initial Bluetooth scan with pairing and rescan of the actual controllers/AirPods.
 
 ## Gate 4: stability
 

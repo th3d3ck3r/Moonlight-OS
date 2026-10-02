@@ -7,7 +7,7 @@
 
 A controller-friendly USB appliance for the **2017 13-inch non-Touch-Bar MacBook Pro — MacBookPro14,1**, connecting to **Vibepollo / Sunshine-compatible hosts**.
 
-**[🌙 Current release](https://github.com/th3d3ck3r/Moonlight-OS/releases/tag/v0.1-experimental.20261002) · [⬇️ Previous repair download](https://github.com/th3d3ck3r/Moonlight-OS/actions/runs/36972953272/artifacts/11213197745) · [🚀 Setup](#quick-start) · [✨ Features](#features) · [🩺 Troubleshooting](#troubleshooting) · [🌑 Animation](#crimson-apollo-animation-preview) · [🧭 Roadmap](#independent-feature-plans) · [🧪 Test plan](docs/TEST_PLAN.md)**
+**[🌙 Current release](https://github.com/th3d3ck3r/Moonlight-OS/releases/tag/v0.1-experimental.20261002) · [🖤🔴 New experimental](https://github.com/th3d3ck3r/Moonlight-OS/releases/tag/v0.2-experimental.20261002) · [⬇️ Previous repair download](https://github.com/th3d3ck3r/Moonlight-OS/actions/runs/36972953272/artifacts/11213197745) · [🚀 Setup](#quick-start) · [✨ Features](#features) · [🩺 Troubleshooting](#troubleshooting) · [🌑 Animation](#crimson-apollo-animation-preview) · [🧭 Roadmap](#independent-feature-plans) · [🧪 Test plan](docs/TEST_PLAN.md)**
 
 </div>
 
@@ -19,13 +19,15 @@ A controller-friendly USB appliance for the **2017 13-inch non-Touch-Bar MacBook
 
 Includes the **black/crimson animated Apollo moon boot screen**, a remembered selector for **Vibemis / Artemis / Pegasus / Moonlight / CocoOS**, and generic guided Bluetooth pairing with confirmation prompts and verified connection state. All Intel, English UI, Openbox/display, audio, Mac media-key and console repairs remain included.
 
-**All six audits, installed-image inspection and strict OVMF boot passed** for image commit `32bc89855f8bac3caf90b9d5177ae583bc50313d`. The user confirmed boot, animation and Bluetooth pairing on the Mac and prefers Vibemis. Exact device-by-device AirPods/controller features, decoder telemetry and sustained streaming checks still need results. The previous repair download below stays available as a fallback; this image is now promoted to a regular release; the next theme/status image will remain experimental.
+**All six audits, installed-image inspection and strict OVMF boot passed** for image commit `32bc89855f8bac3caf90b9d5177ae583bc50313d`. The user confirmed boot, animation and Bluetooth pairing on the Mac and prefers Vibemis. Exact device-by-device AirPods/controller features, decoder telemetry and sustained streaming checks still need results. The previous repair download below stays available as a fallback; this image is now promoted to a regular release; the new theme/status image remains separately experimental.
 
 **One complete download; no split files.** The current release links to the original Actions ZIP (about **3.62 GiB**), containing the compressed image and checksum. GitHub may require sign-in; the artifact expires October 16. No image is attached as a release asset because it exceeds GitHub's per-file limit. Do not flash GitHub's automatic source-code ZIP.
 
-## 🖤🔴 Next experimental — Vibemis Crimson
+## 🖤🔴 New experimental — Vibemis Crimson
 
-Source update in validation: a full-app black/crimson palette, sixteen accent colors and three matching top-bar buttons for **network**, **battery** and **Vibepollo host CPU/RAM/GPU hardware stats**. Generic Bluetooth starts with a shorter six-second scan. [Implementation and host-stats setup](docs/VIBEMIS_CRIMSON.md). A new experimental image/download will be added after its audits, inspection and OVMF pass; the current release image is unchanged.
+**[🧪 Experimental release](https://github.com/th3d3ck3r/Moonlight-OS/releases/tag/v0.2-experimental.20261002) · [📦 One-file image ZIP](https://github.com/th3d3ck3r/Moonlight-OS/actions/runs/37022392821/artifacts/11235677661) · [📖 Download / flashing guide](docs/releases/v0.2-experimental.20261002.md)**
+
+Full-app black/crimson palette, sixteen accent colors and three matching top-bar buttons for **network**, **battery** and **Vibepollo host CPU/RAM/GPU hardware stats**. Generic Bluetooth starts with a shorter six-second scan. [Implementation and host-stats setup](docs/VIBEMIS_CRIMSON.md). **All seven source audits, installed-image inspection and strict OVMF boot passed** for source `ebce257c6429f5b363ba0ec6a17815e524d87f29`. The complete ZIP is about **3.86 GiB**, raw image **12.24 GiB**, with a 16 GB drive requirement; the artifact expires October 16. Physical testing of this new image remains pending. The regular release above stays available.
 
 ## ✅ Previous v0.1 repair — built, inspected, boot validated
 
@@ -63,9 +65,10 @@ The new download passed image inspection and OVMF. Your physical test results ca
 
 | Feature | Included configuration |
 | --- | --- |
-| 🎮 Frontend choices | Experimental: **Vibemis, Artemis, Pegasus, Moonlight, CocoOS**; previous repair: CocoOS/Moonlight |
-| 🌑 Boot animation | Experimental: **Crimson Apollo**, black/red moon and orbiting spacecraft; Escape for details |
-| 🛜 Bluetooth pairing | Experimental: generic scan/pair/reconnect/disconnect/confirmed forget, with live confirmation agent |
+| 🖤🔴 Vibemis Crimson | New experimental: full-app dark palette, sixteen accents, network/battery/host hardware panels |
+| 🎮 Frontend choices | Regular and experimental: **Vibemis, Artemis, Pegasus, Moonlight, CocoOS**; previous repair: CocoOS/Moonlight |
+| 🌑 Boot animation | Regular and experimental: **Crimson Apollo**, black/red moon and orbiting spacecraft; Escape for details |
+| 🛜 Bluetooth pairing | Regular and experimental: generic scan/pair/reconnect/disconnect/confirmed forget, with live confirmation agent |
 | ⚡ Intel acceleration | Kernel `i915`, Intel VA-API H.264/HEVC decode stack, Mesa, and GPU diagnostics for Iris Plus 640 |
 | 🖥️ Lean graphics session | Native **X11**, with no desktop environment or compositor |
 | 📶 Wi-Fi setup | NetworkManager, guided first-boot connection, saved networks, and Wi-Fi power saving disabled |
@@ -79,9 +82,9 @@ The new download passed image inspection and OVMF. Your physical test results ca
 | 🌡️ Diagnostics | Hardware verifier, VA-API checks, `intel_gpu_top`, input tools, and thermal management |
 | 🔒 Reproducible builds | Pinned upstream commits and Fedora installer checksum in [SOURCES.lock](SOURCES.lock) |
 
-**Experimental boot flow:** Apple EFI → Fedora 44 / Crimson Apollo → Wi-Fi setup → remembered frontend chooser → X11/Openbox → selected client → streaming host. Initial default is Moonlight. The previous repair starts CocoOS.
+**Boot flow:** Apple EFI → Fedora 44 / Crimson Apollo → Wi-Fi setup → remembered frontend chooser → X11/Openbox → selected client → streaming host. Initial default is Moonlight. The previous repair starts CocoOS.
 
-CocoOS is a Moonlight-Qt fork whose interface is still evolving. After repeated client failures, the launcher falls back to upstream Moonlight. The experimental selector remembers all five choices. Pegasus launches the four clients; it does not stream by itself. Vibemis and Artemis require their own host pairing.
+CocoOS is a Moonlight-Qt fork whose interface is still evolving. After repeated client failures, the launcher falls back to upstream Moonlight. The selector remembers all five choices. Pegasus launches the four clients; it does not stream by itself. Vibemis and Artemis require their own host pairing.
 
 **Performance targets:** idle memory below 2 GB and a low-latency streaming session. These are targets, not measured physical-hardware results. An 8 GB MacBook is the intended class of device.
 
@@ -91,7 +94,7 @@ CocoOS is a Moonlight-Qt fork whose interface is still evolving. After repeated 
 
 ### 1. Download and verify 🔍
 
-[Download the validated GitHub Actions ZIP](https://github.com/th3d3ck3r/Moonlight-OS/actions/runs/36972953272/artifacts/11213197745), then unzip it. GitHub may require you to sign in.
+[Download the current regular-release ZIP](https://github.com/th3d3ck3r/Moonlight-OS/actions/runs/36995905431/artifacts/11223945065), then unzip it. Choose the separate experimental download above to test the newer Vibemis theme and status panels. GitHub may require you to sign in.
 
 Run the checksum command in the directory containing both downloaded files:
 
@@ -129,7 +132,7 @@ diskutil eject /dev/diskN
 1. Insert the USB into the target MacBook.
 2. Hold **Option (⌥)** at power-on and select **EFI Boot**.
 3. If no network is saved, use the Wi-Fi helper's **Connect** option, powered by `nmtui-connect`.
-4. Experimental: choose a frontend (Enter/eight-second timeout keeps the saved choice; first boot defaults to Moonlight). Previous repair starts CocoOS. Add/discover your host and complete pairing in the chosen client.
+4. Choose a frontend (Enter/eight-second timeout keeps the saved choice; first boot defaults to Moonlight). Previous repair starts CocoOS. Add/discover your host and complete pairing in the chosen client.
 5. Start with **1080p60, H.264, hardware decoding, V-Sync, and frame pacing enabled**. Compare HEVC and network options after confirming a stable stream.
 
 The appliance is designed to run from USB without installing to the internal SSD. Saved settings survive reboots.
@@ -147,12 +150,12 @@ The appliance is designed to run from USB without installing to the internal SSD
 | `moonlight-audio save` | Save the current hardware mixer levels |
 | `sudo moonlight-os-verify` | Inspect hardware, graphics, networking, audio, input, clients, and memory |
 | `dualsense-check` | Inspect controller support |
-| `moonlight-bluetooth` | Generic guided Bluetooth pairing and connection management (experimental) |
+| `moonlight-bluetooth` | Generic guided Bluetooth pairing and connection management |
 | `dualsense-pair` / `airpods-pair` | Compatibility entry points for the same guided pairing flow |
 
 ### 🎮 Start any frontend
 
-The experimental boot chooser offers **1 Vibemis · 2 Artemis · 3 Pegasus · 4 Moonlight · 5 CocoOS**. Enter or the eight-second timeout keeps the remembered choice. Initial default and launch-failure fallback are vanilla Moonlight.
+The boot chooser offers **1 Vibemis · 2 Artemis · 3 Pegasus · 4 Moonlight · 5 CocoOS**. Enter or the eight-second timeout keeps the remembered choice. Initial default and launch-failure fallback are vanilla Moonlight.
 
 From tty2, settings option **9** opens selection; options **7/8** still select CocoOS/Moonlight. Save a choice with one of:
 
@@ -180,6 +183,7 @@ Run only the command for the frontend you want. End the stream, then `sudo reboo
 
 | Symptom / limitation | What to check or do |
 | --- | --- |
+| Vibemis host stats unavailable | Configure a read-only Vibepollo stats token and verify the HTTPS certificate; GameStream pairing alone is insufficient. Unsupported sensors show N/A. |
 | Bluetooth missing after switching from macOS | BCM4350C0 may retain macOS' UART baud rate. Shut down, perform the standard SMC reset for this MacBook once, and retry. |
 | Wi-Fi missing or unstable | Open tty2 settings and run `sudo moonlight-os-verify`. BCM4350 firmware/driver behavior still needs physical validation; compare a supported Ethernet adapter if available. |
 | Black screen, slow decode, or stutter | Compare upstream Moonlight with CocoOS. Start at 1080p60/H.264; inspect VA-API and the performance overlay. Run the verifier and observe video-engine activity with `intel_gpu_top`. |
@@ -241,7 +245,7 @@ The development image stays **under 14,000 MiB raw** while retaining Git, GCC, D
 - [Planned host stats overlay and dashboard button](docs/HOST_OVERLAY_PLAN.md) — follow-up after physical boot validation
 - [Liquid Glass–inspired GUI plan](docs/LIQUID_GLASS_GUI_PLAN.md) — cohesive client and appliance settings redesign
 - [Black-and-red terminal settings plan](CODEX_CLI_INTERFACE_PROMPT.md) — independent, self-contained execution prompt; no new image build
-- [Crimson Apollo boot animation](CODEX_BOOT_ANIMATION_PROMPT.md) — included in experimental; physical splash validation pending
+- [Crimson Apollo boot animation](CODEX_BOOT_ANIMATION_PROMPT.md) — included in the regular release; user confirmed the animation
 - [Pinned sources](SOURCES.lock)
 - [Third-party software](docs/THIRD_PARTY.md)
 
@@ -299,7 +303,7 @@ The helper installs the same media-key service as new images, clears the older O
 
 [▶️ Open / save the animated GIF](https://raw.githubusercontent.com/th3d3ck3r/Moonlight-OS/main/assets/boot/crimson-apollo/preview.gif) · [🖼️ Still preview](assets/boot/crimson-apollo/poster.png)
 
-Original artwork and a native Plymouth script theme are integrated into the image recipe: a crimson moon, orbiting Apollo-inspired spacecraft and subtle loading lights. The script caches rotations, handles masked prompts and messages, and fits the display without changing its mode. **The experimental release includes this animation and passed installed-image/OVMF validation.** The previous repair download predates it. The GIF is an artwork preview, not a recording of the Mac boot; physical splash/handoff testing is pending. See [activation, recovery and validation](docs/BOOT_ANIMATION.md) and the [separate integration prompt](CODEX_BOOT_ANIMATION_PROMPT.md).
+Original artwork and a native Plymouth script theme are integrated into the image recipe: a crimson moon, orbiting Apollo-inspired spacecraft and subtle loading lights. The script caches rotations, handles masked prompts and messages, and fits the display without changing its mode. **Both release channels include this animation; the user confirmed it working in the regular image.** The previous repair download predates it. The GIF is an artwork preview, not a recording of the Mac boot; the new experimental image still needs its own physical splash/handoff test. See [activation, recovery and validation](docs/BOOT_ANIMATION.md) and the [separate integration prompt](CODEX_BOOT_ANIMATION_PROMPT.md).
 
 <a id="independent-feature-plans"></a>
 
@@ -308,11 +312,11 @@ Original artwork and a native Plymouth script theme are integrated into the imag
 | Project | Status | Self-contained plan |
 | --- | --- | --- |
 | 🖤🔴 Crimson Console | Planned terminal settings interface; not implemented | [CODEX_CLI_INTERFACE_PROMPT.md](CODEX_CLI_INTERFACE_PROMPT.md) |
-| 🌑🚀 Crimson Apollo | Included in experimental; native script/image/OVMF checks pass; Mac splash test pending | [CODEX_BOOT_ANIMATION_PROMPT.md](CODEX_BOOT_ANIMATION_PROMPT.md) |
+| 🌑🚀 Crimson Apollo | Included in both release channels; native script/image/OVMF checks pass; user confirmed the regular image animation | [CODEX_BOOT_ANIMATION_PROMPT.md](CODEX_BOOT_ANIMATION_PROMPT.md) |
 | 💎 Crimson Glass | Planned black/crimson graphical redesign; not implemented | [GUI plan](docs/LIQUID_GLASS_GUI_PLAN.md) |
 | 📊 Host overlay / dashboard | Planned remote stats and host dashboard feature; not implemented | [Host plan](docs/HOST_OVERLAY_PLAN.md) |
 
-Each project stays separate. The terminal and animation prompts explicitly prohibit starting an image build without a later build request. The previous repair activates neither feature. The experimental release includes Crimson Apollo; Crimson Console remains planning only.
+Each project stays separate. The terminal and animation prompts explicitly prohibit starting an image build without a later build request. The previous repair activates neither feature. Both release channels include Crimson Apollo; Crimson Console remains planning only.
 
 ---
 
