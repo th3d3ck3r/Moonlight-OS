@@ -7,7 +7,7 @@
 
 A controller-friendly USB appliance for the **2017 13-inch non-Touch-Bar MacBook Pro — MacBookPro14,1**, connecting to **Vibepollo / Sunshine-compatible hosts**.
 
-**[⬇️ Download](https://github.com/th3d3ck3r/Moonlight-OS/actions/runs/36972953272/artifacts/11213197745) · [🚀 Setup](#quick-start) · [✨ Features](#features) · [🩺 Troubleshooting](#troubleshooting) · [🧪 Test plan](docs/TEST_PLAN.md)**
+**[⬇️ Download](https://github.com/th3d3ck3r/Moonlight-OS/actions/runs/36972953272/artifacts/11213197745) · [🚀 Setup](#quick-start) · [✨ Features](#features) · [🩺 Troubleshooting](#troubleshooting) · [🌑 Animation](#crimson-apollo-animation-preview) · [🧭 Roadmap](#independent-feature-plans) · [🧪 Test plan](docs/TEST_PLAN.md)**
 
 </div>
 
@@ -27,6 +27,21 @@ A controller-friendly USB appliance for the **2017 13-inch non-Touch-Bar MacBook
 | Artifact expires | **October 16, 2026** — run the build workflow for a fresh artifact |
 
 > 🛠️ **Physical Mac testing confirmed:** booting and desktop streaming, H.264/HEVC decode capability after the full Intel driver fix, native-resolution sizing with Openbox, direct desktop mouse mode, speaker mixer adjustment, and screen/keyboard brightness plus volume keys. The new image contains these repairs and English CocoOS labels. Actual decoder telemetry, reboot persistence, mute/keys during active streaming, AirPods and DualSense still need their physical checks. Hardware mixer levels may need a one-time adjustment/save on a newly flashed image because the exact working values were not supplied.
+
+## 🔴 Confirmed on the Mac — October 2
+
+| Area | Current evidence |
+| --- | --- |
+| 💾 USB boot + streaming | The user booted Moonlight-OS on MacBookPro14,1 and streamed the Windows host desktop |
+| 🔆 Screen brightness | Physical shortcut keys confirmed working |
+| ⌨️ Keyboard brightness | Physical shortcut keys confirmed working |
+| 🔊 Volume | Physical shortcut keys confirmed working; hardware mixer adjustment fixed quiet speakers |
+| 🖥️ Display / pointer | Openbox fixed native-resolution sizing; direct mouse mode fixed desktop-stream pointer speed |
+| ⚡ Intel decoding | Full Intel driver exposes H.264/HEVC VLD profiles; actual video-engine use still needs telemetry confirmation |
+| 🇬🇧 English UI | Checked English labels compiled into the repaired image; confirm the UI after flashing it |
+| 🧪 Still to test | Mute, media keys during active streaming, reboot persistence, AirPods, DualSense and sustained performance |
+
+The new download passed image inspection and OVMF. Your physical test results came from the existing USB with the applied fixes; they do not replace a boot test of the newly flashed download.
 
 <a id="features"></a>
 
@@ -112,9 +127,25 @@ The appliance is designed to run from USB without installing to the internal SSD
 | `moonlight-settings` | Launch the guided settings menu manually |
 | `sudo moonlight-os-client cocoos` | Select CocoOS |
 | `sudo moonlight-os-client moonlight` | Select upstream Moonlight |
+| `moonlight-audio` | Open the hardware mixer and save adjustments on exit |
+| `moonlight-audio save` | Save the current hardware mixer levels |
 | `sudo moonlight-os-verify` | Inspect hardware, graphics, networking, audio, input, clients, and memory |
 | `dualsense-check` | Inspect controller support |
 | `dualsense-pair` | Start guided Bluetooth controller pairing |
+
+### 🎮 Start either frontend
+
+**CocoOS starts automatically by default.** From tty2 settings, choose **Use CocoOS** or **Use vanilla Moonlight**, or run:
+
+```bash
+# Select CocoOS for the next appliance session
+sudo moonlight-os-client cocoos
+
+# Or select upstream Moonlight instead
+sudo moonlight-os-client moonlight
+```
+
+Selection is saved on the USB; it does not immediately replace a running client. When ready, end your stream and run `sudo reboot` to launch the selected frontend. On the Mac, return to the streaming console with **Control + Option + F1**, adding Fn if needed. CocoOS also falls back to upstream Moonlight after repeated failures.
 
 **DualSense pairing:** hold **CREATE + PS** until the light bar flashes rapidly, then use the pairing helper. The USB audio endpoints are suppressed; actual haptics and other controller features depend on the client and host.
 
@@ -154,7 +185,7 @@ The appliance is designed to run from USB without installing to the internal SSD
 
 The overlay preserves the release raw image. The root-growth audit also checks actual partition/filesystem expansion, unchanged EFI/boot partitions, NOCHANGE handling, and retry after failure.
 
-**Next: real hardware.** Follow [docs/TEST_PLAN.md](docs/TEST_PLAN.md) for GPU decode, Apple input, networking, audio, AirPods, controller behavior, and sustained streams. Compare CocoOS/upstream Moonlight and Wi-Fi/Ethernet using the performance overlay.
+**Continue physical validation.** Booting, desktop streaming and the reported controls already work on the Mac. Follow [docs/TEST_PLAN.md](docs/TEST_PLAN.md) for GPU decode, Apple input, networking, audio, AirPods, controller behavior, and sustained streams. Compare CocoOS/upstream Moonlight and Wi-Fi/Ethernet using the performance overlay.
 
 ## 🏗️ Build your own image
 
@@ -196,15 +227,6 @@ The development image stays **under 14,000 MiB raw** while retaining Git, GCC, D
 ## ⚖️ License
 
 Moonlight-OS build scripts are **GPL-3.0**. Included third-party software retains its upstream license, including Moonlight-Qt/CocoOS (GPL-3.0). See [docs/THIRD_PARTY.md](docs/THIRD_PARTY.md).
-
----
-
-<div align="center">
-
-**🌙 Boot. Pair. Play.**  
-Built for a dedicated streaming setup — with the diagnostics to keep improving it.
-
-</div>
 
 ## ⌨️ Mac keyboard shortcuts and confirmed repairs
 
@@ -248,8 +270,34 @@ bash Moonlight-OS/scripts/install-media-keys.sh
 
 The helper installs the same media-key service as new images, clears the older Openbox bindings to avoid applying each key twice, backs up the Openbox configuration, and reloads the running WM. It does not rebuild or reflash the USB. Test screen brightness, keyboard lighting, mute and volume in CocoOS first, then while streaming. If a key sends a function key rather than a media symbol, hold Fn. Volume increase is capped at 100%; use the saved hardware mixer adjustment if speakers remain quiet. Screen brightness, keyboard brightness and volume keys are confirmed on the Mac; mute and behavior during a stream still need confirmation.
 
+<a id="crimson-apollo-animation-preview"></a>
+
 ## 🌑🚀 Crimson Apollo animation preview
 
 ![Black-and-crimson Apollo spacecraft orbiting a moon](assets/boot/crimson-apollo/preview.gif)
 
+[▶️ Open / save the animated GIF](https://raw.githubusercontent.com/th3d3ck3r/Moonlight-OS/main/assets/boot/crimson-apollo/preview.gif) · [🖼️ Still preview](assets/boot/crimson-apollo/poster.png)
+
 Original animated artwork and a Plymouth theme prototype are included in the repository. **The theme is not activated in the downloadable image.** See the [separate integration prompt](CODEX_BOOT_ANIMATION_PROMPT.md); no additional build was started for this artwork or the terminal-interface plan.
+
+<a id="independent-feature-plans"></a>
+
+## 🧭 Independent feature plans
+
+| Project | Status | Self-contained plan |
+| --- | --- | --- |
+| 🖤🔴 Crimson Console | Planned terminal settings interface; not implemented | [CODEX_CLI_INTERFACE_PROMPT.md](CODEX_CLI_INTERFACE_PROMPT.md) |
+| 🌑🚀 Crimson Apollo | Animated artwork created; Plymouth prototype inactive and not runtime-validated | [CODEX_BOOT_ANIMATION_PROMPT.md](CODEX_BOOT_ANIMATION_PROMPT.md) |
+| 💎 Crimson Glass | Planned black/crimson graphical redesign; not implemented | [GUI plan](docs/LIQUID_GLASS_GUI_PLAN.md) |
+| 📊 Host overlay / dashboard | Planned remote stats and host dashboard feature; not implemented | [Host plan](docs/HOST_OVERLAY_PLAN.md) |
+
+Each project stays separate. The terminal and animation prompts explicitly prohibit starting an image build without a later build request. The current repaired download does not activate either feature.
+
+---
+
+<div align="center">
+
+**🌙 Boot. Pair. Play.**
+Built for a dedicated streaming setup — with the diagnostics to keep improving it.
+
+</div>
