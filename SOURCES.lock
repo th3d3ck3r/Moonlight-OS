@@ -27,5 +27,5 @@ PEGASUS_VERSION=alpha16-106-g83fd27f4
 PEGASUS_URL=https://github.com/mmatyas/pegasus-frontend/releases/download/continuous/pegasus-fe_alpha16-106-g83fd27f4_x11-static.zip
 PEGASUS_SHA256=85842b658796a67aeaefd2eeef8d3ee1999c675661bf443fa34e999e394bc550
 
-# Reviewed Moonlight-OS Vibemis theme/status patch.
-VIBEMIS_PATCH_SHA256=2e577766c16e059deb04cdf2a286c4a28bf271737eeb3874e4b29995c93a8a6c
+# Reviewed EclipseOS Vibemis theme/status patch.
+VIBEMIS_PATCH_SHA256=2c002f07f89d74df200285aed2c74af5072a3e029f0023ec87e7478f55e8eaaf

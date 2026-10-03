@@ -40,5 +40,5 @@ jobs:
           if gh release view "$TAG" --json tagName >/dev/null 2>&1; then
             gh release edit "$TAG" --draft=false --prerelease --latest=false --notes-file docs/releases/v0.2-experimental.20261002.md
           else
-            gh release create "$TAG" --target "$GITHUB_SHA" --prerelease --latest=false --title '🖤🔴 Moonlight-OS v0.2 experimental — Vibemis Crimson' --notes-file docs/releases/v0.2-experimental.20261002.md
+            gh release create "$TAG" --target "$GITHUB_SHA" --prerelease --latest=false --title '🖤🔴 EclipseOS v0.2 experimental — Vibemis Crimson' --notes-file docs/releases/v0.2-experimental.20261002.md
           fi

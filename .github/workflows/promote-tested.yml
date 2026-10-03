@@ -15,4 +15,4 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
         run: |
-          gh release edit v0.1-experimental.20261002 --prerelease=false --latest --title '🌙 Moonlight-OS v0.1 — Apollo, frontends & Bluetooth' --notes-file docs/releases/v0.1-experimental.20261002.md
+          gh release edit v0.1-experimental.20261002 --prerelease=false --latest --title '🌙 EclipseOS v0.1 — Apollo, frontends & Bluetooth' --notes-file docs/releases/v0.1-experimental.20261002.md

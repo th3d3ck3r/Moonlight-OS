@@ -20,7 +20,7 @@ Assets live in `assets/boot/crimson-apollo/`. `scripts/render-boot-animation.py`
 
 - Mostly black starfield, restrained red lunar rim, dark crimson moon/craters.
 - Apollo-inspired command/service module follows a circular lunar orbit with tangent orientation.
-- Small lunar-module motif, clean Moonlight-OS wordmark and crimson highlights.
+- Small lunar-module motif, clean EclipseOS wordmark and crimson highlights.
 - Smooth, infinitely looping **72-frame / 7.2-second** GIF preview with subtle loading lights.
 - `background.png` and `apollo.png` support a lightweight Plymouth script theme; `lander.png` is the original separate motif, also baked into the background. `poster.png` is a still preview.
 - Small sprites and cached rotations; no full-screen video decoder or compositor. Fit the composition to each detected screen with black margins, without stretching or changing the panel's mode.

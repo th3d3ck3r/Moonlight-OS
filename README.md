@@ -214,7 +214,7 @@ Run only the command for the frontend you want. End the stream, then `sudo reboo
 | DualSense speaker/mic absent | Expected policy on USB. Controller audio is disabled; verify controller input separately. |
 | Keyboard, trackpad, or controller misbehaves | Use the verifier and [input test checklist](docs/TEST_PLAN.md). Installed modules alone do not prove real-device operation. |
 | Root expansion fails | First-boot growth must succeed or explicitly report NOCHANGE; other failures remain retryable. Inspect `journalctl -u moonlight-os-grow-root.service` from tty2. |
-| Image download expired | Run **Build Moonlight-OS image → Run workflow → main** to produce a fresh validated artifact. |
+| Image download expired | Run **Build EclipseOS image → Run workflow → main** to produce a fresh validated artifact. |
 | FaceTime camera unavailable | Intentionally omitted; its separate driver/firmware path is outside this streaming appliance. |
 | Optional CocoOS Companion features | Not required or claimed. Standard Sunshine/GameStream-compatible discovery, pairing, app listing, streaming, and input are the baseline. |
 
@@ -338,7 +338,7 @@ The helper installs the same media-key service as new images, clears the older O
 
 [▶️ Open / save the animated GIF](https://raw.githubusercontent.com/th3d3ck3r/Moonlight-OS/main/assets/boot/crimson-apollo/preview.gif) · [🖼️ Still preview](assets/boot/crimson-apollo/poster.png)
 
-The current downloadable image uses a minimal crimson eclipse, a glowing orbiting light and **ECLIPSE / MOONLIGHT-OS** text. It was built before the EclipseOS project rename; its filenames, commands and installed metadata retain the compatible Moonlight-OS names. The GIF is an animated artwork preview, not a recording of the Mac boot. Installed theme checks and OVMF passed; the physical splash/handoff test remains pending. Older regular and experimental images retain Crimson Apollo. See [activation, recovery and validation](docs/BOOT_ANIMATION.md).
+The current downloadable image uses a minimal crimson eclipse, a glowing orbiting light and **ECLIPSE / MOONLIGHT-OS** text. The source preview above now shows EclipseOS branding for the next build. It was built before the EclipseOS project rename; its filenames, commands and installed metadata retain the compatible Moonlight-OS names. The GIF is an animated artwork preview, not a recording of the Mac boot. Installed theme checks and OVMF passed; the physical splash/handoff test remains pending. Older regular and experimental images retain Crimson Apollo. See [activation, recovery and validation](docs/BOOT_ANIMATION.md).
 
 <a id="independent-feature-plans"></a>
 

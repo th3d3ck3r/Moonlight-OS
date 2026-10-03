@@ -78,7 +78,7 @@ Real i915/VA-API decode, OpenGL rendering, Apple SPI keyboard/trackpad, generic 
 
 ## Fedora 44 installer workaround
 
-The diagnostic Anaconda run exposed Fedora 44's known broken base-media `igt-gpu-tools 2.2-2.fc44`, which requires the obsolete `libproc2.so.0`. Moonlight-OS no longer asks Anaconda to solve that package from base media. The image installs `igt-gpu-tools` during `%post` with refreshed Fedora updates, where the audited package is `2.4-1.fc44`. This keeps `intel_gpu_top` without blocking installation.
+The diagnostic Anaconda run exposed Fedora 44's known broken base-media `igt-gpu-tools 2.2-2.fc44`, which requires the obsolete `libproc2.so.0`. EclipseOS no longer asks Anaconda to solve that package from base media. The image installs `igt-gpu-tools` during `%post` with refreshed Fedora updates, where the audited package is `2.4-1.fc44`. This keeps `intel_gpu_top` without blocking installation.
 
 The installer VM is allocated 4096 MiB RAM and 2 vCPUs for the Qt source builds. This is a build-time setting only; it does not change the 8 GB physical-RAM target.
 

@@ -1,4 +1,4 @@
-# 💎 Crimson Glass — Moonlight-OS interface plan
+# 💎 Crimson Glass — EclipseOS interface plan
 
 **Current baseline:** [experimental release](https://github.com/th3d3ck3r/Moonlight-OS/releases/tag/v0.1-experimental.20261002) adds five frontend choices (initial default/fallback Moonlight), generic Bluetooth and Crimson Apollo. This plan remains independent and unimplemented; preserve all five choices and their existing settings. Earlier source findings below apply to the inspected CocoOS/Moonlight revisions, not automatically to the added forks.
 Status: separate design/implementation proposal, not implemented.
@@ -10,7 +10,7 @@ This plan implements only the black/crimson/red GUI redesign. It does not implem
 
 ## Goal
 
-Make every Moonlight-OS-owned graphical surface feel like one product: clear hierarchy, consistent controls, a restrained glass material, predictable navigation, and readable settings. Use Liquid Glass as visual inspiration, implemented in Qt/SDL on Linux rather than Apple's proprietary material.
+Make every EclipseOS-owned graphical surface feel like one product: clear hierarchy, consistent controls, a restrained glass material, predictable navigation, and readable settings. Use Liquid Glass as visual inspiration, implemented in Qt/SDL on Linux rather than Apple's proprietary material.
 
 **Palette direction: mostly black, with crimson and red highlights.** Use smoky black glass, restrained deep-crimson selection fills, and brighter red focus/action accents. Keep normal reading text near white so the interface stays readable.
 
@@ -18,7 +18,7 @@ Apply the same visual language across CocoOS, the upstream Moonlight fallback, g
 
 ## What the source actually supports
 
-Inspected pinned CocoOS `8c22132f1ce4146c0d6bff812f6fc8f724fe0101` and Moonlight `8369d1a0e11b999d4d1598f62ca5f6dea49602fb`, plus Moonlight-OS Kickstart:
+Inspected pinned CocoOS `8c22132f1ce4146c0d6bff812f6fc8f724fe0101` and Moonlight `8369d1a0e11b999d4d1598f62ca5f6dea49602fb`, plus EclipseOS Kickstart:
 
 - CocoOS `app/gui/console/Theme.qml` already centralizes colors, fonts, spacing, motion and a reference 1280×800 canvas. Its current accent is orange, with Sora UI and JetBrains Mono diagnostic fonts.
 - `OptionsSheet.qml` and `ConsoleDialog.qml` already implement modal focus, controller/keyboard navigation and safe cancel defaults.
@@ -97,7 +97,7 @@ Use English product text throughout. Avoid raw stack traces in the main flow; pr
 
 ## Architecture
 
-1. **Shared design package.** Keep tokens and QML primitives under reviewed Moonlight-OS patch assets. Generate both client theme adapters from a single data source so appearance does not diverge. Use shared GlassPanel, ActionButton, SettingRow, Toggle, Slider, ChoicePicker, TextField, StatusBadge, ModalDialog and FocusRing components.
+1. **Shared design package.** Keep tokens and QML primitives under reviewed EclipseOS patch assets. Generate both client theme adapters from a single data source so appearance does not diverge. Use shared GlassPanel, ActionButton, SettingRow, Toggle, Slider, ChoicePicker, TextField, StatusBadge, ModalDialog and FocusRing components.
 2. **QML material rendering.** Start with inexpensive gradients/borders. If the installed Qt supports it, use QtQuick.Effects MultiEffect for bounded blur/shadow. Explicitly sample only app-owned backdrop layers, avoid recursive/self-capture, share/downsample background captures, cache static output and destroy/hide effects when unused. X11 compositor absence does not prevent effects inside our Qt window; it does prevent assuming system-wide backdrop blur.
 3. **Graphical appliance settings.** Add a Qt Quick settings module/app using structured backends: NetworkManager and BlueZ D-Bus for device operations; tested PipeWire/WirePlumber integration or bounded argument-based helper calls for audio; existing verification helpers for diagnostics. Keep operations asynchronous and cancellable, with specific backend errors. Never interpolate SSIDs, passwords or device names into shell commands. Privileged mutations go through narrow reviewed helpers; UI runs as the ordinary user.
 4. **First-boot integration.** Current networking setup runs before X11. To provide graphical first boot, start the X11 shell/settings flow even with no saved network, gate client launch until networking or an explicit offline path, and retain tty2 recovery. Preserve root-growth ordering and the boot marker; add tests for offline first boot and Wi-Fi failure.

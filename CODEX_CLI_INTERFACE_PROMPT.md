@@ -1,4 +1,4 @@
-# 🖤🔴 Crimson Console — self-contained Moonlight-OS implementation plan
+# 🖤🔴 Crimson Console — self-contained EclipseOS implementation plan
 
 **Current baseline:** [experimental release](https://github.com/th3d3ck3r/Moonlight-OS/releases/tag/v0.1-experimental.20261002) adds five frontend choices (initial default/fallback Moonlight), generic Bluetooth and Crimson Apollo. This plan remains independent and unimplemented; preserve all five choices and their existing settings. Earlier source findings below apply to the inspected CocoOS/Moonlight revisions, not automatically to the added forks.
 **Status: plan only; not implemented.** Created October 2, 2026.

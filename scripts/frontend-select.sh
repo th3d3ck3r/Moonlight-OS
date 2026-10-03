@@ -7,7 +7,7 @@ if [[ -r "$CONF" ]]; then
   saved=$(sed -n 's/^CLIENT=//p' "$CONF")
   case "$saved" in moonlight|vibemis|artemis|pegasus|cocoos) CLIENT=$saved ;; esac
 fi
-printf '\033[40m\033[1;31m\n🌑 MOONLIGHT-OS • FRONTEND\033[0;31m\n'
+printf '\033[40m\033[1;31m\n🌑 EclipseOS • FRONTEND\033[0;31m\n'
 printf '  1) Eclipse\n  2) Artemis\n  3) Pegasus launcher\n  4) Moonlight\n  5) CocoOS\n'
 DISPLAY_CLIENT=$CLIENT
 [[ $CLIENT != vibemis ]] || DISPLAY_CLIENT=Eclipse

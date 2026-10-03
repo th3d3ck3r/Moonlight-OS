@@ -29,7 +29,7 @@ After editing the artwork/theme, run `python3 scripts/sync-boot-theme.py --write
 
 Press **Escape** during the splash to inspect boot details. Use the existing diagnostic tty or serial output if needed. At GRUB, edit the selected boot entry and append `plymouth.enable=0` for a one-time text boot; remove `rhgb` as well if graphics are unavailable. This does not modify the stored entry.
 
-To persistently restore the stock theme, run these only from the running Moonlight-OS USB system, after confirming it is the active root. Do not run them against macOS or an internal disk:
+To persistently restore the stock theme, run these only from the running EclipseOS USB system, after confirming it is the active root. Do not run them against macOS or an internal disk:
 
 ```sh
 previous=$(cat /etc/moonlight-plymouth-previous-theme)

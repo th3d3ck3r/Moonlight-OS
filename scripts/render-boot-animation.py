@@ -62,9 +62,9 @@ def spaced(text,y,font,color,gap):
     for c,width in zip(text,widths):
         draw.text((x,y),c,font=font,fill=color)
         x+=width+gap
-spaced('MOONLIGHT-OS',490,font,'#f0e9ec',5)
+spaced('EclipseOS',490,font,'#f0e9ec',5)
 spaced('APOLLO  /  LUNAR ORBIT',543,small,'#c24764',2)
-spaced('STARTING MOONLIGHT-OS',587,small,'#968890',1)
+spaced('STARTING EclipseOS',587,small,'#968890',1)
 base.save(OUT/'background.png',optimize=True)
 # Original Apollo-inspired command/service module, pointing upward.
 ship=Image.new('RGBA',(76,88));sd=ImageDraw.Draw(ship)

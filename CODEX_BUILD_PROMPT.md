@@ -1,4 +1,4 @@
-# Moonlight-OS — Codex completion prompt
+# EclipseOS — Codex completion prompt
 
 ## Repository — work here, not in a throwaway project
 

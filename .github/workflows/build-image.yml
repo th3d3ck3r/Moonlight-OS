@@ -1,4 +1,4 @@
-name: Build Moonlight-OS image
+name: Build EclipseOS image
 
 on:
   workflow_dispatch:

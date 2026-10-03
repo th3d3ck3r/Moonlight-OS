@@ -1,4 +1,4 @@
-name: Audit Moonlight-OS
+name: Audit EclipseOS
 
 on:
   push:

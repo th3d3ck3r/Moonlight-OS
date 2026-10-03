@@ -33,7 +33,7 @@ install -d "$SHARE/applications"
 cat > "$SHARE/applications/com.vibemis.Vibemis.desktop" <<'ECLIPSE_DESKTOP'
 [Desktop Entry]
 Name=Eclipse
-Comment=Moonlight-OS streaming frontend
+Comment=EclipseOS streaming frontend
 Exec=/usr/local/bin/moonlight-launch vibemis
 Icon=eclipse
 Terminal=false

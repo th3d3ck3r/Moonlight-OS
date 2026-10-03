@@ -1,4 +1,4 @@
-# Moonlight-OS Eclipse boot theme. Internal paths stay compatible.
+# EclipseOS Eclipse boot theme. Internal paths stay compatible.
 Window.SetBackgroundTopColor(0, 0, 0);
 Window.SetBackgroundBottomColor(0, 0, 0);
 
