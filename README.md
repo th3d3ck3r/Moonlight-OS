@@ -13,6 +13,10 @@
 
 ---
 
+## Updates — prepared for the next build
+
+The [`wip/eclipseos-updater`](https://github.com/th3d3ck3r/Moonlight-OS/tree/wip/eclipseos-updater) branch prepares signed Eclipse frontend and approved system helper/Wi-Fi/Bluetooth configuration updates on the current kernel/base. It adds staging, tty2 recovery and rollback; **no new image or release update package has been built or installed**. The current image needs a one-time trusted bootstrap before using updates. See the [updater guide](docs/UPDATES.md) for scope, enrollment and remaining validation. Graphical integration and driver/firmware updates are outside this first version.
+
 ## 💎 Crimson Glass — latest build
 
 Crimson Glass continues the saved Eclipse checkpoint with a responsive library, smoky rounded panels, consistent dialogs/menus/settings, sixteen accents, scaled text, reduced motion and high contrast. Small native overlay graphs show measured FPS/network latency and local CPU/RAM; unavailable sensors remain gaps. The selectable background is copied into app data, with dimming and reset controls.

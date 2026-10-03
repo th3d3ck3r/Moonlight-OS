@@ -1,0 +1,14 @@
+name: Updater source checks (no builds)
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  source:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Source validation and disposable updater fixtures
+        run: bash scripts/validate.sh
+      - name: Runtime helper fixtures
+        run: python3 scripts/audit-runtime.py

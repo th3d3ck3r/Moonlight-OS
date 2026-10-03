@@ -1,5 +1,10 @@
 # Build status
 
+## Fixed-base updater — prepared source only, 2026-10-03
+
+- Work is saved on `wip/eclipseos-updater`; [scope and usage](docs/UPDATES.md), [source verification](docs/UPDATER_VERIFICATION.md). Signed Eclipse executable/helper/config packages, staged activation, fixed kernel/base, offline boot/tty2 rollback and one-time current-image enrollment are prepared.
+- 35 updater tests and existing source/runtime fixtures pass. **No OS image, deployable update package, native frontend compile, production signing key/feed or live installation** was created. Installed-image/Mac acceptance remains pending. The current build and comparison below remain unchanged.
+
 ## EclipseOS Crimson Glass — 2026-10-03
 
 - [Complete Crimson Glass ZIP](https://github.com/th3d3ck3r/Moonlight-OS/actions/runs/37132195854/artifacts/11277957881) · [Actual previews](docs/CRIMSON_GLASS.md) · [Four-pass verification](docs/CRIMSON_GLASS_VERIFICATION.md) · [Known issues](docs/KNOWN_ISSUES.md).

@@ -179,4 +179,10 @@ cp "$work/root/boot/initramfs-$INSTALLER_KERNEL.img" "$diag_dir/diagnostic-initr
 blkid -p -s UUID -o value "$root" > "$diag_dir/diagnostic-root-uuid"
 chroot "$work/root" /usr/bin/lsblk --version
 
+# Updater source and recovery policy must match; signing trust is provisioned separately.
+cmp "$ROOT/scripts/eclipseos-update.py" "$work/root/usr/local/libexec/moonlight-os/eclipseos-update.py"
+cmp "$ROOT/scripts/update-menu.sh" "$work/root/usr/local/bin/eclipseos-updates"
+cmp "$ROOT/updates/base.json" "$work/root/etc/eclipseos-update/base.json"
+cmp "$ROOT/updates/eclipseos-update-recovery.service" "$work/root/etc/systemd/system/eclipseos-update-recovery.service"
+test -L "$work/root/etc/systemd/system/multi-user.target.wants/eclipseos-update-recovery.service"
 echo "Disk image inspection passed."

@@ -4,6 +4,7 @@ These limitations apply to [Crimson Glass build `6f1ce48`](CRIMSON_GLASS_VERIFIC
 
 | Area | Current limitation / next check |
 | --- | --- |
+| Prepared updater | Source-only on `wip/eclipseos-updater`; no build/install or production signing key/feed. Current image needs one-time bootstrap. Terminal/tty2 interface first; in-app updater remains disabled. Native frontend and physical Mac interruption/reconnect tests remain required. Kernel/driver/firmware fixes need a separate base release. See [updates](UPDATES.md). |
 | Bluetooth controller power | The previously tested image had a broken graphical scan and slow pairing followed by controller power-off. The new shared BlueZ backend removes per-device CLI waits and checks service/input readiness, but the controller power-off symptom still requires physical retesting. Wake the device and use Reconnect if its saved bond is present. |
 | Adapter firmware | A Mac Bluetooth adapter may still need the documented one-time SMC reset after switching from macOS. Missing adapters and disabled radios are reported explicitly. |
 | Hardware sensors | Some Macs/drivers expose no GPU utilization, CPU clock, fan or power counters. Those values show Unavailable. Rates appear after a second sample; USB/root I/O requires an accessible root block device. |

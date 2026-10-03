@@ -1,0 +1,12 @@
+[Unit]
+Description=Recover an unconfirmed EclipseOS update offline
+After=local-fs.target
+Before=NetworkManager.service bluetooth.service getty@tty1.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/libexec/moonlight-os/eclipseos-update.py recover-boot
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

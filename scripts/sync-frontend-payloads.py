@@ -8,6 +8,10 @@ from pathlib import Path
 root = Path(__file__).resolve().parents[1]
 ks = root / 'config/moonlight-os.ks'
 pairs = {
+    'ECLIPSE_UPDATER': 'scripts/eclipseos-update.py',
+    'ECLIPSE_UPDATE_MENU': 'scripts/update-menu.sh',
+    'ECLIPSE_UPDATE_BASE': 'updates/base.json',
+    'ECLIPSE_UPDATE_RECOVERY': 'updates/eclipseos-update-recovery.service',
     'VIBEMIS_PATCH_B64': 'patches/vibemis-crimson.patch',
     'CONTROLCENTER': 'scripts/control-center.py',
     'SYSTEMCONTROLS': 'scripts/system-controls.py',
