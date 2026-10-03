@@ -1,5 +1,12 @@
 # Build status
 
+## Eclipse test candidate — 2026-10-03
+
+- [Complete image ZIP](https://github.com/th3d3ck3r/Moonlight-OS/actions/runs/37095761480/artifacts/11264873899) · [Verification record](docs/ECLIPSE_VERIFICATION.md).
+- Exact build source `3625507be0a9ca08996ef9a188326c69e7b040fb`: [all seven audits](https://github.com/th3d3ck3r/Moonlight-OS/actions/runs/37095761462) passed. [Build 37095761480](https://github.com/th3d3ck3r/Moonlight-OS/actions/runs/37095761480) succeeded; installed-image inspection passed at 04:44:33 UTC and strict OVMF at 04:44:46 UTC, before compression and upload.
+- Artifact **11264873899**: **4,140,062,634 bytes / 3.86 GiB**, expires October 17. ZIP SHA-256 `51f8f5520f15b78a95880c2889e635ec98e443fe2bb976e0446b183ede36793d`. Includes `.img.xz` and its separate image checksum. Raw image **13,147,045,888 bytes / 12.24 GiB**; **16 GB drive minimum**.
+- Eclipse branding, control center, saved profiles, appearance options, desktop/icons and minimal animated boot theme included. Select Eclipse in the frontend chooser. Physical hardware/streaming validation remains pending. Existing regular and experimental releases remain intact.
+
 ## New experimental — Vibemis Crimson, 2026-10-02
 
 - [Experimental release](https://github.com/th3d3ck3r/Moonlight-OS/releases/tag/v0.2-experimental.20261002) · [complete unsplit image ZIP](https://github.com/th3d3ck3r/Moonlight-OS/actions/runs/37022392821/artifacts/11235677661).
