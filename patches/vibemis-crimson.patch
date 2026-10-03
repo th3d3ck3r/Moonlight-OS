@@ -203,7 +203,7 @@ index 00000000..6870f9c3
 +}
 diff --git a/app/gui/EclipseAboutDialog.qml b/app/gui/EclipseAboutDialog.qml
 new file mode 100644
-index 00000000..810bdfbe
+index 00000000..f3ffb2c6
 --- /dev/null
 +++ b/app/gui/EclipseAboutDialog.qml
 @@ -0,0 +1,34 @@
@@ -238,7 +238,7 @@ index 00000000..810bdfbe
 +                .arg(panel.info.kernel || qsTr("Unavailable"))
 +                .arg(Qt.application.version || "0.5.0")
 +        }
-+        Label { Layout.fillWidth: true; wrapMode: Text.Wrap; color: VbTokens.textDim; text: qsTr("A lightweight Moonlight-OS frontend. Based on Eclipse and Moonlight; original open-source credits and licenses remain available in Settings. Updates are managed by Moonlight-OS.") }
++        Label { Layout.fillWidth: true; wrapMode: Text.Wrap; color: VbTokens.textDim; text: qsTr("A lightweight Moonlight-OS frontend. Based on Vibemis and Moonlight; original open-source credits and licenses remain available in Settings. Updates are managed by Moonlight-OS.") }
 +    }
 +}
 diff --git a/app/gui/EclipseActionButton.qml b/app/gui/EclipseActionButton.qml
@@ -281,10 +281,10 @@ index 00000000..63132728
 +}
 diff --git a/app/gui/EclipseControlCenter.qml b/app/gui/EclipseControlCenter.qml
 new file mode 100644
-index 00000000..d73ec9f2
+index 00000000..c25d15fb
 --- /dev/null
 +++ b/app/gui/EclipseControlCenter.qml
-@@ -0,0 +1,162 @@
+@@ -0,0 +1,163 @@
 +import QtQuick 2.9
 +import QtQuick.Controls 2.5
 +import QtQuick.Layouts 1.3
@@ -440,6 +440,7 @@ index 00000000..d73ec9f2
 +    }
 +    NavigableDialog {
 +        id: powerDialog
++        width: Math.min(440, panel.width - 32)
 +        title: panel.powerAction === "reboot" ? qsTr("Restart Moonlight-OS?") : qsTr("Shut down Moonlight-OS?")
 +        standardButtons: Dialog.Yes | Dialog.No
 +        Material.background: VbTokens.bgElev
@@ -1946,10 +1947,10 @@ index 00000000..996e5ac4
 +QtObject { property int uiAccentIndex: 4; property bool uiShowHints: true; property int width: 1920; property int height: 1080; property int fps: 60; property int bitrateKbps: 20000; function save() {} }
 diff --git a/app/moonlightos/tests/test-crimson.cpp b/app/moonlightos/tests/test-crimson.cpp
 new file mode 100644
-index 00000000..c9736be5
+index 00000000..bc7858c0
 --- /dev/null
 +++ b/app/moonlightos/tests/test-crimson.cpp
-@@ -0,0 +1,264 @@
+@@ -0,0 +1,273 @@
 +#include <QtTest>
 +#include <QTemporaryDir>
 +#include <QQmlEngine>
@@ -1959,6 +1960,7 @@ index 00000000..c9736be5
 +#include <QQuickWindow>
 +#include <QQuickItem>
 +#include <QFile>
++#include <QImageReader>
 +#include <QTcpServer>
 +#include <QSslSocket>
 +#include <QSslKey>
@@ -2138,6 +2140,14 @@ index 00000000..c9736be5
 +        count = server.requests; QTest::qWait(500); QCOMPARE(server.requests, count); QVERIFY(status.stats().isEmpty());
 +        status.setVisible(false);
 +    }
++    void iconResources() {
++        for (const QString& name : {"eclipse-icon", "eclipse-controls", "eclipse-power", "crimson-network", "crimson-bluetooth", "crimson-battery", "crimson-host", "settings"}) {
++            const QString path = ":/res/" + name + ".svg";
++            QVERIFY2(QFile::exists(path), qPrintable(path));
++            QImageReader reader(path);
++            QVERIFY2(!reader.read().isNull(), qPrintable(path + ": " + reader.errorString()));
++        }
++    }
 +    void qmlPaletteAndPanels() {
 +        QString source = qEnvironmentVariable("VIBEMIS_TEST_SOURCE"); QVERIFY(!source.isEmpty());
 +        QQuickStyle::setStyle("Material");
@@ -2216,10 +2226,10 @@ index 00000000..c9736be5
 +#include "test-crimson.moc"
 diff --git a/app/moonlightos/tests/test-crimson.pro b/app/moonlightos/tests/test-crimson.pro
 new file mode 100644
-index 00000000..6fb174bc
+index 00000000..501ce657
 --- /dev/null
 +++ b/app/moonlightos/tests/test-crimson.pro
-@@ -0,0 +1,15 @@
+@@ -0,0 +1,18 @@
 +QT += core gui quick network quickcontrols2 testlib svg
 +CONFIG += c++17 testcase
 +TARGET = test-crimson
@@ -2235,6 +2245,9 @@ index 00000000..6fb174bc
 +
 +SOURCES += ../eclipseprofiles.cpp
 +HEADERS += ../eclipseprofiles.h
++
++# Match the production resource bundle so rendered icons are actually tested.
++RESOURCES += ../../resources.qrc
 diff --git a/app/qml.qrc b/app/qml.qrc
 index a3c11dd7..714c651f 100644
 --- a/app/qml.qrc
