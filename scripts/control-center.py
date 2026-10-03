@@ -16,10 +16,14 @@ def command(args):
 
 
 def sinks(text):
-    result, active = [], False
+    result, active, audio = [], False, False
     for line in text.splitlines():
         clean = re.sub(r'[│├└─┬┼]', '', line).strip()
-        if clean.startswith('Sinks:'):
+        if clean in ('Audio', 'Video', 'Settings'):
+            audio = clean == 'Audio'
+            active = False
+            continue
+        if audio and clean.startswith('Sinks:'):
             active = True; continue
         if active and re.match(r'[A-Za-z]+:', clean):
             active = False
@@ -97,8 +101,11 @@ def execute(request, state):
         device = state.get('brightness', {}).get(kind)
         if not device:
             raise ValueError('This brightness control is unavailable.')
-        command(['sudo', 'brightnessctl', '-d', device['device'], 'set', str(percent(value))+'%'])
-    elif action in ('center-reboot', 'center-poweroff', 'center-suspend'):
+        level = percent(value)
+        if kind == 'screen':
+            level = max(5, level)
+        command(['sudo', 'brightnessctl', '-d', device['device'], 'set', str(level)+'%'])
+    elif action in ('center-reboot', 'center-poweroff'):
         if request.get('confirm') is not True:
             raise ValueError('Confirm the power operation first.')
         command(['sudo', 'systemctl', action.split('-')[1]])

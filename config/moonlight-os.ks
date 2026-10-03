@@ -411,10 +411,14 @@ def command(args):
 
 
 def sinks(text):
-    result, active = [], False
+    result, active, audio = [], False, False
     for line in text.splitlines():
         clean = re.sub(r'[│├└─┬┼]', '', line).strip()
-        if clean.startswith('Sinks:'):
+        if clean in ('Audio', 'Video', 'Settings'):
+            audio = clean == 'Audio'
+            active = False
+            continue
+        if audio and clean.startswith('Sinks:'):
             active = True; continue
         if active and re.match(r'[A-Za-z]+:', clean):
             active = False
@@ -492,8 +496,11 @@ def execute(request, state):
         device = state.get('brightness', {}).get(kind)
         if not device:
             raise ValueError('This brightness control is unavailable.')
-        command(['sudo', 'brightnessctl', '-d', device['device'], 'set', str(percent(value))+'%'])
-    elif action in ('center-reboot', 'center-poweroff', 'center-suspend'):
+        level = percent(value)
+        if kind == 'screen':
+            level = max(5, level)
+        command(['sudo', 'brightnessctl', '-d', device['device'], 'set', str(level)+'%'])
+    elif action in ('center-reboot', 'center-poweroff'):
         if request.get('confirm') is not True:
             raise ValueError('Confirm the power operation first.')
         command(['sudo', 'systemctl', action.split('-')[1]])
@@ -7726,6 +7733,7 @@ cat > /usr/local/share/moonlight-os/install-frontends.sh <<'FRONTENDS_INSTALL'
 set -euo pipefail
 source "${FRONTENDS_LOCK:-/usr/local/share/moonlight-os/FRONTENDS.lock}"
 DEST=${FRONTENDS_DEST:-/usr/local/libexec/moonlight-os/frontends}
+SHARE=${FRONTENDS_SHARE_DEST:-/usr/local/share}
 CACHE=${FRONTENDS_CACHE:-/var/cache/moonlight-frontends}
 SRC=${ARTEMIS_SOURCE:-/usr/local/src/artemis}
 mkdir -p "$DEST" "$CACHE"
@@ -7751,6 +7759,21 @@ fi
 (cd "$VIBSRC" && { qmake6 vibemis.pro CONFIG+=release; (cd app && qmake6 app.pro CONFIG+=release); } 2>&1 | tee configure.log; for feature in "FFmpeg decoder selected" "VAAPI renderer selected" "EGL renderer selected"; do grep -Fq "$feature" configure.log; done; make release -j2)
 mkdir -p "$DEST/vibemis/usr/bin"
 install -m 0755 "$VIBSRC/app/vibemis" "$DEST/vibemis/usr/bin/vibemis"
+install -d "$SHARE/applications"
+cat > "$SHARE/applications/com.vibemis.Vibemis.desktop" <<'ECLIPSE_DESKTOP'
+[Desktop Entry]
+Name=Eclipse
+Comment=Moonlight-OS streaming frontend
+Exec=/usr/local/bin/moonlight-launch vibemis
+Icon=eclipse
+Terminal=false
+Type=Application
+Categories=Game;Network;
+ECLIPSE_DESKTOP
+for size in 128 256 512; do
+  install -Dm0644 "$VIBSRC/app/res/icons/hicolor/${size}x${size}/apps/eclipse.png" \
+    "$SHARE/icons/hicolor/${size}x${size}/apps/eclipse.png"
+done
 cat > "$DEST/vibemis/AppRun" <<'VIBRUN'
 #!/usr/bin/env bash
 exec "$(dirname "$(readlink -f "$0")")/usr/bin/vibemis" "$@"
@@ -7847,7 +7870,7 @@ file: /usr/local/libexec/moonlight-os/moonlight
 launch: /usr/local/bin/moonlight-launch moonlight
 description: Browse paired hosts and stream games or the desktop with vanilla Moonlight.
 
-game: Vibemis
+game: Eclipse
 file: /usr/local/libexec/moonlight-os/frontends/vibemis/usr/bin/vibemis
 launch: /usr/local/bin/moonlight-launch vibemis
 description: Controller-first streaming client with Vibepollo and Apollo extensions.

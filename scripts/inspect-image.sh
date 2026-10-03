@@ -62,6 +62,24 @@ test -x "$work/root/usr/local/libexec/moonlight-os/system-controls.py"
 test -x "$work/root/usr/local/libexec/moonlight-os/control-center.py"
 grep -Fq 'center-volume' "$work/root/usr/local/libexec/moonlight-os/control-center.py"
 grep -Fq 'VERSION="0.3-dev"' "$work/root/etc/moonlight-os-release"
+for helper in system-controls.py control-center.py; do
+  cmp "$ROOT/scripts/$helper" "$work/root/usr/local/libexec/moonlight-os/$helper"
+done
+cmp "$ROOT/scripts/install-frontends.sh" "$work/root/usr/local/share/moonlight-os/install-frontends.sh"
+cmp "$ROOT/patches/vibemis-crimson.patch" "$work/root/usr/local/share/moonlight-os/vibemis-crimson.patch"
+grep -Fxq 'Name=Eclipse' "$work/root/usr/local/share/applications/com.vibemis.Vibemis.desktop"
+grep -Fxq 'Icon=eclipse' "$work/root/usr/local/share/applications/com.vibemis.Vibemis.desktop"
+grep -Fxq 'Exec=/usr/local/bin/moonlight-launch vibemis' "$work/root/usr/local/share/applications/com.vibemis.Vibemis.desktop"
+python3 - "$work/root" <<'ICON_CHECK'
+from pathlib import Path
+import struct, sys
+root = Path(sys.argv[1])
+for size in (128, 256, 512):
+    data = (root / f'usr/local/share/icons/hicolor/{size}x{size}/apps/eclipse.png').read_bytes()
+    assert data[:8] == b'\x89PNG\r\n\x1a\n' and data[12:16] == b'IHDR'
+    assert struct.unpack('>II', data[16:24]) == (size, size)
+ICON_CHECK
+grep -Fxq 'game: Eclipse' "$work/root/home/moonlight/.config/pegasus-frontend/metafiles/metadata.pegasus.txt"
 test -f "$work/root/boot/efi/EFI/BOOT/BOOTX64.EFI"
 test -d "$work/root/boot/efi/EFI/fedora"
 test -s "$work/root/boot/vmlinuz-$INSTALLER_KERNEL"

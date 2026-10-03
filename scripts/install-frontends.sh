@@ -3,6 +3,7 @@
 set -euo pipefail
 source "${FRONTENDS_LOCK:-/usr/local/share/moonlight-os/FRONTENDS.lock}"
 DEST=${FRONTENDS_DEST:-/usr/local/libexec/moonlight-os/frontends}
+SHARE=${FRONTENDS_SHARE_DEST:-/usr/local/share}
 CACHE=${FRONTENDS_CACHE:-/var/cache/moonlight-frontends}
 SRC=${ARTEMIS_SOURCE:-/usr/local/src/artemis}
 mkdir -p "$DEST" "$CACHE"
@@ -28,6 +29,21 @@ fi
 (cd "$VIBSRC" && { qmake6 vibemis.pro CONFIG+=release; (cd app && qmake6 app.pro CONFIG+=release); } 2>&1 | tee configure.log; for feature in "FFmpeg decoder selected" "VAAPI renderer selected" "EGL renderer selected"; do grep -Fq "$feature" configure.log; done; make release -j2)
 mkdir -p "$DEST/vibemis/usr/bin"
 install -m 0755 "$VIBSRC/app/vibemis" "$DEST/vibemis/usr/bin/vibemis"
+install -d "$SHARE/applications"
+cat > "$SHARE/applications/com.vibemis.Vibemis.desktop" <<'ECLIPSE_DESKTOP'
+[Desktop Entry]
+Name=Eclipse
+Comment=Moonlight-OS streaming frontend
+Exec=/usr/local/bin/moonlight-launch vibemis
+Icon=eclipse
+Terminal=false
+Type=Application
+Categories=Game;Network;
+ECLIPSE_DESKTOP
+for size in 128 256 512; do
+  install -Dm0644 "$VIBSRC/app/res/icons/hicolor/${size}x${size}/apps/eclipse.png" \
+    "$SHARE/icons/hicolor/${size}x${size}/apps/eclipse.png"
+done
 cat > "$DEST/vibemis/AppRun" <<'VIBRUN'
 #!/usr/bin/env bash
 exec "$(dirname "$(readlink -f "$0")")/usr/bin/vibemis" "$@"

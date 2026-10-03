@@ -4,10 +4,17 @@ set -euo pipefail
 ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 TASK=$(mktemp -d /tmp/moonlight-frontends.XXXXXX)
 export FRONTENDS_LOCK="$ROOT/SOURCES.lock" FRONTENDS_DEST="$TASK/runtime/frontends"
+export FRONTENDS_SHARE_DEST="$TASK/share"
 export VIBEMIS_SOURCE="$TASK/vibemis-source"
 export VIBEMIS_PATCH="$ROOT/patches/vibemis-crimson.patch"
 export FRONTENDS_CACHE="$TASK/cache" ARTEMIS_SOURCE="$TASK/artemis-source"
 bash "$ROOT/scripts/install-frontends.sh"
+grep -Fxq 'Name=Eclipse' "$TASK/share/applications/com.vibemis.Vibemis.desktop"
+grep -Fxq 'Icon=eclipse' "$TASK/share/applications/com.vibemis.Vibemis.desktop"
+for size in 128 256 512; do
+  cmp "$VIBEMIS_SOURCE/app/res/icons/hicolor/${size}x${size}/apps/eclipse.png" \
+    "$TASK/share/icons/hicolor/${size}x${size}/apps/eclipse.png"
+done
 dnf -y install xorg-x11-server-Xvfb
 export MOONLIGHT_FRONTEND_BASE="$TASK/runtime"
 export HOME="$TASK/home" QT_QUICK_BACKEND=software LIBGL_ALWAYS_SOFTWARE=1
