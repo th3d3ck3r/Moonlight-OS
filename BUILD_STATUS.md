@@ -1,4 +1,14 @@
-## All-changes build authorized — October 3, 2026
+## All-changes image built, inspected and boot verified — October 3, 2026
+
+- [Download](https://github.com/th3d3ck3r/Moonlight-OS/actions/runs/37154967013/artifacts/11287150142) · [Exact-source audits](https://github.com/th3d3ck3r/Moonlight-OS/actions/runs/37154966989) · [Four-pass verification](docs/STREAMING_BUILD_VERIFICATION.md).
+- Exact source `cf58cb9fde3167a68e392e773c7b92ce97db98b1`; all seven jobs, 100 Python tests, 19 native UI tests, 31 native decoder-status tests and full Fedora frontend compilation/startup pass.
+- Installed-image inspection **22:06:03 UTC** and strict OVMF UEFI boot **22:06:16 UTC** pass before compression/upload. Upload finalized **22:28:01 UTC**.
+- ZIP **3.68 GiB / 3,946,847,629 bytes**, raw **12.24 GiB / 13,147,045,888 bytes**, minimum **16 GB drive**, expires **2026-10-17T22:27:42Z**. Image and ZIP checksums are in the verification record.
+- All updater/streaming changes included; previous downloads preserved. Owner signing key/feed and physical Mac pacing/connection/update recovery acceptance remain pending.
+
+Earlier source-only entries below record their then-current state and are superseded by this verified image.
+
+## Archived build authorization — October 3, 2026
 
 The user authorized a new image containing every prepared updater and streaming change from `64ec8f6dc04e1aef898460082cb2ca5e662d5cd6`. The build trigger requires seven exact-source audits, now including required real D-Bus/PTY tests and the patched decoder-status native tests. Image installation, read-only payload inspection and strict OVMF boot remain gates; no new image is verified at this checkpoint. Existing downloads are preserved. The owner signing key/feed remain unprovisioned; the updater ships closed until enrollment. Physical pacing/connection/update recovery acceptance remains pending.
 

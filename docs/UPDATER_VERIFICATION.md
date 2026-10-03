@@ -1,6 +1,6 @@
 # Updater source verification — October 3, 2026
 
-This evidence applies to the prepared `wip/eclipseos-updater` source, not an installed image or signed production release. Existing Crimson Glass/comparison artifacts are unchanged.
+This table records the original source-only preparation. The updater is now included in the [built/inspected/boot-verified all-changes image](STREAMING_BUILD_VERIFICATION.md); 100 Python tests and required native checks pass. A production signed feed and real installed activation/reboot/rollback trial remain pending. Existing Crimson Glass/comparison artifacts are unchanged.
 
 | Pass | Check | Result |
 | --- | --- | --- |

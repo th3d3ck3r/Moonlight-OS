@@ -1,6 +1,6 @@
-# Fixed-base EclipseOS updates — prepared source, not a new build
+# Fixed-base EclipseOS updates — included in the new image
 
-Work branch: `wip/eclipseos-updater`. The current Crimson Glass image and comparison downloads remain unchanged. This branch introduces a terminal updater and its future-image payload. Subsequent [software/connection work](STREAMING_SOFTWARE.md) is prepared on the same branch. No OS image, release update package, signing identity, live installation or native frontend build was produced for this change.
+The [all-changes image](STREAMING_BUILD_VERIFICATION.md) includes the terminal updater, helpers, launcher and offline recovery unit. Every prepared change through `64ec8f6` is built into exact source `cf58cb9`. The previous Crimson Glass and comparison downloads remain preserved. No production signing identity/feed, deployable signed update package or live Mac installation was created by the build. Subsequent [software/connection work](STREAMING_SOFTWARE.md) is also included.
 
 ## Scope and kernel lock
 
@@ -20,11 +20,11 @@ System payloads require the exact **before SHA-256** exported from the receiving
 
 Kernel, modules, drivers, firmware, bootloader, partition layout, library/RPM upgrades, updater self-updates and trust-key rotation are deliberately outside this first version. A Wi-Fi/Bluetooth issue in a helper or the permitted settings can be fixed here; a driver/firmware defect needs a separate validated base release. Signed helper code is trusted executable code: keep the private signing key offline and review every change before signing. This does not harden the development image's existing unrestricted sudo policy.
 
-## One-time enrollment on the current USB (later, not run during preparation)
+## One-time public-key enrollment (not performed by this build)
 
-The published image predates this updater. Copy a reviewed checkout of this branch onto the USB installation. Stop streaming before enrollment. On the signing machine, create an Ed25519 key with OpenSSL and retain the private key there; transfer **only the public PEM** to the Mac. Do not place a private key in this repository or an Actions artifact.
+The previous Crimson Glass image predates the updater; the new all-changes image already contains it. Both require owner public-key enrollment. Copy a reviewed checkout of the new image source (or a trusted descendant) onto the USB installation. Stop streaming before enrollment. On the signing machine, create an Ed25519 key with OpenSSL and retain the private key there; transfer **only the public PEM** to the Mac. Do not place a private key in this repository or an Actions artifact.
 
-From that trusted checkout on the current Crimson Glass Mac installation:
+From that trusted checkout on the supported Crimson Glass or new all-changes Mac installation:
 
 ```sh
 sudo scripts/bootstrap-updater.sh /absolute/path/to/public.pem
@@ -32,11 +32,11 @@ sudo scripts/bootstrap-updater.sh /absolute/path/to/public.pem
 
 Bootstrap checks the exact current base kernel, product/target metadata, pinned Vibemis commit and shipped Crimson patch checksum. It installs the root helper, launcher, tty menu and boot recovery unit, preserving the old launcher. Repeating enrollment with a different key is refused. It does not stage/apply an update or rebuild the OS. Do not enroll an unrelated/older image by changing those checks.
 
-Future images contain the helper/menu/unit/receipt but have **no signing key by default**, so network updates fail closed until the owner enrolls the public key. This preparation has not created or enrolled a production signing key.
+The new image contains the helper/menu/unit/receipt but has **no signing key by default**, so network updates fail closed until the owner enrolls the public key. This build has not created or enrolled a production signing key.
 
 ## Using updates
 
-Use **Ctrl+Alt+F2** for tty2, then run `eclipseos-updates`. A future image's settings menu also offers **u) EclipseOS updates**. This interface is independent of Eclipse's GUI/networking. The existing in-app upstream updater stays disabled; embedding this new workflow in the graphical settings is a later UI task.
+Use **Ctrl+Alt+F2** for tty2, then run `eclipseos-updates`. The new image's settings menu also offers **u) EclipseOS updates**. This interface is independent of Eclipse's GUI/networking. The existing in-app upstream updater stays disabled; embedding this new workflow in the graphical settings is a later UI task.
 
 1. Check stable or testing, then stage. This verifies the signature, download size and checksum, every archive entry and every file checksum before marking anything pending. Staging changes neither live helpers nor services.
 2. End the stream and close all frontends. Apply from tty2 or relaunch a frontend normally; the launcher applies the pending update before starting a client. It refuses explicit activation if another frontend is running; automatic launch preflight defers it, preserving Pegasus launching child clients. Network/Bluetooth configuration changes can temporarily disconnect devices.
@@ -84,4 +84,4 @@ Publish the payload under its immutable release ID in this repository. Publish t
 
 Source checks: `bash scripts/validate.sh`, `python3 scripts/audit-runtime.py`, and the dedicated updater tests. `updater-source.yml` is a prepared manual workflow containing source checks only; it has not been dispatched. See [source verification](UPDATER_VERIFICATION.md). Test bundles and ephemeral keys live in disposable test directories; they are not deployable releases.
 
-Before enabling the first real feed: provision an owner-controlled public key, run the existing native Qt/frontend and decoder checks for any frontend changes, test bootstrap/apply/confirm/rollback on a disposable copy of the current image, then test tty2 recovery, reboot interruptions, Wi-Fi reconnect and Bluetooth/controller reconnect on the Mac. Source tests do not establish physical acceptance or power-loss guarantees for a particular USB/controller. No next image build is authorized by this preparation.
+Before enabling the first real feed: provision an owner-controlled public key, run the existing native Qt/frontend and decoder checks for any frontend changes, test bootstrap/apply/confirm/rollback on a disposable copy of the current image, then test tty2 recovery, reboot interruptions, Wi-Fi reconnect and Bluetooth/controller reconnect on the Mac. Source tests do not establish physical acceptance or power-loss guarantees for a particular USB/controller. The all-changes image has since been built and verified; future frontend payloads must pass native checks on their own exact source.

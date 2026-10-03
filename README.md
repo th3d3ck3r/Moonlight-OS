@@ -7,19 +7,23 @@
 
 **EclipseOS** (formerly Moonlight-OS) is a controller-friendly USB appliance for the **2017 13-inch non-Touch-Bar MacBook Pro — MacBookPro14,1**, connecting to **Vibepollo / Sunshine-compatible hosts**.
 
-**[⬇️ Latest build — EclipseOS](https://github.com/th3d3ck3r/Moonlight-OS/actions/runs/37132195854/artifacts/11277957881) · [🌙 Previous regular release](https://github.com/th3d3ck3r/Moonlight-OS/releases/tag/v0.1-experimental.20261002) · [🖤🔴 Previous experimental](https://github.com/th3d3ck3r/Moonlight-OS/releases/tag/v0.2-experimental.20261002) · [🚀 Setup](#quick-start) · [✨ Features](#features) · [🩺 Troubleshooting](#troubleshooting) · [🌑 Animation](#crimson-apollo-animation-preview) · [🧭 Roadmap](#independent-feature-plans) · [🧪 Test plan](docs/TEST_PLAN.md)**
+**[⬇️ Latest build — EclipseOS](https://github.com/th3d3ck3r/Moonlight-OS/actions/runs/37154967013/artifacts/11287150142) · [🌙 Previous regular release](https://github.com/th3d3ck3r/Moonlight-OS/releases/tag/v0.1-experimental.20261002) · [🖤🔴 Previous experimental](https://github.com/th3d3ck3r/Moonlight-OS/releases/tag/v0.2-experimental.20261002) · [🚀 Setup](#quick-start) · [✨ Features](#features) · [🩺 Troubleshooting](#troubleshooting) · [🌑 Animation](#crimson-apollo-animation-preview) · [🧭 Roadmap](#independent-feature-plans) · [🧪 Test plan](docs/TEST_PLAN.md)**
 
 </div>
 
 ---
 
-## Updates — new build authorized
+## Latest build — streaming fixes and updater support
 
-**A new build with all prepared changes is now authorized and awaiting native/image verification.** The download above remains the previous verified Crimson Glass build until the new artifact passes its gates.
+**[⬇️ Download the all-changes image ZIP](https://github.com/th3d3ck3r/Moonlight-OS/actions/runs/37154967013/artifacts/11287150142)** · [Actual UI previews (fixtures)](https://github.com/th3d3ck3r/Moonlight-OS/actions/runs/37154966989/artifacts/11285570733) · [Four-pass verification](docs/STREAMING_BUILD_VERIFICATION.md) · [Known issues](docs/KNOWN_ISSUES.md).
 
-The [`wip/eclipseos-updater`](https://github.com/th3d3ck3r/Moonlight-OS/tree/wip/eclipseos-updater) branch prepares signed Eclipse frontend and approved system helper/Wi-Fi/Bluetooth configuration updates on the current kernel/base. It adds staging, tty2 recovery and rollback; **no new image or release update package has been built or installed**. The current image needs a one-time trusted bootstrap before using updates. See the [updater guide](docs/UPDATES.md) for scope, enrollment and remaining validation. Graphical updater integration and driver/firmware updates are outside this first version. [Reported connection fixes and streaming software work](docs/STREAMING_SOFTWARE.md) add corrected Bluetooth calls, safer combined-band Wi-Fi behavior, reversible presets and a prepared render-contention fix; native/Mac verification remains pending.
+Built October 3 from `cf58cb9fde3167a68e392e773c7b92ce97db98b1`. All seven exact-source audits, **100 Python tests, 19 native UI tests and 31 decoder-status tests**, full Fedora frontend compilation/startup, installed-image inspection and strict OVMF UEFI boot passed. The ZIP is **3.68 GiB**, containing `eclipseos-crimson-glass-mbp14-1.img.xz` and its matching SHA-256 file. Raw image **12.24 GiB**; **16 GB drive minimum**. Download expires **2026-10-17T22:27:42Z**; GitHub may require sign-in.
 
-## 💎 Crimson Glass — latest build
+Includes every prepared change: complete Crimson Glass theme/graphs/background, corrected Wi-Fi/Bluetooth helpers, combined-band selection, overlay-lock and EGL synchronization changes, reversible streaming presets, renderer comparisons, private pipeline/driver diagnostics, and terminal frontend/helper updates with offline recovery. The current kernel/base remains fixed. Physical Mac pacing improvement, Wi-Fi/Bluetooth acceptance and real update/reboot recovery still need retesting; compilation and generic UEFI boot do not establish those outcomes.
+
+**Updater enrollment is required:** no owner signing key or release feed ships by default. Use the [update guide](docs/UPDATES.md) to enroll the public key; the terminal interface is `eclipseos-updates`, and in-app upstream updates remain disabled. The settings menu offers **u) EclipseOS updates** and **s) Streaming tuning / renderer diagnostics**. See [streaming comparisons](docs/STREAMING_SOFTWARE.md).
+
+## 💎 Preserved Crimson Glass comparison build
 
 Crimson Glass continues the saved Eclipse checkpoint with a responsive library, smoky rounded panels, consistent dialogs/menus/settings, sixteen accents, scaled text, reduced motion and high contrast. Small native overlay graphs show measured FPS/network latency and local CPU/RAM; unavailable sensors remain gaps. The selectable background is copied into app data, with dimming and reset controls.
 
