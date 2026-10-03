@@ -9,6 +9,7 @@ root = Path(__file__).resolve().parents[1]
 ks = root / 'config/moonlight-os.ks'
 pairs = {
     'VIBEMIS_PATCH_B64': 'patches/vibemis-crimson.patch',
+    'SYSTEMCONTROLS': 'scripts/system-controls.py',
     'BTMENU': 'scripts/bluetooth-menu.py',
     'FRONTENDS_LOCK': 'SOURCES.lock',
     'FRONTENDS_INSTALL': 'scripts/install-frontends.sh',

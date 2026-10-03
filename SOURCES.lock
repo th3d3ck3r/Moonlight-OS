@@ -28,4 +28,4 @@ PEGASUS_URL=https://github.com/mmatyas/pegasus-frontend/releases/download/contin
 PEGASUS_SHA256=85842b658796a67aeaefd2eeef8d3ee1999c675661bf443fa34e999e394bc550
 
 # Reviewed Moonlight-OS Vibemis theme/status patch.
-VIBEMIS_PATCH_SHA256=8c1a13262cc7cd678233a947f636d170da06570ec9e9ecc75e16f99467b90e01
+VIBEMIS_PATCH_SHA256=5cdb6bf95843c21fe383793ee24153fea241a46545c19da4aafb09be3ba87672

@@ -1,8 +1,8 @@
 diff --git a/app/app.pro b/app/app.pro
-index c1886a48..089c2621 100644
+index c1886a48..c10ed98d 100644
 --- a/app/app.pro
 +++ b/app/app.pro
-@@ -631,3 +631,7 @@ macx {
+@@ -631,3 +631,14 @@ macx {
  # counts) or the smart-build check skips the release.
  VERSION = "$$cat(version.txt)"
  DEFINES += VERSION_STR=\\\"$$cat(version.txt)\\\"
@@ -10,6 +10,35 @@ index c1886a48..089c2621 100644
 +# Moonlight-OS optional launcher status and host stats.
 +SOURCES += moonlightos/crimsonstatus.cpp
 +HEADERS += moonlightos/crimsonstatus.h
++
++# Compile the appliance-owned updater, not the upstream feed/AppImage installer.
++SOURCES -= backend/autoupdatechecker.cpp
++SOURCES += moonlightos/managedupdates.cpp
++
++SOURCES += moonlightos/systemcontrols.cpp
++HEADERS += moonlightos/systemcontrols.h
+diff --git a/app/backend/autoupdatechecker.h b/app/backend/autoupdatechecker.h
+index 5eb98cb8..69be41cc 100644
+--- a/app/backend/autoupdatechecker.h
++++ b/app/backend/autoupdatechecker.h
+@@ -29,6 +29,9 @@ class AutoUpdateChecker : public QObject
+ {
+     Q_OBJECT
+ 
++    // This customized appliance is updated with Moonlight-OS, never upstream AppImages.
++    Q_PROPERTY(bool osManaged READ osManaged CONSTANT)
++
+     // A strictly-newer build exists on the channel — powers the toolbar banner.
+     Q_PROPERTY(bool updateAvailable READ updateAvailable NOTIFY stateChanged)
+     // The channel's newest build differs from the running one (may be older —
+@@ -51,6 +54,7 @@ class AutoUpdateChecker : public QObject
+ 
+ public:
+     explicit AutoUpdateChecker(QObject *parent = nullptr);
++    bool osManaged() const { return true; }
+ 
+     // Launch-time entry point: quiet check now, then a periodic re-check every
+     // RECHECK_INTERVAL_MS (a launch-only check kept users blind to anything
 diff --git a/app/gui/AppView.qml b/app/gui/AppView.qml
 index 63f645d8..383adb75 100644
 --- a/app/gui/AppView.qml
@@ -161,7 +190,7 @@ index f0e739a8..f4d012b8 100644
                  }
                  else {
 diff --git a/app/gui/SettingsView.qml b/app/gui/SettingsView.qml
-index 494e35ba..f980d8f0 100644
+index 494e35ba..9d6d5dab 100644
 --- a/app/gui/SettingsView.qml
 +++ b/app/gui/SettingsView.qml
 @@ -3055,14 +3055,26 @@ Item {
@@ -193,6 +222,149 @@ index 494e35ba..f980d8f0 100644
                      ToolTip.delay: 1000
                      ToolTip.visible: hovered
                  }
+@@ -3724,7 +3736,7 @@ Item {
+                 Label {
+                     width: parent.width
+                     id: updateChannelTitle
+-                    text: qsTr("Software updates")
++                    text: AutoUpdateChecker.osManaged ? qsTr("Moonlight-OS updates") : qsTr("Software updates")
+                     font.pixelSize: VbTokens.typeLabel
+                     font.family: VbTokens.fontBody
+                     wrapMode: Text.Wrap
+@@ -3733,6 +3745,7 @@ Item {
+ 
+                 AutoResizingComboBox {
+                     id: updateChannelComboBox
++                    visible: !AutoUpdateChecker.osManaged
+                     textRole: "text"
+                     model: ListModel {
+                         id: updateChannelListModel
+@@ -3787,6 +3800,7 @@ Item {
+                     // install in flight at a time), so buttons stay enabled.
+                     Button {
+                         id: checkUpdatesButton
++                        visible: !AutoUpdateChecker.osManaged
+                         text: qsTr("Check for updates")
+                         onClicked: {
+                             AutoUpdateChecker.checkNow()
+@@ -3804,8 +3818,8 @@ Item {
+ 
+                     Button {
+                         id: viewReleaseButton
+-                        text: qsTr("View release")
+-                        visible: AutoUpdateChecker.offerAvailable
++                        text: AutoUpdateChecker.osManaged ? qsTr("Moonlight-OS releases") : qsTr("View release")
++                        visible: (AutoUpdateChecker.osManaged || AutoUpdateChecker.offerAvailable)
+                                  && AutoUpdateChecker.releaseUrl !== ""
+                                  && SystemProperties.hasBrowser
+                         onClicked: {
+diff --git a/app/gui/SystemConnectionsDialog.qml b/app/gui/SystemConnectionsDialog.qml
+new file mode 100644
+index 00000000..24f0e253
+--- /dev/null
++++ b/app/gui/SystemConnectionsDialog.qml
+@@ -0,0 +1,101 @@
++import QtQuick 2.9
++import QtQuick.Controls 2.5
++import QtQuick.Layouts 1.3
++import QtQuick.Controls.Material 2.2
++import Vibemis.Redesign 1.0
++import SystemControls 1.0
++
++NavigableDialog {
++    id: panel
++    property string kind: "wifi"
++    property var selected: ({})
++    width: Math.min(620, parent.width - 32)
++    height: Math.min(560, parent.height - 32)
++    title: kind === "wifi" ? qsTr("Wi-Fi networks") : qsTr("Bluetooth devices")
++    standardButtons: Dialog.Close
++    Material.background: VbTokens.bgElev
++    Material.accent: VbTokens.accent
++    background: Rectangle { color: VbTokens.bgElev; radius: VbTokens.radiusDialog; border.color: VbTokens.stroke }
++    onOpened: { selected = ({}); SystemControls.open(kind) }
++    onClosed: { credential.close(); secret.text = ""; forget.close(); SystemControls.close() }
++    contentItem: ColumnLayout {
++        spacing: VbTokens.space3
++        RowLayout {
++            Layout.fillWidth: true
++            Label { Layout.fillWidth: true; wrapMode: Text.Wrap; textFormat: Text.PlainText; text: SystemControls.status; color: VbTokens.textDim }
++            BusyIndicator { running: SystemControls.busy; visible: running; implicitWidth: 32; implicitHeight: 32 }
++            Button { text: qsTr("Scan"); enabled: !SystemControls.busy; onClicked: { panel.selected = ({}); SystemControls.request(panel.kind + "-scan") } }
++        }
++        Label {
++            Layout.fillWidth: true; wrapMode: Text.Wrap; color: VbTokens.textDim
++            text: panel.kind === "wifi" ? qsTr("Select a network, then Connect. Advanced or hidden networks are available in the diagnostic shell.") : qsTr("Put your controller or headphones in pairing mode, then Scan. Pairing may take up to a minute.")
++        }
++        ListView {
++            id: devices
++            Layout.fillWidth: true; Layout.fillHeight: true
++            clip: true; spacing: 4; model: SystemControls.items
++            ScrollBar.vertical: ScrollBar {}
++            delegate: ItemDelegate {
++                width: devices.width
++                enabled: !SystemControls.busy
++                highlighted: panel.selected.id === modelData.id
++                contentItem: Label {
++                    textFormat: Text.PlainText; elide: Text.ElideRight; color: VbTokens.text
++                    text: modelData.name + " · " + modelData.detail + (modelData.connected ? " · " + qsTr("Connected") : "")
++                }
++                onClicked: { panel.selected = modelData; devices.currentIndex = index }
++            }
++        }
++        RowLayout {
++            Layout.fillWidth: true
++            Button {
++                text: panel.kind === "wifi" ? qsTr("Connect") : qsTr("Pair / Connect")
++                enabled: !!panel.selected.id && !SystemControls.busy
++                onClicked: SystemControls.request(panel.kind + "-connect", panel.selected.id)
++            }
++            Button {
++                text: qsTr("Disconnect"); enabled: !!panel.selected.id && panel.selected.connected && !SystemControls.busy
++                onClicked: SystemControls.request(panel.kind + "-disconnect", panel.selected.id)
++            }
++            Button { text: qsTr("Forget"); visible: panel.kind === "bt"; enabled: !!panel.selected.id && !SystemControls.busy; onClicked: forget.open() }
++        }
++    }
++    Connections {
++        target: SystemControls
++        onChanged: {
++            if (SystemControls.prompt.length > 0 && panel.opened && !credential.opened) credential.open()
++            if (!SystemControls.busy) {
++                credential.close(); secret.text = ""
++                var id = panel.selected.id
++                panel.selected = ({})
++                for (var i = 0; i < SystemControls.items.length; i++)
++                    if (SystemControls.items[i].id === id) panel.selected = SystemControls.items[i]
++            }
++        }
++    }
++    NavigableDialog {
++        id: credential
++        title: qsTr("Connection authentication")
++        width: Math.min(480, panel.width)
++        closePolicy: Popup.NoAutoClose
++        standardButtons: Dialog.Ok | Dialog.Cancel
++        Material.background: VbTokens.bgElev
++        onOpened: { secret.text = ""; secret.forceActiveFocus() }
++        onAccepted: { SystemControls.answer(secret.text); secret.text = "" }
++        onRejected: { secret.text = ""; SystemControls.close() }
++        contentItem: ColumnLayout {
++            Label { Layout.fillWidth: true; textFormat: Text.PlainText; wrapMode: Text.Wrap; text: SystemControls.prompt; color: VbTokens.text }
++            TextField { id: secret; Layout.fillWidth: true; echoMode: TextInput.Password; maximumLength: 4096; selectByMouse: true; onAccepted: credential.accept() }
++            Label { Layout.fillWidth: true; wrapMode: Text.Wrap; text: qsTr("Enter the requested password or PIN. For a yes/no confirmation, type yes or no."); color: VbTokens.textDim }
++        }
++    }
++    NavigableDialog {
++        id: forget
++        title: qsTr("Forget Bluetooth device?")
++        width: Math.min(480, panel.width)
++        standardButtons: Dialog.Yes | Dialog.No
++        Material.background: VbTokens.bgElev
++        onAccepted: SystemControls.request("bt-forget", panel.selected.id, true)
++        contentItem: Label { textFormat: Text.PlainText; wrapMode: Text.Wrap; text: qsTr("Remove the saved pairing for %1? You will need to pair it again.").arg(panel.selected.name || ""); color: VbTokens.text }
++    }
++}
 diff --git a/app/gui/Theme.qml b/app/gui/Theme.qml
 index fb91c850..57c9f848 100644
 --- a/app/gui/Theme.qml
@@ -324,7 +496,7 @@ index 6ecae30d..2ee73c1d 100644
  
      Q_INVOKABLE QString generatePinString();
 diff --git a/app/gui/main.qml b/app/gui/main.qml
-index 9bce5105..ba1f4ad0 100644
+index 9bce5105..ce7b28d9 100644
 --- a/app/gui/main.qml
 +++ b/app/gui/main.qml
 @@ -12,8 +12,24 @@ import SystemProperties 1.0
@@ -369,41 +541,60 @@ index 9bce5105..ba1f4ad0 100644
  
          SdlGamepadKeyNavigation.enable()
      }
-@@ -267,6 +282,8 @@ ApplicationWindow {
+@@ -267,6 +282,9 @@ ApplicationWindow {
          }
      }
  
 +    CrimsonStatusDialog { id: crimsonPanel }
++    SystemConnectionsDialog { id: connectionPanel }
 +
      header: ToolBar {
          id: toolBar
          // Redesign: EVERY redesigned launcher screen (Computers, App grid, Settings, Help)
-@@ -338,7 +355,7 @@ ApplicationWindow {
+@@ -338,7 +356,7 @@ ApplicationWindow {
          // VIBEMIS wordmark (diamond + wordmark), shown on the Computers screen in place of a title,
          // matching the design header. Left-aligned at the HTML's 40px padding.
          Row {
 -            visible: toolBar.onPcView
-+            visible: toolBar.onPcView && toolBar.width > 700
++            visible: toolBar.onPcView && toolBar.width > 760
              anchors.left: parent.left
              anchors.leftMargin: 40
              anchors.verticalCenter: parent.verticalCenter
-@@ -487,6 +504,45 @@ ApplicationWindow {
+@@ -365,7 +383,7 @@ ApplicationWindow {
+             // Hidden on Computers (the wordmark stands in) and on the App grid (which shows a
+             // left-aligned host + status block instead). On Settings/Help it shows the screen name;
+             // the streaming segues keep their default objectName title.
+-            visible: !toolBar.onPcView && !toolBar.onAppView && toolBar.width > 700
++            visible: !toolBar.onPcView && !toolBar.onAppView && toolBar.width > 760
+             anchors.fill: parent
+             text: toolBar.onSettings ? qsTr("Settings")
+                 : toolBar.onHelp ? qsTr("Help")
+@@ -487,6 +505,54 @@ ApplicationWindow {
                  }
              }
  
 +            NavigableToolButton {
 +                id: networkStatusButton
 +                iconSource: "qrc:/res/crimson-network.svg"
-+                Accessible.name: qsTr("Network status")
++                Accessible.name: qsTr("Wi-Fi settings")
 +                ToolTip.visible: hovered
 +                ToolTip.text: qsTr("Network: %1").arg(CrimsonStatus.local.network || qsTr("Unavailable"))
-+                onClicked: { crimsonPanel.kind = "network"; crimsonPanel.open() }
++                onClicked: { connectionPanel.kind = "wifi"; connectionPanel.open() }
 +                Keys.onDownPressed: stackView.currentItem.forceActiveFocus(Qt.TabFocus)
 +                Rectangle {
 +                    anchors.right: parent.right; anchors.bottom: parent.bottom; anchors.margins: 5
 +                    width: 8; height: 8; radius: 4
 +                    color: CrimsonStatus.local.connected ? VbTokens.statusOnline : VbTokens.statusOffline
 +                }
++            }
++            NavigableToolButton {
++                id: bluetoothSettingsButton
++                iconSource: "qrc:/res/crimson-bluetooth.svg"
++                Accessible.name: qsTr("Bluetooth settings")
++                ToolTip.visible: hovered
++                ToolTip.text: qsTr("Pair controllers and headphones")
++                onClicked: { connectionPanel.kind = "bt"; connectionPanel.open() }
++                Keys.onDownPressed: stackView.currentItem.forceActiveFocus(Qt.TabFocus)
 +            }
 +            NavigableToolButton {
 +                id: batteryStatusButton
@@ -719,12 +910,279 @@ index 00000000..2dac0d1c
 +    QPointer<QNetworkReply> m_reply;
 +    bool m_visible = false;
 +};
+diff --git a/app/moonlightos/managedupdates.cpp b/app/moonlightos/managedupdates.cpp
+new file mode 100644
+index 00000000..aa15379a
+--- /dev/null
++++ b/app/moonlightos/managedupdates.cpp
+@@ -0,0 +1,132 @@
++// Moonlight-OS owns this customized native client. No feed requests, asset
++// downloads, swaps or relaunches are compiled into this update implementation.
++#include "../backend/autoupdatechecker.h"
++#include <QCoreApplication>
++#include <QJsonObject>
++
++static QString stripBuildMetadata(const QString& version)
++{
++    int plusIdx = version.indexOf('+');
++    return plusIdx >= 0 ? version.left(plusIdx) : version;
++}
++
++static bool isNumericIdentifier(const QString& s)
++{
++    if (s.isEmpty()) {
++        return false;
++    }
++    for (const QChar& c : s) {
++        if (!c.isDigit()) {
++            return false;
++        }
++    }
++    return true;
++}
++
++int AutoUpdateChecker::compareSemanticVersions(const QString& v1, const QString& v2)
++{
++    QString s1 = stripBuildMetadata(v1);
++    QString s2 = stripBuildMetadata(v2);
++
++    int dash1 = s1.indexOf('-');
++    int dash2 = s2.indexOf('-');
++    QString base1 = dash1 >= 0 ? s1.left(dash1) : s1;
++    QString base2 = dash2 >= 0 ? s2.left(dash2) : s2;
++    QString pre1 = dash1 >= 0 ? s1.mid(dash1 + 1) : QString();
++    QString pre2 = dash2 >= 0 ? s2.mid(dash2 + 1) : QString();
++
++    // Numeric base versions compare first (0.4.0-beta.001 > 0.3.0)
++    const QStringList baseParts1 = base1.split('.');
++    const QStringList baseParts2 = base2.split('.');
++    for (int i = 0; i < qMax(baseParts1.count(), baseParts2.count()); i++) {
++        qlonglong b1 = i < baseParts1.count() ? baseParts1[i].toLongLong() : 0;
++        qlonglong b2 = i < baseParts2.count() ? baseParts2[i].toLongLong() : 0;
++        if (b1 != b2) {
++            return b1 < b2 ? -1 : 1;
++        }
++    }
++
++    // Equal base: a release with no prerelease suffix outranks any prerelease
++    if (pre1.isEmpty() != pre2.isEmpty()) {
++        return pre1.isEmpty() ? 1 : -1;
++    }
++    if (pre1.isEmpty()) {
++        return 0;
++    }
++
++    // Two prereleases: compare dot-separated identifiers left to right.
++    // Numeric identifiers compare numerically (leading zeros tolerated — our
++    // CI zero-pads counters), alphanumeric ones lexically in ASCII order, and
++    // numeric always ranks below alphanumeric. This is what orders
++    // "alpha" < "beta" < "rc" at an equal base — the property the previous
++    // implementation lacked (it skipped the words and compared only numbers,
++    // so 0.3.0-beta.008 wrongly outranked 0.3.0-rc.002).
++    const QStringList ids1 = pre1.split('.');
++    const QStringList ids2 = pre2.split('.');
++    for (int i = 0; i < qMax(ids1.count(), ids2.count()); i++) {
++        if (i >= ids1.count()) {
++            // Equal prefix, fewer fields = lower precedence (§11.4.4)
++            return -1;
++        }
++        if (i >= ids2.count()) {
++            return 1;
++        }
++        bool num1 = isNumericIdentifier(ids1[i]);
++        bool num2 = isNumericIdentifier(ids2[i]);
++        if (num1 && num2) {
++            qlonglong p1 = ids1[i].toLongLong();
++            qlonglong p2 = ids2[i].toLongLong();
++            if (p1 != p2) {
++                return p1 < p2 ? -1 : 1;
++            }
++        }
++        else if (num1 != num2) {
++            // Numeric identifiers rank below alphanumeric ones (§11.4.3)
++            return num1 ? -1 : 1;
++        }
++        else {
++            int cmp = QString::compare(ids1[i], ids2[i]);
++            if (cmp != 0) {
++                return cmp < 0 ? -1 : 1;
++            }
++        }
++    }
++    return 0;
++}
++
++AutoUpdateChecker::AutoUpdateChecker(QObject* parent) :
++    QObject(parent), m_CheckInFlight(false), m_CheckIsManual(false),
++    m_UpdateAvailable(false), m_OfferAvailable(false), m_Installing(false)
++{
++    clearOffer();
++    setStatus(tr("%1. Updates are managed by Moonlight-OS. Get the matching OS image from %2; upstream Vibemis updates are disabled.").arg(currentVersion(), m_ReleaseUrl));
++}
++QString AutoUpdateChecker::currentVersion() const
++{
++    return tr("Vibemis %1 · Moonlight-OS customized").arg(QCoreApplication::applicationVersion());
++}
++void AutoUpdateChecker::clearOffer()
++{
++    m_UpdateAvailable = false; m_OfferAvailable = false;
++    m_OfferVersion.clear(); m_AssetUrl.clear(); m_OfferTier = -1;
++    m_ReleaseUrl = QStringLiteral("https://github.com/th3d3ck3r/Moonlight-OS/releases");
++}
++void AutoUpdateChecker::setStatus(const QString& message)
++{
++    if (m_StatusMessage != message) { m_StatusMessage = message; emit stateChanged(); }
++}
++void AutoUpdateChecker::start() { /* No timer and no background update requests. */ }
++bool AutoUpdateChecker::canInstallUpdates() const { return false; }
++bool AutoUpdateChecker::canInstall() const { return false; }
++void AutoUpdateChecker::channelChanged() { checkNow(); }
++void AutoUpdateChecker::checkNow()
++{
++    clearOffer();
++    setStatus(tr("Updates are managed by Moonlight-OS. Download the matching OS image from %1. This client never installs upstream Vibemis releases.").arg(m_ReleaseUrl));
++    emit stateChanged(); emit checkCompleted(true, false);
++}
++void AutoUpdateChecker::install()
++{
++    checkNow();
++    emit installFailed(tr("Standalone Vibemis installation is disabled in Moonlight-OS."), m_ReleaseUrl);
++}
+diff --git a/app/moonlightos/systemcontrols.cpp b/app/moonlightos/systemcontrols.cpp
+new file mode 100644
+index 00000000..47eeafb8
+--- /dev/null
++++ b/app/moonlightos/systemcontrols.cpp
+@@ -0,0 +1,82 @@
++#include "systemcontrols.h"
++#include <QCoreApplication>
++#include <QJsonDocument>
++#include <QJsonObject>
++#include <QJsonArray>
++#include <QQmlEngine>
++#include <QFileInfo>
++SystemControls::SystemControls(QObject* parent) : QObject(parent) {
++    m_timeout.setSingleShot(true);
++    connect(&m_timeout, &QTimer::timeout, this, [this] { fail(tr("Operation timed out. Retry or use the diagnostic shell.")); });
++    connect(&m_process, &QProcess::started, this, [this] { request(m_mode + "-list"); });
++    connect(&m_process, &QProcess::readyReadStandardError, this, [this] { m_process.readAllStandardError(); });
++    connect(&m_process, &QProcess::readyReadStandardOutput, this, [this] {
++        m_buffer += m_process.readAllStandardOutput();
++        if (m_buffer.size() > 65536) { fail(tr("Invalid system response.")); return; }
++        while (m_buffer.contains('\n')) {
++            int end = m_buffer.indexOf('\n');
++            QJsonParseError error;
++            auto document = QJsonDocument::fromJson(m_buffer.left(end), &error);
++            m_buffer.remove(0, end + 1);
++            if (error.error != QJsonParseError::NoError || !document.isObject()) { fail(tr("Invalid system response.")); return; }
++            auto value = document.object();
++            if (value.contains("prompt")) {
++                m_prompt = value.value("prompt").toString().left(1024);
++                m_timeout.start(120000);
++            }
++            if (value.value("done").toBool()) {
++                m_timeout.stop(); m_busy = false; m_prompt.clear();
++                if (value.contains("items")) {
++                    auto entries = value.value("items").toArray();
++                    if (entries.size() > 64) { fail(tr("Invalid device list.")); return; }
++                    m_items = entries.toVariantList();
++                }
++                m_status = value.contains("error") ? value.value("error").toString().left(1024) : value.value("status").toString();
++            }
++            emit changed();
++        }
++    });
++    connect(&m_process, &QProcess::errorOccurred, this, [this](QProcess::ProcessError) {
++        if (!m_mode.isEmpty()) fail(tr("System controls are unavailable. Use the diagnostic shell."));
++    });
++    connect(&m_process, QOverload<int,QProcess::ExitStatus>::of(&QProcess::finished), this, [this](int, QProcess::ExitStatus) {
++        if (!m_mode.isEmpty()) { m_timeout.stop(); m_busy = false; m_prompt.clear(); m_status = tr("System helper stopped. Close and reopen this panel."); emit changed(); }
++    });
++}
++SystemControls::~SystemControls() { close(); if (!m_process.waitForFinished(500)) { m_process.kill(); m_process.waitForFinished(500); } }
++void SystemControls::send(const QJsonObject& value) { m_process.write(QJsonDocument(value).toJson(QJsonDocument::Compact) + '\n'); }
++void SystemControls::open(QString mode) {
++    if (mode != "wifi" && mode != "bt") return;
++    close();
++    if (m_process.state() != QProcess::NotRunning) { m_process.kill(); m_process.waitForFinished(500); }
++    m_mode = mode; m_items.clear(); m_buffer.clear(); m_status = tr("Loading…"); emit changed();
++    QString helper = "/usr/local/libexec/moonlight-os/system-controls.py";
++#ifdef MOONLIGHT_CONTROLS_TEST
++    helper = qEnvironmentVariable("MOONLIGHT_CONTROLS_FIXTURE", helper);
++#endif
++    m_process.start("python3", {helper});
++}
++void SystemControls::request(QString action, QString id, bool confirm) {
++    if (m_busy || m_process.state() != QProcess::Running || !action.startsWith(m_mode + "-")) return;
++    const QStringList allowed = {"wifi-list", "wifi-scan", "wifi-connect", "wifi-disconnect", "bt-list", "bt-scan", "bt-connect", "bt-disconnect", "bt-forget"};
++    if (!allowed.contains(action)) return;
++    m_busy = true; m_prompt.clear(); m_status = tr("Working…"); m_timeout.start(120000);
++    send({{"action", action}, {"id", id}, {"confirm", confirm}}); emit changed();
++}
++void SystemControls::answer(QString value) {
++    if (!m_busy || m_prompt.isEmpty() || value.size() > 4096 || value.contains('\n') || value.contains('\r') || value.contains(QChar(0))) return;
++    send({{"action", "answer"}, {"value", value}}); m_prompt.clear(); m_timeout.start(120000); emit changed();
++}
++void SystemControls::close() {
++    m_mode.clear(); m_timeout.stop(); m_busy = false; m_prompt.clear(); m_buffer.clear();
++    if (m_process.state() != QProcess::NotRunning) {
++        m_process.terminate();
++        QTimer::singleShot(4000, this, [this] { if (m_mode.isEmpty() && m_process.state() != QProcess::NotRunning) m_process.kill(); });
++    }
++    emit changed();
++}
++void SystemControls::fail(QString message) { close(); m_status = message; emit changed(); }
++static void registerSystemControls() {
++    qmlRegisterSingletonType<SystemControls>("SystemControls", 1, 0, "SystemControls", [](QQmlEngine*, QJSEngine*) -> QObject* { return new SystemControls(); });
++}
++Q_COREAPP_STARTUP_FUNCTION(registerSystemControls)
+diff --git a/app/moonlightos/systemcontrols.h b/app/moonlightos/systemcontrols.h
+new file mode 100644
+index 00000000..8ebec84a
+--- /dev/null
++++ b/app/moonlightos/systemcontrols.h
+@@ -0,0 +1,35 @@
++#pragma once
++#include <QObject>
++#include <QJsonObject>
++#include <QProcess>
++#include <QTimer>
++#include <QVariantList>
++class SystemControls : public QObject {
++    Q_OBJECT
++    Q_PROPERTY(QVariantList items READ items NOTIFY changed)
++    Q_PROPERTY(QString status READ status NOTIFY changed)
++    Q_PROPERTY(QString prompt READ prompt NOTIFY changed)
++    Q_PROPERTY(bool busy READ busy NOTIFY changed)
++public:
++    explicit SystemControls(QObject* parent = nullptr);
++    ~SystemControls();
++    QVariantList items() const { return m_items; }
++    QString status() const { return m_status; }
++    QString prompt() const { return m_prompt; }
++    bool busy() const { return m_busy; }
++    Q_INVOKABLE void open(QString mode);
++    Q_INVOKABLE void request(QString action, QString id = QString(), bool confirm = false);
++    Q_INVOKABLE void answer(QString value);
++    Q_INVOKABLE void close();
++signals:
++    void changed();
++private:
++    void send(const QJsonObject& value);
++    void fail(QString message);
++    QProcess m_process;
++    QTimer m_timeout;
++    QByteArray m_buffer;
++    QVariantList m_items;
++    QString m_mode, m_status, m_prompt;
++    bool m_busy = false;
++};
 diff --git a/app/moonlightos/tests/Harness.qml b/app/moonlightos/tests/Harness.qml
 new file mode 100644
-index 00000000..09a245de
+index 00000000..47e27152
 --- /dev/null
 +++ b/app/moonlightos/tests/Harness.qml
-@@ -0,0 +1,18 @@
+@@ -0,0 +1,19 @@
 +import QtQuick 2.9
 +import QtQuick.Controls 2.5
 +import QtQuick.Controls.Material 2.2
@@ -742,6 +1200,7 @@ index 00000000..09a245de
 +    Item { id: stackView }
 +    QtObject { objectName: "testState"; property color accent: VbTokens.accent; property color pressed: VbTokens.accentPressed }
 +    CrimsonStatusDialog { objectName: "testPanel" }
++    SystemConnectionsDialog { objectName: "connectionsPanel" }
 +}
 diff --git a/app/moonlightos/tests/Preferences.qml b/app/moonlightos/tests/Preferences.qml
 new file mode 100644
@@ -754,10 +1213,10 @@ index 00000000..dfdaf02c
 +QtObject { property int uiAccentIndex: 4; property bool uiShowHints: true }
 diff --git a/app/moonlightos/tests/test-crimson.cpp b/app/moonlightos/tests/test-crimson.cpp
 new file mode 100644
-index 00000000..58a995b0
+index 00000000..53a9f44f
 --- /dev/null
 +++ b/app/moonlightos/tests/test-crimson.cpp
-@@ -0,0 +1,153 @@
+@@ -0,0 +1,215 @@
 +#include <QtTest>
 +#include <QTemporaryDir>
 +#include <QQmlEngine>
@@ -776,6 +1235,8 @@ index 00000000..58a995b0
 +#include <QDir>
 +#include <QFileInfo>
 +#include "../crimsonstatus.h"
++#include "../systemcontrols.h"
++#include "../../backend/autoupdatechecker.h"
 +
 +class TlsFixture : public QTcpServer {
 +public:
@@ -814,6 +1275,52 @@ index 00000000..58a995b0
 +class CrimsonTest : public QObject {
 +    Q_OBJECT
 +private slots:
++    void systemControlsPrivatePipe() {
++        QTemporaryDir dir; QVERIFY(dir.isValid());
++        QFile script(dir.filePath("fixture.py")); QVERIFY(script.open(QIODevice::WriteOnly));
++        script.write(R"PY(import json,sys
++for line in sys.stdin:
++    value=json.loads(line)
++    action=value['action']
++    if action=='wifi-connect':
++        print(json.dumps({'prompt':'Wi-Fi password'}),flush=True)
++        reply=json.loads(sys.stdin.readline())
++        assert reply=={'action':'answer','value':'secret-value'}
++    print(json.dumps({'items':[{'id':'wlan0/AA:BB:CC:DD:EE:FF','name':'<b>Plain SSID</b>','detail':'80% WPA2','connected':action=='wifi-connect'}],'status':'Ready','done':True}),flush=True)
++)PY"); script.close();
++        qputenv("MOONLIGHT_CONTROLS_FIXTURE", script.fileName().toUtf8());
++        SystemControls controls; controls.open("wifi");
++        QTRY_COMPARE(controls.items().size(), 1); QVERIFY(!controls.busy());
++        controls.request("bt-forget", "invalid", true); QVERIFY(!controls.busy());
++        controls.request("wifi-connect", "wlan0/AA:BB:CC:DD:EE:FF");
++        QTRY_VERIFY(!controls.prompt().isEmpty()); QVERIFY(controls.busy());
++        controls.answer("secret-value"); QTRY_VERIFY(!controls.busy());
++        QVERIFY(controls.prompt().isEmpty()); QCOMPARE(controls.status(), QString("Ready"));
++        QVERIFY(controls.items().first().toMap().value("connected").toBool());
++        controls.close(); QVERIFY(!controls.busy());
++        qunsetenv("MOONLIGHT_CONTROLS_FIXTURE");
++    }
++    void managedUpdaterCannotReplaceCustomizedClient() {
++        QTemporaryDir dir; QVERIFY(dir.isValid());
++        const QString image = dir.filePath("custom.AppImage");
++        QFile f(image); QVERIFY(f.open(QIODevice::WriteOnly)); f.write("customized client"); f.close();
++        const QByteArray old = qgetenv("APPIMAGE"); const bool had = qEnvironmentVariableIsSet("APPIMAGE");
++        qputenv("APPIMAGE", image.toUtf8());
++        AutoUpdateChecker checker;
++        QVERIFY(checker.osManaged()); QVERIFY(!checker.canInstallUpdates());
++        QSignalSpy completed(&checker, &AutoUpdateChecker::checkCompleted);
++        QSignalSpy failed(&checker, &AutoUpdateChecker::installFailed);
++        checker.start(); checker.checkNow(); checker.channelChanged(); checker.install();
++        QCOMPARE(completed.count(), 3); QCOMPARE(failed.count(), 1);
++        QVERIFY(!checker.checking()); QVERIFY(!checker.installing());
++        QVERIFY(!checker.canInstall()); QVERIFY(!checker.updateAvailable()); QVERIFY(!checker.offerAvailable());
++        QCOMPARE(checker.releaseUrl(), QString("https://github.com/th3d3ck3r/Moonlight-OS/releases"));
++        QVERIFY(checker.currentVersion().contains("Moonlight-OS customized"));
++        QVERIFY(f.open(QIODevice::ReadOnly)); QCOMPARE(f.readAll(), QByteArray("customized client")); f.close();
++        QCOMPARE(QDir(dir.path()).entryList(QDir::Files), QStringList{"custom.AppImage"});
++        if (had) qputenv("APPIMAGE", old); else qunsetenv("APPIMAGE");
++        QCOMPARE(AutoUpdateChecker::compareSemanticVersions("0.5.0", "0.4.9"), 1);
++    }
 +    void endpointValidation() {
 +        QVERIFY(CrimsonStatus::validEndpoint("https://192.168.1.10:47990"));
 +        QVERIFY(CrimsonStatus::validEndpoint("https://[fd00::1]:47990/"));
@@ -907,30 +1414,52 @@ index 00000000..58a995b0
 +            }
 +            QVERIFY(QMetaObject::invokeMethod(panel, "close")); QTest::qWait(300);
 +        }
++        auto connections = root->findChild<QObject*>("connectionsPanel"); QVERIFY(connections);
++        for (QString kind : {"wifi", "bt"}) {
++            root->setProperty("width", 1024); root->setProperty("height", 640);
++            QVERIFY(connections->setProperty("kind", kind));
++            QVERIFY(QMetaObject::invokeMethod(connections, "open")); QTest::qWait(300);
++            QVERIFY(connections->property("visible").toBool());
++            QVERIFY(connections->property("width").toInt() <= 992);
++            QString out = qEnvironmentVariable("CRIMSON_SCREENSHOTS");
++            if (!out.isEmpty()) {
++                auto window = qobject_cast<QQuickWindow*>(root.data()); QVERIFY(window);
++                QVERIFY(window->grabWindow().save(out + "/" + kind + "-selector.png"));
++            }
++            QVERIFY(QMetaObject::invokeMethod(connections, "close")); QTest::qWait(300);
++        }
 +    }
 +};
 +QTEST_MAIN(CrimsonTest)
 +#include "test-crimson.moc"
 diff --git a/app/moonlightos/tests/test-crimson.pro b/app/moonlightos/tests/test-crimson.pro
 new file mode 100644
-index 00000000..fe9b0fb7
+index 00000000..e4370096
 --- /dev/null
 +++ b/app/moonlightos/tests/test-crimson.pro
-@@ -0,0 +1,5 @@
+@@ -0,0 +1,12 @@
 +QT += core gui quick network quickcontrols2 testlib
 +CONFIG += c++17 testcase
 +TARGET = test-crimson
 +SOURCES += test-crimson.cpp ../crimsonstatus.cpp
 +HEADERS += ../crimsonstatus.h
++
++SOURCES += ../managedupdates.cpp
++HEADERS += ../../backend/autoupdatechecker.h
++
++DEFINES += MOONLIGHT_CONTROLS_TEST
++SOURCES += ../systemcontrols.cpp
++HEADERS += ../systemcontrols.h
 diff --git a/app/qml.qrc b/app/qml.qrc
-index a3c11dd7..7762a8a7 100644
+index a3c11dd7..94b21176 100644
 --- a/app/qml.qrc
 +++ b/app/qml.qrc
-@@ -14,6 +14,7 @@
+@@ -14,6 +14,8 @@
          <file>gui/VbHostCard.qml</file>
          <file>gui/VbWelcomeSheet.qml</file>
          <file>gui/main.qml</file>
 +        <file>gui/CrimsonStatusDialog.qml</file>
++        <file>gui/SystemConnectionsDialog.qml</file>
          <file>gui/PcView.qml</file>
          <file>gui/AppView.qml</file>
          <file>gui/SettingsView.qml</file>
@@ -941,6 +1470,13 @@ index 00000000..3753566a
 +++ b/app/res/crimson-battery.svg
 @@ -0,0 +1 @@
 +<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><g fill="none" stroke="#ECEEF1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="18" height="12" rx="2"/><path d="M22 10v4M6 10v4M10 10v4M14 10v4"/></g></svg>
+diff --git a/app/res/crimson-bluetooth.svg b/app/res/crimson-bluetooth.svg
+new file mode 100644
+index 00000000..cef9ab86
+--- /dev/null
++++ b/app/res/crimson-bluetooth.svg
+@@ -0,0 +1 @@
++<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path d="M7 7l10 10-5 4V3l5 4L7 17" fill="none" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
 diff --git a/app/res/crimson-host.svg b/app/res/crimson-host.svg
 new file mode 100644
 index 00000000..d1d59b0c
@@ -956,13 +1492,14 @@ index 00000000..b2a103a6
 @@ -0,0 +1 @@
 +<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><g fill="none" stroke="#ECEEF1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8a14 14 0 0 1 18 0M6 12a9 9 0 0 1 12 0M9 16a4 4 0 0 1 6 0"/><circle cx="12" cy="20" r="1"/></g></svg>
 diff --git a/app/resources.qrc b/app/resources.qrc
-index b5d4ee79..84a25897 100644
+index b5d4ee79..8d76896d 100644
 --- a/app/resources.qrc
 +++ b/app/resources.qrc
-@@ -1,5 +1,8 @@
+@@ -1,5 +1,9 @@
  <RCC>
      <qresource prefix="/">
 +        <file>res/crimson-network.svg</file>
++        <file>res/crimson-bluetooth.svg</file>
 +        <file>res/crimson-battery.svg</file>
 +        <file>res/crimson-host.svg</file>
          <file alias="res/steam/vibemis_p.png">res/steam/vibemis_p.png</file>

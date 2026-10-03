@@ -23,6 +23,10 @@ Includes the **black/crimson animated Apollo moon boot screen**, a remembered se
 
 **One complete download; no split files.** The current release links to the original Actions ZIP (about **3.62 GiB**), containing the compressed image and checksum. GitHub may require sign-in; the artifact expires October 16. No image is attached as a release asset because it exceeds GitHub's per-file limit. Do not flash GitHub's automatic source-code ZIP.
 
+## 🛠️ Frontend source work — not a new download
+
+Wi-Fi and Bluetooth selectors are being validated for the next image: scan, connect/pair, disconnect, and confirmed Bluetooth forget. Customized Vibemis uses Moonlight-OS release guidance and disables upstream standalone replacement. [Feature brainstorm and control-center plan](docs/VIBEMIS_FEATURE_PLAN.md) includes lightweight audio, brightness, host, profile and recovery ideas; those ideas are not implemented by this change. No OS image build or download-link change has been started.
+
 ## 🖤🔴 New experimental — Vibemis Crimson
 
 **[🧪 Experimental release](https://github.com/th3d3ck3r/Moonlight-OS/releases/tag/v0.2-experimental.20261002) · [📦 One-file image ZIP](https://github.com/th3d3ck3r/Moonlight-OS/actions/runs/37022392821/artifacts/11235677661) · [📖 Download / flashing guide](docs/releases/v0.2-experimental.20261002.md)**

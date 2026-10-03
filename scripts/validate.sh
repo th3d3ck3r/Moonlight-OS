@@ -255,3 +255,5 @@ need_text "Control + Option + Shift + M" "$README"
 python3 "$ROOT/scripts/audit-boot-animation.py"
 python3 "$ROOT/scripts/sync-frontend-payloads.py" --check
 echo "Static validation passed."
+
+python3 "$ROOT/scripts/test-system-controls.py"
