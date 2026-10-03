@@ -7,31 +7,33 @@
 
 A controller-friendly USB appliance for the **2017 13-inch non-Touch-Bar MacBook Pro — MacBookPro14,1**, connecting to **Vibepollo / Sunshine-compatible hosts**.
 
-**[🌙 Current release](https://github.com/th3d3ck3r/Moonlight-OS/releases/tag/v0.1-experimental.20261002) · [🖤🔴 New experimental](https://github.com/th3d3ck3r/Moonlight-OS/releases/tag/v0.2-experimental.20261002) · [⬇️ Previous repair download](https://github.com/th3d3ck3r/Moonlight-OS/actions/runs/36972953272/artifacts/11213197745) · [🚀 Setup](#quick-start) · [✨ Features](#features) · [🩺 Troubleshooting](#troubleshooting) · [🌑 Animation](#crimson-apollo-animation-preview) · [🧭 Roadmap](#independent-feature-plans) · [🧪 Test plan](docs/TEST_PLAN.md)**
+**[⬇️ Latest build — Eclipse](https://github.com/th3d3ck3r/Moonlight-OS/actions/runs/37095761480/artifacts/11264873899) · [🌙 Previous regular release](https://github.com/th3d3ck3r/Moonlight-OS/releases/tag/v0.1-experimental.20261002) · [🖤🔴 Previous experimental](https://github.com/th3d3ck3r/Moonlight-OS/releases/tag/v0.2-experimental.20261002) · [⬇️ Previous repair download](https://github.com/th3d3ck3r/Moonlight-OS/actions/runs/36972953272/artifacts/11213197745) · [🚀 Setup](#quick-start) · [✨ Features](#features) · [🩺 Troubleshooting](#troubleshooting) · [🌑 Animation](#crimson-apollo-animation-preview) · [🧭 Roadmap](#independent-feature-plans) · [🧪 Test plan](docs/TEST_PLAN.md)**
 
 </div>
 
 ---
 
-## 🌙 Current release — Apollo, Bluetooth & five frontends
-
-**[⬇️ Current release](https://github.com/th3d3ck3r/Moonlight-OS/releases/tag/v0.1-experimental.20261002) · [📦 One-file Actions ZIP](https://github.com/th3d3ck3r/Moonlight-OS/actions/runs/36995905431/artifacts/11223945065) · [📖 Download / flashing guide](docs/releases/v0.1-experimental.20261002.md)**
-
-Includes the **black/crimson animated Apollo moon boot screen**, a remembered selector for **Vibemis / Artemis / Pegasus / Moonlight / CocoOS**, and generic guided Bluetooth pairing with confirmation prompts and verified connection state. All Intel, English UI, Openbox/display, audio, Mac media-key and console repairs remain included.
-
-**All six audits, installed-image inspection and strict OVMF boot passed** for image commit `32bc89855f8bac3caf90b9d5177ae583bc50313d`. The user confirmed boot, animation and Bluetooth pairing on the Mac and prefers Vibemis. Exact device-by-device AirPods/controller features, decoder telemetry and sustained streaming checks still need results. The previous repair download below stays available as a fallback; this image is now promoted to a regular release; the new theme/status image remains separately experimental.
-
-**One complete download; no split files.** The current release links to the original Actions ZIP (about **3.62 GiB**), containing the compressed image and checksum. GitHub may require sign-in; the artifact expires October 16. No image is attached as a release asset because it exceeds GitHub's per-file limit. Do not flash GitHub's automatic source-code ZIP.
-
-## 🌘 Eclipse — validated test candidate
+## 🌘 Latest build — Eclipse
 
 The customized frontend is now **Eclipse**: black/crimson glass-inspired surfaces, matching outline controls, a control center, saved stream profiles, accessibility options, a new app icon and minimal eclipse boot animation. About shows installed versions and **Made by Th3D3ck3r**. [Eclipse features and test instructions](docs/ECLIPSE_FRONTEND.md) · [Full feature roadmap](docs/VIBEMIS_FEATURE_PLAN.md).
 
-**[📦 Download Eclipse image ZIP](https://github.com/th3d3ck3r/Moonlight-OS/actions/runs/37095761480/artifacts/11264873899) · [✅ Build and verification](docs/ECLIPSE_VERIFICATION.md)**
+**[⬇️ Download latest build — Eclipse ZIP](https://github.com/th3d3ck3r/Moonlight-OS/actions/runs/37095761480/artifacts/11264873899) · [✅ Build and verification](docs/ECLIPSE_VERIFICATION.md)**
 
 Built October 3 from `3625507be0a9ca08996ef9a188326c69e7b040fb`. All seven audits on that exact commit, installed-image inspection and strict OVMF UEFI boot passed. The ZIP is **3.86 GiB** and contains `moonlight-os-mbp14-1.img.xz` plus its SHA-256 file; the extracted image is **12.24 GiB**, requiring a **16 GB or larger drive**. The artifact expires October 17; GitHub may require sign-in. Select **Eclipse** in the frontend chooser to use the customized interface. Physical Mac and streaming acceptance checks remain pending. Existing releases and downloads remain available; broader optional roadmap features remain separately identified.
 
-## 🖤🔴 New experimental — Vibemis Crimson
+## 📚 Previous builds / fallbacks
+
+## 🌙 Previous regular release — Apollo, Bluetooth & five frontends
+
+**[⬇️ Previous regular release](https://github.com/th3d3ck3r/Moonlight-OS/releases/tag/v0.1-experimental.20261002) · [📦 One-file Actions ZIP](https://github.com/th3d3ck3r/Moonlight-OS/actions/runs/36995905431/artifacts/11223945065) · [📖 Download / flashing guide](docs/releases/v0.1-experimental.20261002.md)**
+
+Includes the **black/crimson animated Apollo moon boot screen**, a remembered selector for **Vibemis / Artemis / Pegasus / Moonlight / CocoOS**, and generic guided Bluetooth pairing with confirmation prompts and verified connection state. All Intel, English UI, Openbox/display, audio, Mac media-key and console repairs remain included.
+
+**All six audits, installed-image inspection and strict OVMF boot passed** for image commit `32bc89855f8bac3caf90b9d5177ae583bc50313d`. The user confirmed boot, animation and Bluetooth pairing on the Mac and prefers Vibemis. Exact device-by-device AirPods/controller features, decoder telemetry and sustained streaming checks still need results. The previous repair download below stays available as a fallback; this remains the previously confirmed regular release; Eclipse is the latest test candidate.
+
+**One complete download; no split files.** This previous release links to the original Actions ZIP (about **3.62 GiB**), containing the compressed image and checksum. GitHub may require sign-in; the artifact expires October 16. No image is attached as a release asset because it exceeds GitHub's per-file limit. Do not flash GitHub's automatic source-code ZIP.
+
+## 🖤🔴 Previous experimental — Vibemis Crimson
 
 **[🧪 Experimental release](https://github.com/th3d3ck3r/Moonlight-OS/releases/tag/v0.2-experimental.20261002) · [📦 One-file image ZIP](https://github.com/th3d3ck3r/Moonlight-OS/actions/runs/37022392821/artifacts/11235677661) · [📖 Download / flashing guide](docs/releases/v0.2-experimental.20261002.md)**
 
@@ -73,9 +75,9 @@ The new download passed image inspection and OVMF. Your physical test results ca
 
 | Feature | Included configuration |
 | --- | --- |
-| 🖤🔴 Vibemis Crimson | New experimental: full-app dark palette, sixteen accents, network/battery/host hardware panels |
-| 🎮 Frontend choices | Regular and experimental: **Vibemis, Artemis, Pegasus, Moonlight, CocoOS**; previous repair: CocoOS/Moonlight |
-| 🌑 Boot animation | Regular and experimental: **Crimson Apollo**, black/red moon and orbiting spacecraft; Escape for details |
+| 🌘 Eclipse frontend | Latest build: black/crimson interface, control center, Wi-Fi/Bluetooth selectors, saved profiles, appearance options and host panels |
+| 🎮 Frontend choices | Latest build: **Eclipse, Artemis, Pegasus, Moonlight, CocoOS**; older builds call Eclipse's predecessor Vibemis |
+| 🌑 Boot animation | Latest build: minimal **Eclipse** and orbiting light; older releases: **Crimson Apollo**; Escape for details |
 | 🛜 Bluetooth pairing | Regular and experimental: generic scan/pair/reconnect/disconnect/confirmed forget, with live confirmation agent |
 | ⚡ Intel acceleration | Kernel `i915`, Intel VA-API H.264/HEVC decode stack, Mesa, and GPU diagnostics for Iris Plus 640 |
 | 🖥️ Lean graphics session | Native **X11**, with no desktop environment or compositor |
@@ -90,7 +92,7 @@ The new download passed image inspection and OVMF. Your physical test results ca
 | 🌡️ Diagnostics | Hardware verifier, VA-API checks, `intel_gpu_top`, input tools, and thermal management |
 | 🔒 Reproducible builds | Pinned upstream commits and Fedora installer checksum in [SOURCES.lock](SOURCES.lock) |
 
-**Boot flow:** Apple EFI → Fedora 44 / Crimson Apollo → Wi-Fi setup → remembered frontend chooser → X11/Openbox → selected client → streaming host. Initial default is Moonlight. The previous repair starts CocoOS.
+**Boot flow:** Apple EFI → Fedora 44 / Eclipse → Wi-Fi setup → remembered frontend chooser → X11/Openbox → selected client → streaming host. Initial default is Moonlight. The previous repair starts CocoOS.
 
 CocoOS is a Moonlight-Qt fork whose interface is still evolving. After repeated client failures, the launcher falls back to upstream Moonlight. The selector remembers all five choices. Pegasus launches the four clients; it does not stream by itself. Vibemis and Artemis require their own host pairing.
 
@@ -102,16 +104,16 @@ CocoOS is a Moonlight-Qt fork whose interface is still evolving. After repeated 
 
 ### 1. Download and verify 🔍
 
-[Download the current regular-release ZIP](https://github.com/th3d3ck3r/Moonlight-OS/actions/runs/36995905431/artifacts/11223945065), then unzip it. Choose the separate experimental download above to test the newer Vibemis theme and status panels. GitHub may require you to sign in.
+[Download the latest Eclipse ZIP](https://github.com/th3d3ck3r/Moonlight-OS/actions/runs/37095761480/artifacts/11264873899), then unzip it. It contains the compressed image and checksum. Previous regular and experimental downloads remain above as fallbacks. GitHub may require you to sign in.
 
 Run the checksum command in the directory containing both downloaded files:
 
 ```bash
 # Linux
-sha256sum -c moonlight-os-mbp14-1.raw.xz.sha256
+sha256sum -c moonlight-os-mbp14-1.img.xz.sha256
 
 # macOS
-shasum -a 256 -c moonlight-os-mbp14-1.raw.xz.sha256
+shasum -a 256 -c moonlight-os-mbp14-1.img.xz.sha256
 ```
 
 **Continue only if verification reports OK.**
@@ -123,7 +125,7 @@ shasum -a 256 -c moonlight-os-mbp14-1.raw.xz.sha256
 **Linux** — inspect disks with `lsblk`, unmount the USB's mounted partitions, then:
 
 ```bash
-xzcat moonlight-os-mbp14-1.raw.xz | sudo dd of=/dev/sdX bs=16M status=progress conv=fsync
+xzcat moonlight-os-mbp14-1.img.xz | sudo dd of=/dev/sdX bs=16M status=progress conv=fsync
 ```
 
 **macOS** — these commands require `xzcat` to be installed:
@@ -131,20 +133,20 @@ xzcat moonlight-os-mbp14-1.raw.xz | sudo dd of=/dev/sdX bs=16M status=progress c
 ```bash
 diskutil list
 diskutil unmountDisk /dev/diskN
-xzcat moonlight-os-mbp14-1.raw.xz | sudo dd of=/dev/rdiskN bs=16m
+xzcat moonlight-os-mbp14-1.img.xz | sudo dd of=/dev/rdiskN bs=16m
 diskutil eject /dev/diskN
 ```
 
-**Windows — your tested method:** extract the Actions ZIP with **WinRAR**, verify the included compressed-image checksum, then extract the `.raw.xz`. Rename the resulting `.raw` to `.img` and select it in **Rufus**; use raw/DD writing when offered. Choose the external drive carefully, wait for completion and safely eject.
+**Windows — your tested method:** extract the Actions ZIP with **WinRAR**, verify the included compressed-image checksum, then extract the `.img.xz`. Select the resulting `.img` in **Rufus**; use raw/DD writing when offered. Choose the external drive carefully, wait for completion and safely eject.
 
-**Future builds produce `.img.xz` directly:** WinRAR extraction yields an `.img` ready for Rufus, with no rename needed. The currently published downloads still contain `.raw.xz`; both names represent the same raw disk-image format.
+**Eclipse produces `.img.xz` directly:** extraction yields an `.img` ready for Rufus, with no rename needed. Older fallback downloads contain `.raw.xz`; extract and rename their `.raw` to `.img` for Rufus. Both names represent the same raw disk-image format.
 
 ### 3. Boot and connect 📶
 
 1. Insert the USB into the target MacBook.
 2. Hold **Option (⌥)** at power-on and select **EFI Boot**.
 3. If no network is saved, use the Wi-Fi helper's **Connect** option, powered by `nmtui-connect`.
-4. Choose a frontend (Enter/eight-second timeout keeps the saved choice; first boot defaults to Moonlight). Previous repair starts CocoOS. Add/discover your host and complete pairing in the chosen client.
+4. Choose **Eclipse** for the new interface (Enter/eight-second timeout keeps the saved choice; first boot defaults to Moonlight). Previous repair starts CocoOS. Add/discover your host and complete pairing in the chosen client.
 5. Start with **1080p60, H.264, hardware decoding, V-Sync, and frame pacing enabled**. Compare HEVC and network options after confirming a stable stream.
 
 The appliance is designed to run from USB without installing to the internal SSD. Saved settings survive reboots.
@@ -167,7 +169,7 @@ The appliance is designed to run from USB without installing to the internal SSD
 
 ### 🎮 Start any frontend
 
-The boot chooser offers **1 Vibemis · 2 Artemis · 3 Pegasus · 4 Moonlight · 5 CocoOS**. Enter or the eight-second timeout keeps the remembered choice. Initial default and launch-failure fallback are vanilla Moonlight.
+The boot chooser offers **1 Eclipse · 2 Artemis · 3 Pegasus · 4 Moonlight · 5 CocoOS**. Enter or the eight-second timeout keeps the remembered choice. Initial default and launch-failure fallback are vanilla Moonlight. The Eclipse command remains `vibemis` for compatibility; older images label option 1 Vibemis.
 
 From tty2, settings option **9** opens selection; options **7/8** still select CocoOS/Moonlight. Save a choice with one of:
 
@@ -321,13 +323,13 @@ The helper installs the same media-key service as new images, clears the older O
 
 <a id="crimson-apollo-animation-preview"></a>
 
-## 🌑🚀 Crimson Apollo animation preview
+## 🌑 Eclipse animation preview
 
-![Black-and-crimson Apollo spacecraft orbiting a moon](assets/boot/crimson-apollo/preview.gif)
+![Minimal crimson eclipse with an orbiting light](assets/boot/crimson-apollo/preview.gif)
 
 [▶️ Open / save the animated GIF](https://raw.githubusercontent.com/th3d3ck3r/Moonlight-OS/main/assets/boot/crimson-apollo/preview.gif) · [🖼️ Still preview](assets/boot/crimson-apollo/poster.png)
 
-Original artwork and a native Plymouth script theme are integrated into the image recipe: a crimson moon, orbiting Apollo-inspired spacecraft and subtle loading lights. The script caches rotations, handles masked prompts and messages, and fits the display without changing its mode. **Both release channels include this animation; the user confirmed it working in the regular image.** The previous repair download predates it. The GIF is an artwork preview, not a recording of the Mac boot; the new experimental image still needs its own physical splash/handoff test. See [activation, recovery and validation](docs/BOOT_ANIMATION.md) and the [separate integration prompt](CODEX_BOOT_ANIMATION_PROMPT.md).
+The latest Eclipse build uses a minimal crimson eclipse, a glowing orbiting light and **ECLIPSE / MOONLIGHT-OS** text. The GIF is an animated artwork preview, not a recording of the Mac boot. Installed theme checks and OVMF passed; the physical splash/handoff test remains pending. Older regular and experimental images retain Crimson Apollo. See [activation, recovery and validation](docs/BOOT_ANIMATION.md).
 
 <a id="independent-feature-plans"></a>
 
