@@ -1,9 +1,9 @@
-2026-10-03: Final EclipseOS Crimson Glass candidate with stable wallpaper refresh.
-Reviewed runtime source 0d02da5429379a6ec3fc70a99ced1ace260a6c14.
-All seven corrected-source audits: https://github.com/th3d3ck3r/Moonlight-OS/actions/runs/37129895501
-Nineteen Qt tests include zero wallpaper reloads for dimming/text changes; seven overlay-placement and twenty-eight decoder-status tests; static, Python and PTY fixtures passed.
+2026-10-03: Completed Crimson Glass source, graphs, wallpaper and fixed scrolling headers.
+Reviewed runtime source 615e06f5408709268594187d496b3852c6c59677.
+All seven reviewed-source audits: https://github.com/th3d3ck3r/Moonlight-OS/actions/runs/37131400594
+Nineteen Qt tests include stable wallpaper sources and fixed-header pixel comparisons across all layouts; old-header negative control fails as expected.
 Require seven successful audits on this exact image commit before installation.
 Require installed complete-patch/source inspection and strict OVMF MOONLIGHT_OS_BOOT_OK before compression/upload.
 Publish eclipseos-crimson-glass-mbp14-1.img.xz plus matching SHA-256; preserve System Controls comparison and older fallbacks.
-Supersedes intermediate build ee81a441; do not publish that build as the completed candidate.
+Includes actual corrected-source CI previews. Supersedes intermediate 78b6754 image run.
 Physical Mac controller reconnect, sensors, AirPods and sustained-streaming acceptance remain pending.

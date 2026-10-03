@@ -5,7 +5,7 @@ Crimson Glass is the Eclipse frontend's black/crimson, Liquid Glass-inspired int
 ## Interface
 
 - Host cards and app library use shared smoky panels, rounded controls and accent focus rings. Missing artwork now uses a themed Eclipse tile rather than a bright gray placeholder.
-- A navigation rail and local-monitor sidebar appear when space permits. The wide library adds a host-information panel. Narrow grids remain scrollable and keep Add Computer reachable.
+- A navigation rail and local-monitor sidebar appear when space permits. The wide library adds a host-information panel. Narrow grids remain scrollable and keep Add Computer reachable. Fixed title bands mask scrolled cards, preventing header overlap.
 - Settings, Control Center, Wi-Fi/Bluetooth pickers, confirmations, context menus and Quick Menu share the palette. Dark scrims avoid the former gray modal backdrop. All sixteen accents and three text scales remain supported.
 - Reduced motion suppresses status pulses and navigation/hover transitions; high contrast makes panels opaque and strengthens borders/background dimming.
 
@@ -19,9 +19,10 @@ Stream cards show **measured rendering FPS, network RTT, local CPU and local RAM
 
 ## Actual UI previews
 
-These images render production QML views in the Qt fixture, not generated concepts. Hosts/apps are illustrative fixture data; local readings come from the test environment and do not describe a physical Mac. The stream-graph image uses deterministic synthetic samples and is labelled as a fixture.
+These images were downloaded from [corrected-source CI](https://github.com/th3d3ck3r/Moonlight-OS/actions/runs/37131400594) at runtime commit `615e06f5408709268594187d496b3852c6c59677`; the image uses the identical complete patch. They render production QML views in the Qt fixture, not generated concepts. Hosts/apps are illustrative fixture data; local readings come from the test environment and do not describe a physical Mac. The stream-graph image uses deterministic synthetic samples and is labelled as a fixture.
 
 ![Actual library QML](previews/crimson-glass/library.png)
+![Actual narrow host view at 125% text scale](previews/crimson-glass/narrow-hosts.png)
 ![Actual library with a selected fixture background](previews/crimson-glass/background.png)
 ![Actual Control Center QML](previews/crimson-glass/control-center.png)
 ![Native graph renderer with fixture samples](previews/crimson-glass/overlay.png)
