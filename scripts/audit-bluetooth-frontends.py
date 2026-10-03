@@ -57,14 +57,15 @@ for line in sys.stdin:
             assert agent.pair(address) is False
         finally:
             agent.close()
-    # A successful command string must never hide a disconnected state.
-    with patch.object(bt, 'ctl', return_value='Connection successful'), patch.object(bt, 'properties', return_value={'Connected':'no', 'Trusted':'yes'}):
-        output = io.StringIO()
-        with contextlib.redirect_stdout(output):
-            assert bt.connect(address) is False
-        assert 'Connected and trusted.' not in output.getvalue()
-    with patch.object(bt, 'ctl', return_value=''), patch.object(bt, 'properties', return_value={'Connected':'yes', 'Trusted':'yes'}):
+    # Readiness must be actual BlueZ state, never a successful command string.
+    from types import SimpleNamespace
+    state={'Connected':True,'Trusted':True,'ServicesResolved':True}
+    backend=SimpleNamespace(device=lambda _:('/fixture',state),operate=lambda *args:None)
+    with patch.object(bt,'backend',return_value=backend), patch.object(bt,'properties',return_value={'Connected':'yes'}):
         assert bt.connect(address) is True
+    state={'Connected':False,'Trusted':True,'ServicesResolved':False}
+    with patch.object(bt,'backend',return_value=backend), patch.object(bt,'properties',return_value={'Connected':'no'}), patch.object(bt.time,'monotonic',side_effect=[0,0,9]), patch.object(bt.time,'sleep'):
+        assert bt.connect(address) is False
     # Verify selector persistence and the launcher's exact argv/environment.
     base=task/'runtime'
     targets={'vibemis':'frontends/vibemis/AppRun', 'artemis':'frontends/artemis', 'pegasus':'frontends/pegasus/pegasus-fe', 'moonlight':'moonlight', 'cocoos':'cocoos'}

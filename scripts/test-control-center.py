@@ -73,4 +73,32 @@ class CenterTest(unittest.TestCase):
             (directory/'eclipse-diagnostics.json').symlink_to(outside)
             with self.assertRaises(OSError):m.execute(dict(action='center-report'),{})
             self.assertEqual(outside.read_text(),'unchanged')
+    def test_display_parser_and_rollback(self):
+        text='eDP-1 connected primary 2560x1600+0+0\n   2560x1600 60.00*+\n   1920x1200 60.00\nHDMI-1 disconnected\n'
+        modes=m.displays(text);self.assertEqual(len(modes),2);self.assertTrue(modes[0]['current'])
+        state={'displays':modes}
+        with patch.object(m,'command') as command,patch.object(m,'snapshot',return_value={}):
+            result=m.execute({'action':'center-display','id':modes[1]['id']},state,answer=lambda *args,**kw:'no')
+            self.assertIn('reverted',result['status']);self.assertEqual(command.call_count,2)
+            self.assertEqual(command.call_args.args[0],['xrandr','--output','eDP-1','--mode','2560x1600','--rate','60.00'])
+    def test_display_timeout_always_restores(self):
+        modes=m.displays('eDP-1 connected\n  2560x1600 60.00*\n  1920x1200 60.00\n')
+        def cancel(*args,**kw):raise RuntimeError('timeout')
+        with patch.object(m,'command') as command:
+            with self.assertRaises(RuntimeError):m.execute({'action':'center-display','id':modes[1]['id']},{'displays':modes},answer=cancel)
+            self.assertEqual(command.call_count,2)
+    def test_pointer_selection_and_bounds(self):
+        state={'pointers':[{'id':'12','speed':0.0,'natural':0}]}
+        with patch.object(m,'command') as command,patch.object(m,'snapshot',return_value={}):
+            for value in ['999:0.5','12:2','12:;reboot']:
+                with self.assertRaises(ValueError):m.execute({'action':'center-pointer-speed','id':value},state)
+            command.assert_not_called()
+            m.execute({'action':'center-pointer-speed','id':'12:-0.25'},state)
+            command.assert_called_once_with(['xinput','set-prop','12','libinput Accel Speed','-0.25'])
+    def test_radio_frontend_and_idle_allowlists(self):
+        with patch.object(m,'command') as command:
+            for action,value in [('center-wifi-radio','enable;reboot'),('center-frontend','--help'),('center-idle','-1'),('center-airpods','unknown')]:
+                with self.assertRaises(ValueError):m.execute({'action':action,'id':value},{})
+            command.assert_not_called()
+
 if __name__=='__main__':unittest.main()

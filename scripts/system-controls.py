@@ -8,6 +8,7 @@ import json
 import os
 import re
 import signal
+import select
 import subprocess
 import sys
 import time
@@ -29,8 +30,10 @@ def read():
     return value
 
 
-def answer(prompt):
+def answer(prompt, timeout=90):
     emit(prompt=prompt)
+    if not select.select([sys.stdin], [], [], timeout)[0]:
+        raise RuntimeError('Confirmation timed out.')
     value = read()
     if value.get('action') != 'answer':
         raise EOFError()
@@ -132,36 +135,17 @@ class Controls:
             self.wifi_child = None
 
     def bt_list(self):
-        self.mode = "bt"
-        result = []
-        for address, name in self.bt.devices(self.bt.ctl('devices'))[:64]:
-            state = self.bt.properties(address)
-            result.append(dict(id=address, address=address, name=name,
-                               detail='Paired' if state.get('Paired') == 'yes' else 'Not paired',
-                               connected=state.get('Connected') == 'yes'))
-        self.items = result
-        return result
+        self.mode = 'bt'
+        self.items = self.bt.backend().rows()
+        return dict(items=self.items,status=('Bluetooth radio is off. Enable it in System Controls.' if not self.bt.backend().powered else 'Ready' if self.items else 'No devices found. Put the device in pairing mode and scan.'))
 
     def bt_scan(self):
-        self.bt.ready()
-        if self.agent is None:
-            self.agent = self.bt.Agent()
-        child = self.agent.child
-        child.sendline('scan on')
-        event = child.expect(['Discovery started', r'Failed to start discovery:[^\r\n]*',
-                              pexpect.EOF, pexpect.TIMEOUT], timeout=15)
-        if event != 0:
-            raise RuntimeError('Bluetooth discovery did not start. Check the radio and retry.')
-        try:
-            end = time.monotonic() + 6
-            while time.monotonic() < end:
-                try:
-                    child.read_nonblocking(4096, timeout=min(1, end-time.monotonic()))
-                except pexpect.TIMEOUT:
-                    pass
-        finally:
-            child.sendline('scan off')
-        return self.bt_list()
+        self.mode = 'bt'
+        def progress(rows, status):
+            self.items = rows
+            emit(items=rows, status=status)
+        self.items = self.bt.backend().scan(progress)
+        return dict(items=self.items,status='Scan complete' if self.items else 'No devices found. Check pairing mode and retry.')
 
     def execute(self, request):
         action = request.get('action')
@@ -170,7 +154,7 @@ class Controls:
             source = Path(__file__).with_name('control-center.py')
             spec = importlib.util.spec_from_file_location('eclipse_control_center', source)
             module = importlib.util.module_from_spec(spec); spec.loader.exec_module(module)
-            result = module.execute(request, self.center_state)
+            result = module.execute(request, self.center_state, answer=answer)
             self.center_state = result['state']
             return result
         if action in ('wifi-list', 'wifi-scan'):
@@ -193,27 +177,31 @@ class Controls:
             if self.agent is None:
                 self.agent = self.bt.Agent()
             if self.bt.properties(item['address']).get('Paired') != 'yes':
+                emit(status='Pairing… respond to any confirmation prompt')
                 if not self.agent.pair(item['address'], answer=answer):
                     raise RuntimeError('Pairing was not completed. No saved bond was removed.')
                 if self.bt.properties(item['address']).get('Paired') != 'yes':
                     raise RuntimeError('Pairing was not saved. Put the device back in pairing mode.')
+            emit(status='Connecting and checking device services…')
             if not self.bt.connect(item['address']):
                 raise RuntimeError('The device did not connect. Wake it and retry.')
         elif action == 'bt-disconnect':
-            self.bt.ctl('disconnect', item['address'])
+            self.bt.backend().operate(item['address'], 'disconnect')
             if self.bt.properties(item['address']).get('Connected') == 'yes':
                 raise RuntimeError('The device is still connected.')
         elif action == 'bt-forget':
             if request.get('confirm') is not True:
                 raise ValueError('Forgetting a device requires confirmation.')
-            self.bt.ctl('remove', item['address'])
-            if any(address == item['address'] for address, _ in self.bt.devices(self.bt.ctl('devices'))):
+            self.bt.backend().operate(item['address'], 'forget')
+            if any(row['address'] == item['address'] for row in self.bt.backend().rows()):
                 raise RuntimeError('The device could not be forgotten.')
         else:
             raise ValueError('Unsupported operation')
         return self.bt_list()
 
     def close(self):
+        if getattr(self.bt, '_backend', None) is not None:
+            self.bt.backend().close()
         if self.wifi_child is not None and self.wifi_child.isalive():
             self.wifi_child.terminate(force=True)
         if self.agent is not None:
@@ -230,10 +218,10 @@ def main():
                 # Legacy helper presentation never enters the JSON/credential pipe.
                 with contextlib.redirect_stdout(io.StringIO()):
                     items = controls.execute(request)
-                emit(**items, done=True) if isinstance(items, dict) else emit(items=items, status='Ready', done=True)
+                emit(**items, done=True) if isinstance(items, dict) else emit(items=items, status='Ready' if items else 'No devices found. Check pairing mode and scan again.', done=True)
             except (EOFError, KeyboardInterrupt):
                 break
-            except (RuntimeError, ValueError, KeyError, OSError, subprocess.SubprocessError, pexpect.ExceptionPexpect) as error:
+            except (ImportError, RuntimeError, ValueError, KeyError, OSError, subprocess.SubprocessError, pexpect.ExceptionPexpect) as error:
                 emit(error=str(error) if isinstance(error, (RuntimeError, ValueError)) else 'The operation failed. Retry or use the diagnostic shell.', done=True)
     finally:
         controls.close()

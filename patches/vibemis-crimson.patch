@@ -1,5 +1,5 @@
 diff --git a/app/app.pro b/app/app.pro
-index c1886a4..dd87701 100644
+index c1886a4..c863c33 100644
 --- a/app/app.pro
 +++ b/app/app.pro
 @@ -579,11 +579,11 @@ unix:!macx: {
@@ -17,7 +17,7 @@ index c1886a4..dd87701 100644
      icon512.path = $$PREFIX/$$DATADIR/icons/hicolor/512x512/apps/
  
      appstream.files = deploy/linux/com.vibemis.Vibemis.appdata.xml
-@@ -631,3 +631,17 @@ macx {
+@@ -631,3 +631,20 @@ macx {
  # counts) or the smart-build check skips the release.
  VERSION = "$$cat(version.txt)"
  DEFINES += VERSION_STR=\\\"$$cat(version.txt)\\\"
@@ -35,6 +35,9 @@ index c1886a4..dd87701 100644
 +
 +SOURCES += moonlightos/eclipseprofiles.cpp
 +HEADERS += moonlightos/eclipseprofiles.h
++
++SOURCES += moonlightos/localhardware.cpp
++HEADERS += moonlightos/localhardware.h
 diff --git a/app/backend/autoupdatechecker.h b/app/backend/autoupdatechecker.h
 index 5eb98cb..7baea98 100644
 --- a/app/backend/autoupdatechecker.h
@@ -243,18 +246,21 @@ index 0000000..3ab7805
 +}
 diff --git a/app/gui/EclipseActionButton.qml b/app/gui/EclipseActionButton.qml
 new file mode 100644
-index 0000000..6313272
+index 0000000..8ad5c94
 --- /dev/null
 +++ b/app/gui/EclipseActionButton.qml
-@@ -0,0 +1,32 @@
+@@ -0,0 +1,35 @@
 +import QtQuick 2.9
 +import QtQuick.Controls 2.5
 +import Vibemis.Redesign 1.0
++import QtQuick.Controls.impl 2.5
 +Button {
 +    id: button
++    topInset: 0; bottomInset: 0; leftInset: 0; rightInset: 0
 +    property string iconSource: ""
-+    implicitHeight: 44
++    implicitHeight: Math.max(44,contentItem.implicitHeight + 20)
 +    implicitWidth: Math.max(100, contentItem.implicitWidth + 28)
++    padding: 12
 +    font.family: VbTokens.fontBody
 +    font.pixelSize: VbTokens.typeLabel
 +    Accessible.name: text
@@ -275,13 +281,47 @@ index 0000000..6313272
 +    contentItem: Row {
 +        spacing: 8
 +        opacity: button.enabled ? 1 : 0.5
-+        Image { visible: button.iconSource !== ""; source: button.iconSource; width: visible ? 20 : 0; height: 20; anchors.verticalCenter: parent.verticalCenter }
++        IconImage { color: VbTokens.accent; visible: button.iconSource !== ""; source: button.iconSource; width: visible ? 20 : 0; height: 20; anchors.verticalCenter: parent.verticalCenter }
 +        Label { text: button.text; textFormat: Text.PlainText; color: VbTokens.text; font: button.font; anchors.verticalCenter: parent.verticalCenter }
++    }
++}
+diff --git a/app/gui/EclipseComboBox.qml b/app/gui/EclipseComboBox.qml
+new file mode 100644
+index 0000000..31b9c79
+--- /dev/null
++++ b/app/gui/EclipseComboBox.qml
+@@ -0,0 +1,28 @@
++import QtQuick 2.9
++import QtQuick.Controls 2.5
++import QtQuick.Controls.Material 2.2
++import Vibemis.Redesign 1.0
++ComboBox {
++    id: control
++    topInset: 0; bottomInset: 0; leftInset: 0; rightInset: 0
++    implicitHeight: Math.max(44, font.pixelSize + 24)
++    font.family: VbTokens.fontBody
++    font.pixelSize: VbTokens.typeLabel
++    Material.accent: VbTokens.accent
++    leftPadding: 12; rightPadding: 36
++    background: Rectangle { color: VbTokens.bgElev; radius: VbTokens.radiusControl; border.color: control.activeFocus ? VbTokens.accent : VbTokens.stroke; border.width: control.activeFocus ? 2 : 1; opacity: control.enabled ? 1 : .5 }
++    contentItem: Label { text: control.displayText; textFormat: Text.PlainText; font: control.font; color: VbTokens.text; verticalAlignment: Text.AlignVCenter; elide: Text.ElideRight; opacity: control.enabled ? 1 : .5 }
++    delegate: ItemDelegate {
++        width: control.width
++        implicitHeight: Math.max(44,control.font.pixelSize+24)
++        highlighted: control.highlightedIndex === index
++        contentItem: Label { text: control.textAt(index); textFormat:Text.PlainText; font:control.font; color:VbTokens.text; elide:Text.ElideRight }
++        background: Rectangle { color: parent.highlighted ? VbTokens.bgElev2 : VbTokens.bgElev; radius:VbTokens.radiusControl; border.color:parent.highlighted?VbTokens.accent:"transparent" }
++    }
++    popup: Popup {
++        y: control.height + 4; width:control.width; padding:6
++        implicitHeight: Math.min(contentItem.implicitHeight + 12,320)
++        background:Rectangle { color:VbTokens.bgElev;radius:VbTokens.radiusControl;border.color:VbTokens.stroke }
++        contentItem:ListView { clip:true;implicitHeight:contentHeight;model:control.popup.visible?control.delegateModel:null;currentIndex:control.highlightedIndex;ScrollIndicator.vertical:ScrollIndicator {} }
 +    }
 +}
 diff --git a/app/gui/EclipseControlCenter.qml b/app/gui/EclipseControlCenter.qml
 new file mode 100644
-index 0000000..eff02ed
+index 0000000..d9c5d54
 --- /dev/null
 +++ b/app/gui/EclipseControlCenter.qml
 @@ -0,0 +1,163 @@
@@ -366,7 +406,7 @@ index 0000000..eff02ed
 +                    Label { id: volumeReadout; text: Math.round(volumeSlider.value)+"%"; color: VbTokens.text }
 +                    EclipseActionButton { text: SystemControls.state.muted ? qsTr("Unmute") : qsTr("Mute"); enabled: !SystemControls.busy && SystemControls.state.volume !== null && SystemControls.state.volume !== undefined; onClicked: SystemControls.request("center-mute") }
 +                }
-+                ComboBox {
++                EclipseComboBox {
 +                    Layout.fillWidth: true
 +                    model: SystemControls.state.sinks || []; textRole: "name"
 +                    enabled: !SystemControls.busy && count > 0
@@ -401,7 +441,7 @@ index 0000000..eff02ed
 +                EclipseActionButton { text: qsTr("Open host management"); enabled: !!panel.host.url && panel.canManage; onClicked: panel.defer("management") }
 +                Label { text: qsTr("Stream profiles"); color: VbTokens.text; font.bold: true }
 +                Label { Layout.fillWidth: true; wrapMode: Text.Wrap; text: panel.host.id ? qsTr("Saved for the selected host. Apply before starting a stream.") : qsTr("Global profiles. Apply before starting a stream."); color: VbTokens.textDim }
-+                ComboBox { Layout.fillWidth: true; model: panel.savedNames; visible: count > 0; Accessible.name: qsTr("Saved profiles"); onActivated: profileName.text = model[index] }
++                EclipseComboBox { Layout.fillWidth: true; model: panel.savedNames; visible: count > 0; Accessible.name: qsTr("Saved profiles"); onActivated: profileName.text = model[index] }
 +                TextField { id: profileName; Layout.fillWidth: true; maximumLength: 48; placeholderText: qsTr("Profile name"); Accessible.name: qsTr("Profile name") }
 +                RowLayout {
 +                    EclipseActionButton { text: qsTr("Save current"); onClicked: { panel.message = EclipseProfiles.save(panel.host.id || "", profileName.text, {width:StreamingPreferences.width,height:StreamingPreferences.height,fps:StreamingPreferences.fps,bitrateKbps:StreamingPreferences.bitrateKbps}) ? qsTr("Profile saved.") : qsTr("Profile could not be saved."); panel.savedNames = EclipseProfiles.names(panel.host.id || "") } }
@@ -412,7 +452,7 @@ index 0000000..eff02ed
 +                    EclipseActionButton { text: qsTr("Low bandwidth"); onClicked: panel.apply({width:1280,height:720,fps:30,bitrateKbps:5000}) }
 +                }
 +                Label { text: qsTr("Appearance & accessibility"); color: VbTokens.text; font.bold: true }
-+                ComboBox {
++                EclipseComboBox {
 +                    Layout.fillWidth: true; model: [qsTr("Text 100%"),qsTr("Text 110%"),qsTr("Text 125%")]
 +                    Accessible.name: qsTr("Text size")
 +                    currentIndex: EclipseProfiles.textScale === 125 ? 2 : EclipseProfiles.textScale === 110 ? 1 : 0
@@ -447,6 +487,177 @@ index 0000000..eff02ed
 +        onAccepted: SystemControls.request("center-"+panel.powerAction,"",true)
 +        contentItem: Label { text: qsTr("This ends the current local session."); color: VbTokens.text }
 +    }
++}
+diff --git a/app/gui/EclipseHardwareMonitor.qml b/app/gui/EclipseHardwareMonitor.qml
+new file mode 100644
+index 0000000..be341a0
+--- /dev/null
++++ b/app/gui/EclipseHardwareMonitor.qml
+@@ -0,0 +1,76 @@
++import QtQuick 2.9
++import QtQuick.Controls 2.5
++import QtQuick.Layouts 1.3
++import Vibemis.Redesign 1.0
++import LocalHardware 1.0
++
++ColumnLayout {
++    id: monitor
++    objectName:"hardwareMonitor"
++    property bool active: false
++    Component.onCompleted: if(active) LocalHardware.setActive(true)
++    Layout.fillWidth: true
++    onActiveChanged: LocalHardware.setActive(active)
++    Component.onDestruction: LocalHardware.setActive(false)
++    function reading(key, suffix, digits) { var v=LocalHardware.readings[key]; return v === undefined ? qsTr("Unavailable") : Number(v).toFixed(digits === undefined ? 1 : digits)+(suffix || "") }
++    Label { font.family:VbTokens.fontBody; font.pixelSize:VbTokens.typeBody; text: qsTr("LOCAL MAC • Hardware monitor"); color: VbTokens.text; font.bold: true }
++    Label { font.family:VbTokens.fontBody; font.pixelSize:VbTokens.typeBody; Layout.fillWidth: true; wrapMode: Text.Wrap; text: qsTr("Local readings are independent of stream and host statistics. Missing sensors show Unavailable; first CPU/network rates need a second sample. Intel GPU shared memory is system RAM."); color: VbTokens.textDim }
++    GridLayout {
++        Layout.fillWidth: true; columns: width >= 620 ? 2 : 1; columnSpacing: VbTokens.space3; rowSpacing: VbTokens.space3
++        Repeater {
++            model: [
++                {label:qsTr("CPU"), key:"cpuPercent",suffix:"%"}, {label:qsTr("CPU clock"),key:"cpuMHz",suffix:" MHz"},
++                {label:qsTr("Memory used"),key:"memoryUsedGiB",suffix:" GiB"},{label:qsTr("Memory total"),key:"memoryTotalGiB",suffix:" GiB"},
++                {label:qsTr("CPU temperature"),key:"temperatureC",suffix:" °C"},{label:qsTr("Fan"),key:"fanRPM",suffix:" RPM"},
++                {label:qsTr("GPU busy"),key:"gpuPercent",suffix:"%"},{label:qsTr("Eclipse video engine"),key:"videoPercent",suffix:"%"},{label:qsTr("Swap used"),key:"swapUsedMiB",suffix:" MiB"},
++                {label:qsTr("Network download"),key:"receiveMiB",suffix:" MiB/s"},{label:qsTr("Network upload"),key:"transmitMiB",suffix:" MiB/s"},
++                {label:qsTr("Storage reads"),key:"diskReadMiB",suffix:" MiB/s"},{label:qsTr("Storage writes"),key:"diskWriteMiB",suffix:" MiB/s"},
++                {label:qsTr("USB/root free"),key:"storageFreeGiB",suffix:" GiB"},{label:qsTr("Battery"),key:"batteryPercent",suffix:"%"}
++            ]
++            delegate: Rectangle {
++                Layout.fillWidth: true; implicitHeight: 84; radius: VbTokens.radiusCard; color: VbTokens.bgElev; border.color: VbTokens.stroke
++                Column { anchors.fill: parent; anchors.margins: 12; spacing: 6
++                    Label { text: modelData.label; color: VbTokens.textDim; font.pixelSize: VbTokens.typeBody }
++                    Label { text: monitor.reading(modelData.key,modelData.suffix); color: VbTokens.text; font.bold: true; font.pixelSize: VbTokens.typeBody }
++                }
++            }
++        }
++    }
++    Label { font.family:VbTokens.fontBody; font.pixelSize:VbTokens.typeBody; text: qsTr("Recent CPU and RAM usage • up to 60 samples"); color: VbTokens.textDim }
++    Canvas {
++        id: graph; Layout.fillWidth: true; implicitHeight: 100
++        onPaint: {
++            var c=getContext("2d"); c.clearRect(0,0,width,height); c.fillStyle=VbTokens.bgElev; c.fillRect(0,0,width,height)
++            var keys=["cpuPercent","memoryPercent"], colors=[VbTokens.accent,VbTokens.textDim], h=LocalHardware.history
++            for(var k=0;k<keys.length;k++) { c.strokeStyle=colors[k]; c.lineWidth=2; c.beginPath(); var started=false
++                for(var i=0;i<h.length;i++) { var v=h[i][keys[k]]; if(v===undefined) { started=false; continue }
++                    var x=width*i/59, y=height-4-(height-8)*Math.max(0,Math.min(100,v))/100
++                    if(!started) c.moveTo(x,y); else c.lineTo(x,y); started=true }
++                c.stroke() }
++        }
++        Connections { target: LocalHardware; function onChanged() { graph.requestPaint() } }
++    }
++    CheckBox { font.family:VbTokens.fontBody; font.pixelSize:VbTokens.typeBody; text: qsTr("Show local hardware overlay during streaming"); checked: LocalHardware.overlay; onToggled: LocalHardware.overlay=checked }
++    CheckBox { font.family:VbTokens.fontBody; font.pixelSize:VbTokens.typeBody; text: qsTr("Detailed local overlay"); checked: LocalHardware.detailed; onToggled: LocalHardware.detailed=checked }
++    CheckBox { font.family:VbTokens.fontBody; font.pixelSize:VbTokens.typeBody; text: qsTr("Detailed stream statistics"); checked: LocalHardware.streamDetailed; onToggled: LocalHardware.streamDetailed=checked }
++    RowLayout {
++        Label { font.family:VbTokens.fontBody; font.pixelSize:VbTokens.typeBody; text: qsTr("Local overlay corner"); color: VbTokens.text }
++        EclipseComboBox { Layout.fillWidth:true; model:[qsTr("Top left"),qsTr("Top right"),qsTr("Bottom left"),qsTr("Bottom right")]; currentIndex:LocalHardware.position; onActivated:LocalHardware.position=index }
++    }
++    Label { font.family:VbTokens.fontBody; font.pixelSize:VbTokens.typeBody; Layout.fillWidth:true; wrapMode:Text.Wrap; text:qsTr("If both overlays use the same corner, Local Mac moves to the opposite horizontal corner. Streaming shortcuts: Ctrl+Alt+Shift+S for stream stats; Ctrl+Alt+Shift+H for local hardware. Stream text size and corner remain in Video settings."); color:VbTokens.textDim }
++    RowLayout {
++        Label { font.family:VbTokens.fontBody; font.pixelSize:VbTokens.typeBody; text:qsTr("Panel opacity"); color:VbTokens.text }
++        Slider { Layout.fillWidth:true; from:40;to:100;stepSize:5;value:LocalHardware.opacity; onMoved:LocalHardware.opacity=Math.round(value) }
++    }
++    RowLayout {
++        Label { font.family:VbTokens.fontBody; font.pixelSize:VbTokens.typeBody; text:qsTr("Refresh interval");color:VbTokens.text }
++        EclipseComboBox { Layout.fillWidth:true; model:["1 second","2 seconds","5 seconds"]; currentIndex:LocalHardware.refreshSeconds===1?0:LocalHardware.refreshSeconds===5?2:1; onActivated:LocalHardware.refreshSeconds=[1,2,5][index] }
++    }
++    Flow {
++        Layout.fillWidth:true
++        Repeater { model:["cpu","memory","temperature","gpu","network","battery","storage"]
++            delegate:CheckBox { font.family:VbTokens.fontBody; font.pixelSize:VbTokens.typeBody; text:modelData; checked:LocalHardware.fields.indexOf(modelData)>=0; onToggled:{var f=LocalHardware.fields.slice();var i=f.indexOf(modelData);if(checked&&i<0)f.push(modelData);if(!checked&&i>=0)f.splice(i,1);LocalHardware.fields=f} }
++        }
++    }
++    Label { font.family:VbTokens.fontBody; font.pixelSize:VbTokens.typeBody; Layout.fillWidth:true;wrapMode:Text.Wrap;text:qsTr("Eclipse video-engine activity uses this process’s DRM counters when exposed. It is not whole-system GPU load. Per-process GPU memory is unavailable. Storage rates reflect the active root device when accessible. No privileged GPU profiler runs continuously.");color:VbTokens.textDim }
++}
+diff --git a/app/gui/EclipseSystemSettings.qml b/app/gui/EclipseSystemSettings.qml
+new file mode 100644
+index 0000000..5d2bbc9
+--- /dev/null
++++ b/app/gui/EclipseSystemSettings.qml
+@@ -0,0 +1,83 @@
++import QtQuick 2.9
++import QtQuick.Controls 2.5
++import QtQuick.Layouts 1.3
++import QtQuick.Controls.Material 2.2
++import Vibemis.Redesign 1.0
++import SystemControls 1.0
++import LocalHardware 1.0
++
++ColumnLayout {
++    id: system
++    property bool active: false
++    property string powerAction: ""
++    property var pointer: pointerChoice.currentIndex >= 0 ? (SystemControls.state.pointers || [])[pointerChoice.currentIndex] || ({}) : ({})
++    spacing: VbTokens.space3
++    onActiveChanged: { if(active) SystemControls.open("center"); else SystemControls.close() }
++    Component.onDestruction: { if(active) SystemControls.close() }
++    function request(action,value) { SystemControls.request("center-"+action,value || "") }
++    function showConnections(kind) { SystemControls.close(); connections.kind=kind; connections.open() }
++    Label { font.family:VbTokens.fontBody; font.pixelSize:VbTokens.typeBody; Layout.fillWidth:true;wrapMode:Text.Wrap;text:qsTr("EclipseOS • System Controls");color:VbTokens.text;font.bold:true }
++    Label { font.family:VbTokens.fontBody; font.pixelSize:VbTokens.typeBody; Layout.fillWidth:true;wrapMode:Text.Wrap;text:SystemControls.status;color:VbTokens.textDim;textFormat:Text.PlainText }
++    BusyIndicator { running:system.active && SystemControls.busy;visible:running;Layout.alignment:Qt.AlignHCenter }
++    RowLayout {
++        Layout.fillWidth:true
++        EclipseActionButton { text:qsTr("Wi-Fi networks");iconSource:"qrc:/res/crimson-network.svg";onClicked:system.showConnections("wifi") }
++        EclipseActionButton { text:qsTr("Bluetooth devices");iconSource:"qrc:/res/crimson-bluetooth.svg";onClicked:system.showConnections("bt") }
++    }
++    RowLayout {
++        CheckBox { font.family:VbTokens.fontBody; font.pixelSize:VbTokens.typeBody; text:qsTr("Wi-Fi radio");checked:SystemControls.state.wifi_enabled===true;enabled:!SystemControls.busy && SystemControls.state.wifi_enabled!==null && SystemControls.state.wifi_enabled!==undefined;onToggled:system.request("wifi-radio",checked?"on":"off") }
++        CheckBox { font.family:VbTokens.fontBody; font.pixelSize:VbTokens.typeBody; text:qsTr("Bluetooth radio");checked:SystemControls.state.bluetooth_enabled===true;enabled:!SystemControls.busy && SystemControls.state.bluetooth_enabled!==null && SystemControls.state.bluetooth_enabled!==undefined;onToggled:system.request("bt-radio",checked?"on":"off") }
++    }
++    Label { font.family:VbTokens.fontBody; font.pixelSize:VbTokens.typeBody; text:qsTr("Audio and brightness");color:VbTokens.text;font.bold:true }
++    RowLayout {
++        Layout.fillWidth:true
++        Slider { id:volume;Layout.fillWidth:true;from:0;to:100;stepSize:1;value:SystemControls.state.volume || 0;enabled:!SystemControls.busy && SystemControls.state.volume!==null && SystemControls.state.volume!==undefined;Accessible.name:qsTr("Speaker volume");onPressedChanged:if(!pressed&&enabled)system.request("volume",String(Math.round(value)));onMoved:if(!pressed&&enabled)system.request("volume",String(Math.round(value))) }
++        Label { font.family:VbTokens.fontBody; font.pixelSize:VbTokens.typeBody; text:Math.round(volume.value)+"%";color:VbTokens.text }
++        EclipseActionButton { text:SystemControls.state.muted?qsTr("Unmute"):qsTr("Mute");enabled:volume.enabled;onClicked:system.request("mute") }
++    }
++    EclipseComboBox { Layout.fillWidth:true;model:SystemControls.state.sinks || [];textRole:"name";enabled:!SystemControls.busy && count>0;Accessible.name:qsTr("Audio output");currentIndex:{var a=SystemControls.state.sinks || [];for(var i=0;i<a.length;i++)if(a[i].default)return i;return -1}
++        onActivated:system.request("output",model[index].id) }
++    RowLayout {
++        EclipseActionButton { text:qsTr("Test sound");enabled:volume.enabled;onClicked:system.request("test-sound") }
++        EclipseComboBox { Layout.fillWidth:true; model:[qsTr("AirPods: Low latency"),qsTr("AirPods: Quality")];enabled:!SystemControls.busy;onActivated:system.request("airpods",index===0?"low-latency":"quality") }
++    }
++    Repeater {
++        model:[{kind:"screen",label:qsTr("Screen brightness")},{kind:"keyboard",label:qsTr("Keyboard lighting")}]
++        delegate:ColumnLayout {
++            Layout.fillWidth:true
++            property var hardware:(SystemControls.state.brightness || {})[modelData.kind]
++            Label { font.family:VbTokens.fontBody; font.pixelSize:VbTokens.typeBody; text:modelData.label+(hardware?" • "+hardware.percent+"%":" • "+qsTr("Unavailable"));color:VbTokens.text }
++            Slider { Layout.fillWidth:true;from:modelData.kind==="screen"?5:0;to:100;stepSize:1;enabled:!!hardware&&!SystemControls.busy;value:hardware?hardware.percent:0;Accessible.name:modelData.label;onPressedChanged:if(!pressed&&enabled)system.request(modelData.kind,String(Math.round(value)));onMoved:if(!pressed&&enabled)system.request(modelData.kind,String(Math.round(value))) }
++        }
++    }
++    Label { font.family:VbTokens.fontBody; font.pixelSize:VbTokens.typeBody; text:qsTr("Display and idle blanking");color:VbTokens.text;font.bold:true }
++    EclipseComboBox { id:modeChoice;Layout.fillWidth:true;model:SystemControls.state.displays || [];textRole:"name";enabled:!SystemControls.busy && count>0;Accessible.name:qsTr("Display resolution and refresh rate");currentIndex:{var a=SystemControls.state.displays || [];for(var i=0;i<a.length;i++)if(a[i].current)return i;return -1} }
++    EclipseActionButton { text:qsTr("Apply display mode • 15-second rollback");enabled:modeChoice.enabled&&modeChoice.currentIndex>=0;onClicked:system.request("display",modeChoice.model[modeChoice.currentIndex].id) }
++    EclipseComboBox { Layout.fillWidth:true; model:[qsTr("Never blank"),qsTr("Blank after 5 minutes"),qsTr("Blank after 10 minutes"),qsTr("Blank after 30 minutes")];enabled:!SystemControls.busy;onActivated:system.request("idle",["0","300","600","1800"][index]) }
++    Label { font.family:VbTokens.fontBody; font.pixelSize:VbTokens.typeBody; text:qsTr("Pointer and trackpad");color:VbTokens.text;font.bold:true }
++    EclipseComboBox { id:pointerChoice;Layout.fillWidth:true;model:SystemControls.state.pointers || [];textRole:"name";enabled:count>0&&!SystemControls.busy;Accessible.name:qsTr("Pointer device") }
++    Slider { Layout.fillWidth:true;from:-1;to:1;stepSize:.05;value:system.pointer.speed || 0;enabled:system.pointer.speed!==undefined&&!SystemControls.busy;Accessible.name:qsTr("Pointer acceleration speed");onPressedChanged:if(!pressed&&enabled)system.request("pointer-speed",system.pointer.id+":"+value.toFixed(2));onMoved:if(!pressed&&enabled)system.request("pointer-speed",system.pointer.id+":"+value.toFixed(2)) }
++    CheckBox { font.family:VbTokens.fontBody; font.pixelSize:VbTokens.typeBody; text:qsTr("Natural scrolling");checked:system.pointer.natural===1;enabled:system.pointer.natural!==undefined&&!SystemControls.busy;onToggled:system.request("pointer-natural",system.pointer.id+":"+(checked?"1":"0")) }
++    CheckBox { font.family:VbTokens.fontBody; font.pixelSize:VbTokens.typeBody; text:qsTr("Tap to click");checked:system.pointer.tap===1;enabled:system.pointer.tap!==undefined&&!SystemControls.busy;onToggled:system.request("pointer-tap",system.pointer.id+":"+(checked?"1":"0")) }
++    Label { font.family:VbTokens.fontBody; font.pixelSize:VbTokens.typeBody; Layout.fillWidth:true;wrapMode:Text.Wrap;text:qsTr("Pointer and blanking changes currently apply to this X11 session. Unsupported device controls are disabled. Display changes revert unless confirmed.");color:VbTokens.textDim }
++    Label { font.family:VbTokens.fontBody; font.pixelSize:VbTokens.typeBody; text:qsTr("Recovery and power");color:VbTokens.text;font.bold:true }
++    EclipseComboBox { id:frontend;model:["Eclipse","Artemis","Pegasus","Moonlight","CocoOS"];Accessible.name:qsTr("Frontend for next boot") }
++    EclipseActionButton { text:qsTr("Save frontend for next boot");enabled:!SystemControls.busy;onClicked:system.request("frontend",["vibemis","artemis","pegasus","moonlight","cocoos"][frontend.currentIndex]) }
++    Flow {
++        Layout.fillWidth:true;spacing:VbTokens.space2
++        Repeater { model:[{name:qsTr("Restart frontend"),action:"restart-frontend"},{name:qsTr("Restart EclipseOS"),action:"reboot"},{name:qsTr("Shut down"),action:"poweroff"}]
++            delegate:EclipseActionButton { text:modelData.name;iconSource:"qrc:/res/eclipse-power.svg";enabled:!SystemControls.busy;onClicked:{system.powerAction=modelData.action;power.open()} }
++        }
++        EclipseActionButton { text:qsTr("Redacted support report");enabled:!SystemControls.busy;onClicked:system.request("report") }
++        EclipseActionButton { text:qsTr("Refresh controls");enabled:!SystemControls.busy;onClicked:system.request("list") }
++    }
++    Label { font.family:VbTokens.fontBody; font.pixelSize:VbTokens.typeBody; Layout.fillWidth:true;wrapMode:Text.Wrap;text:qsTr("Suspend and lid presets await physical validation. Recovery console: Control + Option + F2 (Fn if needed).");color:VbTokens.textDim }
++    EclipseHardwareMonitor { Layout.fillWidth:true;active:system.active }
++    SystemConnectionsDialog { id:connections;parent:Overlay.overlay;onClosed:if(system.active)resume.restart() }
++    Timer { id:resume;interval:600;onTriggered:if(system.active)SystemControls.open("center") }
++    NavigableDialog { id:power;parent:Overlay.overlay;width:Math.min(440,parent.width-32);title:qsTr("Confirm system action");standardButtons:Dialog.Yes|Dialog.No;background:Rectangle{color:VbTokens.bgElev;radius:VbTokens.radiusDialog;border.color:VbTokens.stroke}
++        onAccepted:SystemControls.request("center-"+system.powerAction,"",true);contentItem:Label{wrapMode:Text.Wrap;text:qsTr("Proceed with %1? Active streaming will end.").arg(system.powerAction);color:VbTokens.text} }
++    NavigableDialog { id:confirmation;parent:Overlay.overlay;width:Math.min(480,parent.width-32);title:qsTr("Keep display mode?");standardButtons:Dialog.Yes|Dialog.No;closePolicy:Popup.NoAutoClose;background:Rectangle{color:VbTokens.bgElev;radius:VbTokens.radiusDialog;border.color:VbTokens.stroke}
++        onAccepted:SystemControls.answer("yes");onRejected:SystemControls.answer("no");contentItem:Label{wrapMode:Text.Wrap;text:SystemControls.prompt;color:VbTokens.text} }
++    Connections { target:SystemControls;function onChanged(){if(system.active&&SystemControls.prompt.length>0&&!connections.opened)confirmation.open();if(!SystemControls.busy)confirmation.close()} }
 +}
 diff --git a/app/gui/PcView.qml b/app/gui/PcView.qml
 index f0e739a..f4d012b 100644
@@ -484,10 +695,39 @@ index b033d26..0d9794d 100644
          ListElement {
              text: qsTr("Server commands")
 diff --git a/app/gui/SettingsView.qml b/app/gui/SettingsView.qml
-index 494e35b..46c6d26 100644
+index 494e35b..90ba3c6 100644
 --- a/app/gui/SettingsView.qml
 +++ b/app/gui/SettingsView.qml
-@@ -1681,7 +1681,7 @@ Item {
+@@ -346,12 +346,13 @@ Item {
+                     { icon: "gamepad",   label: qsTr("Input & gamepad") },
+                     { icon: "streaming", label: qsTr("Streaming") },
+                     { icon: "apps",      label: qsTr("App & UI") },
+-                    { icon: "advanced",  label: qsTr("Advanced") }
++                    { icon: "advanced",  label: qsTr("Advanced") },
++                    { icon: "advanced", label: qsTr("System Controls") }
+                 ]
+                 delegate: Button {
+                     id: catButton
+                     width: sidebarColumn.width
+-                    height: 58
++                    height: Math.min(58,Math.max(44,(sidebar.height-64-(sidebarRepeater.count-1)*VbTokens.space2)/sidebarRepeater.count))
+                     padding: 0
+                     leftPadding: VbTokens.space4
+                     rightPadding: VbTokens.space4
+@@ -571,6 +572,12 @@ Item {
+             color: VbTokens.text
+         }
+ 
++        EclipseSystemSettings {
++            width: parent.width - (parent.leftPadding + parent.rightPadding)
++            visible: settingsPage.category === 6
++            active: settingsPage.visible && visible
++        }
++
+         // ---- Live stream summary line (redesign), relocated here (was inside Basic
+         // Settings) so it sits directly under the "Video" title like the design.
+         // Numbers render in accent; the rest stays dim. Content/bindings unchanged.
+@@ -1681,7 +1688,7 @@ Item {
                      ToolTip.delay: 1000
                      ToolTip.timeout: 5000
                      ToolTip.visible: hovered
@@ -496,7 +736,7 @@ index 494e35b..46c6d26 100644
                  }
  
                  // Vibemis (perf guidance): advise when the bitrate is set well above the recommended
-@@ -2482,7 +2482,7 @@ Item {
+@@ -2482,7 +2489,7 @@ Item {
                      ToolTip.delay: 1000
                      ToolTip.timeout: 5000
                      ToolTip.visible: hovered
@@ -505,7 +745,7 @@ index 494e35b..46c6d26 100644
                  }
              }
          }
-@@ -2546,7 +2546,7 @@ Item {
+@@ -2546,7 +2553,7 @@ Item {
                  spacing: VbTokens.space3
  
                  VbSectionHeader {
@@ -514,7 +754,7 @@ index 494e35b..46c6d26 100644
                  }
  
                  Label {
-@@ -2776,7 +2776,7 @@ Item {
+@@ -2776,7 +2783,7 @@ Item {
  
                  VbToggleRow {
                      id: muteOnFocusLossCheck
@@ -523,7 +763,7 @@ index 494e35b..46c6d26 100644
                      visible: SystemProperties.hasDesktopEnvironment
                      checked: StreamingPreferences.muteOnFocusLoss
                      onCheckedChanged: {
-@@ -2786,7 +2786,7 @@ Item {
+@@ -2786,7 +2793,7 @@ Item {
                      ToolTip.delay: 1000
                      ToolTip.timeout: 5000
                      ToolTip.visible: hovered
@@ -532,7 +772,7 @@ index 494e35b..46c6d26 100644
                  }
              }
          }
-@@ -2971,7 +2971,7 @@ Item {
+@@ -2971,7 +2978,7 @@ Item {
                          if (StreamingPreferences.language !== new_language) {
                              StreamingPreferences.language = languageListModel.get(currentIndex).val
                              if (!StreamingPreferences.retranslate()) {
@@ -541,7 +781,7 @@ index 494e35b..46c6d26 100644
                              }
                              else {
                                  // Force the back operation to pop any AppView pages that exist.
-@@ -3055,14 +3055,26 @@ Item {
+@@ -3055,14 +3062,26 @@ Item {
                      textRole: "text"
                      hoverEnabled: true
                      model: ListModel {
@@ -570,7 +810,7 @@ index 494e35b..46c6d26 100644
                      ToolTip.delay: 1000
                      ToolTip.visible: hovered
                  }
-@@ -3147,7 +3159,7 @@ Item {
+@@ -3147,7 +3166,7 @@ Item {
                          ToolTip.delay: 1000
                          ToolTip.timeout: 5000
                          ToolTip.visible: hovered
@@ -579,7 +819,7 @@ index 494e35b..46c6d26 100644
                      }
  
                      Button {
-@@ -3402,7 +3414,7 @@ Item {
+@@ -3402,7 +3421,7 @@ Item {
                      ToolTip.timeout: 10000
                      ToolTip.visible: hovered
                      ToolTip.text: qsTr("This enables the capture of system-wide keyboard shortcuts like Alt+Tab that would normally be handled by the client OS while streaming.") + "\n\n" +
@@ -588,7 +828,7 @@ index 494e35b..46c6d26 100644
                  }
  
                  AutoResizingComboBox {
-@@ -3643,7 +3655,7 @@ Item {
+@@ -3643,7 +3662,7 @@ Item {
  
                  VbToggleRow {
                      id: backgroundGamepadCheck
@@ -597,7 +837,7 @@ index 494e35b..46c6d26 100644
                      visible: SystemProperties.hasDesktopEnvironment
                      checked: StreamingPreferences.backgroundGamepad
                      onCheckedChanged: {
-@@ -3653,7 +3665,7 @@ Item {
+@@ -3653,7 +3672,7 @@ Item {
                      ToolTip.delay: 1000
                      ToolTip.timeout: 5000
                      ToolTip.visible: hovered
@@ -606,7 +846,7 @@ index 494e35b..46c6d26 100644
                  }
  
                  VbToggleRow {
-@@ -3724,7 +3736,7 @@ Item {
+@@ -3724,7 +3743,7 @@ Item {
                  Label {
                      width: parent.width
                      id: updateChannelTitle
@@ -615,7 +855,7 @@ index 494e35b..46c6d26 100644
                      font.pixelSize: VbTokens.typeLabel
                      font.family: VbTokens.fontBody
                      wrapMode: Text.Wrap
-@@ -3733,6 +3745,7 @@ Item {
+@@ -3733,6 +3752,7 @@ Item {
  
                  AutoResizingComboBox {
                      id: updateChannelComboBox
@@ -623,7 +863,7 @@ index 494e35b..46c6d26 100644
                      textRole: "text"
                      model: ListModel {
                          id: updateChannelListModel
-@@ -3787,6 +3800,7 @@ Item {
+@@ -3787,6 +3807,7 @@ Item {
                      // install in flight at a time), so buttons stay enabled.
                      Button {
                          id: checkUpdatesButton
@@ -631,7 +871,7 @@ index 494e35b..46c6d26 100644
                          text: qsTr("Check for updates")
                          onClicked: {
                              AutoUpdateChecker.checkNow()
-@@ -3804,8 +3818,8 @@ Item {
+@@ -3804,8 +3825,8 @@ Item {
  
                      Button {
                          id: viewReleaseButton
@@ -642,7 +882,7 @@ index 494e35b..46c6d26 100644
                                   && AutoUpdateChecker.releaseUrl !== ""
                                   && SystemProperties.hasBrowser
                          onClicked: {
-@@ -3842,7 +3856,7 @@ Item {
+@@ -3842,7 +3863,7 @@ Item {
                  spacing: VbTokens.space3
  
                  VbSectionHeader {
@@ -651,7 +891,7 @@ index 494e35b..46c6d26 100644
                  }
  
                  ClipboardSettings {
-@@ -3947,7 +3961,7 @@ Item {
+@@ -3947,7 +3968,7 @@ Item {
                  Repeater {
                      width: parent.width
                      model: [
@@ -660,7 +900,7 @@ index 494e35b..46c6d26 100644
                          { k: qsTr("Architecture"),    v: SystemProperties.friendlyNativeArchName },
                          { k: qsTr("SteamOS / gamescope"), v: SystemProperties.isSteamDeck ? qsTr("Yes") : qsTr("No") },
                          { k: qsTr("Display server"),  v: SystemProperties.isRunningWayland ? (SystemProperties.isRunningXWayland ? "XWayland" : "Wayland") : "X11" },
-@@ -4013,7 +4027,7 @@ Item {
+@@ -4013,7 +4034,7 @@ Item {
  
                  Label {
                      width: parent.width
@@ -669,7 +909,7 @@ index 494e35b..46c6d26 100644
                      font.pixelSize: VbTokens.typeBody
                      font.bold: true
                      wrapMode: Text.Wrap
-@@ -4058,7 +4072,7 @@ Item {
+@@ -4058,7 +4079,7 @@ Item {
  
                  Label {
                      width: parent.width
@@ -678,7 +918,7 @@ index 494e35b..46c6d26 100644
                      font.pixelSize: VbTokens.typeCaption
                      font.family: VbTokens.fontBody
                      wrapMode: Text.Wrap
-@@ -4066,7 +4080,7 @@ Item {
+@@ -4066,7 +4087,7 @@ Item {
                  }
  
                  Button {
@@ -689,10 +929,10 @@ index 494e35b..46c6d26 100644
                  Button {
 diff --git a/app/gui/SystemConnectionsDialog.qml b/app/gui/SystemConnectionsDialog.qml
 new file mode 100644
-index 0000000..cff4c66
+index 0000000..f11d124
 --- /dev/null
 +++ b/app/gui/SystemConnectionsDialog.qml
-@@ -0,0 +1,107 @@
+@@ -0,0 +1,110 @@
 +import QtQuick 2.9
 +import QtQuick.Controls 2.5
 +import QtQuick.Layouts 1.3
@@ -721,9 +961,12 @@ index 0000000..cff4c66
 +            BusyIndicator { running: SystemControls.busy; visible: running; implicitWidth: 32; implicitHeight: 32 }
 +            EclipseActionButton { id: scanButton; text: qsTr("Scan"); enabled: !SystemControls.busy; onClicked: { panel.selected = ({}); SystemControls.request(panel.kind + "-scan") } }
 +        }
++        EclipseActionButton { text: qsTr("Cancel operation"); visible: SystemControls.busy; onClicked: { SystemControls.close(); panel.selected=({}); reopen.restart() } }
++        Timer { id: reopen; interval: 600; onTriggered: if(panel.opened) SystemControls.open(panel.kind) }
++        Timer { interval:5000; repeat:true; running:panel.opened && panel.kind==="bt" && !SystemControls.busy && !credential.opened; onTriggered:SystemControls.request("bt-list") }
 +        Label {
 +            Layout.fillWidth: true; wrapMode: Text.Wrap; color: VbTokens.textDim
-+            text: panel.kind === "wifi" ? qsTr("Select a network, then Connect. Advanced or hidden networks are available in the diagnostic shell.") : qsTr("Put your controller or headphones in pairing mode, then Scan. Pairing may take up to a minute.")
++            text: panel.kind === "wifi" ? qsTr("Select a network, then Connect. Advanced or hidden networks are available in the diagnostic shell.") : qsTr("Put your controller or headphones in pairing mode, then Scan. Devices appear during scanning. Saved devices are listed without scanning.")
 +        }
 +        ListView {
 +            id: devices
@@ -763,7 +1006,7 @@ index 0000000..cff4c66
 +    }
 +    Connections {
 +        target: SystemControls
-+        onChanged: {
++        function onChanged() {
 +            if (SystemControls.prompt.length > 0 && panel.opened && !credential.opened) credential.open()
 +            if (!SystemControls.busy) {
 +                credential.close(); secret.text = ""
@@ -783,7 +1026,7 @@ index 0000000..cff4c66
 +        Material.background: VbTokens.bgElev
 +        onOpened: { secret.text = ""; secret.forceActiveFocus() }
 +        onAccepted: { SystemControls.answer(secret.text); secret.text = "" }
-+        onRejected: { secret.text = ""; SystemControls.close() }
++        onRejected: { secret.text = ""; SystemControls.close(); reopen.restart() }
 +        contentItem: ColumnLayout {
 +            Label { Layout.fillWidth: true; textFormat: Text.PlainText; wrapMode: Text.Wrap; text: SystemControls.prompt; color: VbTokens.text }
 +            TextField { id: secret; Layout.fillWidth: true; echoMode: TextInput.Password; maximumLength: 4096; selectByMouse: true; onAccepted: credential.accept() }
@@ -1637,6 +1880,190 @@ index 0000000..d398387
 +private:
 +    static QString key(QString host, QString name);
 +};
+diff --git a/app/moonlightos/localhardware.cpp b/app/moonlightos/localhardware.cpp
+new file mode 100644
+index 0000000..413cc61
+--- /dev/null
++++ b/app/moonlightos/localhardware.cpp
+@@ -0,0 +1,123 @@
++#include "localhardware.h"
++#include <QtMath>
++#include <QFile>
++#include <QDir>
++#include <QSet>
++#include <QStorageInfo>
++#include <QFileInfo>
++#include <QElapsedTimer>
++#include <QMutex>
++#include <QMutexLocker>
++#include <QQmlEngine>
++#include <QCoreApplication>
++#include <QRegularExpression>
++
++static QString read(const QString& path) { QFile f(path); return f.open(QIODevice::ReadOnly) ? QString::fromUtf8(f.read(32768)).trimmed() : QString(); }
++static double number(const QString& path) { bool ok; double n=read(path).toDouble(&ok); return ok && qIsFinite(n) ? n : -1; }
++LocalHardware::LocalHardware(QObject* parent):QObject(parent) { m_timer.setInterval(refreshSeconds()*1000); connect(&m_timer,&QTimer::timeout,this,&LocalHardware::refresh); }
++void LocalHardware::setActive(bool active) { if (active) { refresh(); m_timer.start(); } else m_timer.stop(); }
++void LocalHardware::refresh() { m_readings=sample(); m_history.append(m_readings); while(m_history.size()>60) m_history.removeFirst(); emit changed(); }
++void LocalHardware::setFields(QStringList v) { QStringList clean; for(const QString& key:QStringList{"cpu","memory","temperature","gpu","network","battery","storage"}) if(v.contains(key)) clean.append(key); save("localFields",clean); }
++
++QVariantMap LocalHardware::sample(const QString& root) {
++    // Shared cache: Settings and the decoder reuse one bounded, read-only sample.
++    static QMutex mutex; QMutexLocker locker(&mutex);
++    static QElapsedTimer clock; if(!clock.isValid()) clock.start();
++    static QMap<QString,QVariantMap> previous, cached;
++    static QMap<QString,qint64> last;
++    qint64 now=clock.elapsed();
++    int interval=qBound(1,QSettings().value("eclipse/hardwareRefresh",2).toInt(),5)*1000;
++    if(cached.contains(root) && now-last.value(root)<interval) return cached.value(root);
++    QVariantMap result, counters;
++    auto old=previous.value(root); double seconds=(now-last.value(root))/1000.0;
++    auto stat=read(root+"/proc/stat").section('\n',0,0).simplified().split(' ');
++    if(stat.size()>=9 && stat[0]=="cpu") {
++        quint64 total=0; for(int i=1;i<=8;i++) total+=stat[i].toULongLong();
++        quint64 idle=stat[4].toULongLong()+stat[5].toULongLong();
++        counters["total"]=total; counters["idle"]=idle;
++        quint64 before=old.value("total").toULongLong();
++        if(old.contains("total") && total>before && idle>=old.value("idle").toULongLong()) result["cpuPercent"]=qBound(0.0,100.0*(1.0-double(idle-old["idle"].toULongLong())/double(total-before)),100.0);
++    }
++    QMap<QString,quint64> memory;
++    for(const QString& line:read(root+"/proc/meminfo").split('\n')) { auto parts=line.simplified().split(' '); if(parts.size()>=2) memory[parts[0]]=parts[1].toULongLong()*1024; }
++    quint64 total=memory.value("MemTotal:"), available=memory.value("MemAvailable:");
++    if(total && available<=total && memory.contains("MemAvailable:")) { result["memoryUsedGiB"]=double(total-available)/(1024*1024*1024); result["memoryTotalGiB"]=double(total)/(1024*1024*1024); result["memoryPercent"]=100.0*(total-available)/total; }
++    if(memory.contains("SwapTotal:")) result["swapUsedMiB"]=double(memory.value("SwapTotal:")-qMin(memory.value("SwapTotal:"),memory.value("SwapFree:")))/(1024*1024);
++    double frequency=number(root+"/sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq"); if(frequency>0) result["cpuMHz"]=frequency/1000;
++    double temperature=-1, fan=-1;
++    QDir hw(root+"/sys/class/hwmon");
++    for(const QString& device:hw.entryList(QDir::Dirs|QDir::NoDotAndDotDot)) {
++        QDir sensors(hw.filePath(device)); QString name=read(sensors.filePath("name"));
++        for(const QString& file:sensors.entryList({"temp*_input","fan*_input"},QDir::Files)) {
++            double value=number(sensors.filePath(file));
++            if(file.startsWith("temp") && (name=="coretemp" || name=="k10temp") && value>=0 && value<=150000) temperature=qMax(temperature,value/1000);
++            if(file.startsWith("fan") && value>=0 && value<30000) fan=qMax(fan,value);
++        }
++    }
++    if(temperature>=0) result["temperatureC"]=temperature;
++    if(fan>=0) result["fanRPM"]=fan;
++    QDir drm(root+"/sys/class/drm");
++    for(const QString& card:drm.entryList({"card[0-9]*"},QDir::Dirs|QDir::NoDotAndDotDot)) { double busy=number(drm.filePath(card+"/device/gpu_busy_percent")); if(busy>=0 && busy<=100) { result["gpuPercent"]=busy; break; } }
++    // DRM fdinfo is unprivileged, read-only and scoped to this Eclipse process.
++    // Deduplicate descriptors belonging to the same DRM client; never call this system-wide GPU load.
++    quint64 video=0; bool hasVideo=false; QSet<QString> clients;
++    QDir descriptors(root+"/proc/self/fdinfo");
++    int inspected=0;
++    for(const QString& file:descriptors.entryList(QDir::Files)) {
++        if(++inspected>256) break;
++        QString info=read(descriptors.filePath(file));
++        auto client=QRegularExpression("drm-client-id:\\s*(\\d+)").match(info);
++        if(!client.hasMatch() || clients.contains(client.captured(1))) continue;
++        clients.insert(client.captured(1));
++        auto engines=QRegularExpression("drm-engine-video(?:\\d+)?:\\s*(\\d+)\\s+ns").globalMatch(info);
++        while(engines.hasNext()) { video+=engines.next().captured(1).toULongLong(); hasVideo=true; }
++    }
++    if(hasVideo) {
++        counters["video"]=video;
++        if(old.contains("video") && seconds>0 && video>=old.value("video").toULongLong()) result["videoPercent"]=qBound(0.0,double(video-old["video"].toULongLong())/seconds/10000000.0,100.0);
++    }
++    QString nic;
++    for(const QString& line:read(root+"/proc/net/route").split('\n')) { auto p=line.simplified().split(' '); if(p.size()>3 && p[1]=="00000000") { nic=p[0]; break; } }
++    for(const QString& line:read(root+"/proc/net/dev").split('\n')) {
++        if(line.section(':',0,0).trimmed()!=nic || nic.isEmpty()) continue;
++        auto p=line.section(':',1).simplified().split(' '); if(p.size()<16) continue;
++        quint64 rx=p[0].toULongLong(), tx=p[8].toULongLong(); counters["rx"]=rx; counters["tx"]=tx; counters["nic"]=nic;
++        if(seconds>0 && old.value("nic").toString()==nic && rx>=old.value("rx").toULongLong() && tx>=old.value("tx").toULongLong()) { result["receiveMiB"]=double(rx-old["rx"].toULongLong())/seconds/(1024*1024); result["transmitMiB"]=double(tx-old["tx"].toULongLong())/seconds/(1024*1024); }
++    }
++    QDir power(root+"/sys/class/power_supply");
++    for(const QString& name:power.entryList(QDir::Dirs|QDir::NoDotAndDotDot)) {
++        QString path=power.filePath(name); if(read(path+"/type")!="Battery") continue;
++        double percent=number(path+"/capacity"); if(percent>=0 && percent<=100) result["batteryPercent"]=percent;
++        result["batteryState"]=read(path+"/status").left(32); double watts=number(path+"/power_now"); if(watts>=0) result["batteryWatts"]=watts/1000000; break;
++    }
++    if(root.isEmpty()) { QStorageInfo disk=QStorageInfo::root(); if(disk.isValid() && disk.isReady() && disk.bytesTotal()>0) { result["storageTotalGiB"]=double(disk.bytesTotal())/(1024*1024*1024); result["storageFreeGiB"]=double(disk.bytesAvailable())/(1024*1024*1024); } }
++    if(root.isEmpty()) {
++        QString device=QFileInfo(QString::fromUtf8(QStorageInfo::root().device())).canonicalFilePath().section('/',-1);
++        auto io=read("/sys/class/block/"+device+"/stat").simplified().split(' ');
++        if(!device.isEmpty() && io.size()>=7) {
++            quint64 reads=io[2].toULongLong(),writes=io[6].toULongLong();
++            counters["disk"]=device;counters["reads"]=reads;counters["writes"]=writes;
++            if(seconds>0 && old.value("disk").toString()==device && reads>=old.value("reads").toULongLong() && writes>=old.value("writes").toULongLong()) {
++                result["diskReadMiB"]=double(reads-old["reads"].toULongLong())*512/seconds/(1024*1024);
++                result["diskWriteMiB"]=double(writes-old["writes"].toULongLong())*512/seconds/(1024*1024);
++            }
++        }
++    }
++    previous[root]=counters; last[root]=now; cached[root]=result; return result;
++}
++
++QString LocalHardware::overlayText() {
++    auto r=sample(); QSettings s; auto fields=s.value("eclipse/localFields",QStringList{"cpu","memory","temperature","gpu","network","battery"}).toStringList(); bool detail=s.value("eclipse/localDetailed",false).toBool();
++    QStringList lines{"EclipseOS | LOCAL MAC"};
++    auto value=[&r](QString key,QString suffix,int precision=1) { return r.contains(key) ? QString::number(r[key].toDouble(),'f',precision)+suffix : QString("Unavailable"); };
++    if(fields.contains("cpu")) { lines<<"CPU  "+value("cpuPercent","%"); if(detail) lines<<"CPU clock  "+value("cpuMHz"," MHz",0); }
++    if(fields.contains("memory")) { lines<<"RAM  "+value("memoryUsedGiB"," GiB")+" / "+value("memoryTotalGiB"," GiB"); if(detail) lines<<"Swap  "+value("swapUsedMiB"," MiB"); }
++    if(fields.contains("temperature")) { lines<<"CPU temperature  "+value("temperatureC"," C"); if(detail) lines<<"Fan  "+value("fanRPM"," RPM",0); }
++    if(fields.contains("gpu")) { lines<<"GPU busy  "+value("gpuPercent","%"); lines<<"Eclipse video engine  "+value("videoPercent","%"); }
++    if(fields.contains("network")) lines<<"Network  down "+value("receiveMiB"," MiB/s")+" | up "+value("transmitMiB"," MiB/s");
++    if(fields.contains("battery")) { lines<<"Battery  "+value("batteryPercent","%",0); if(detail) lines<<"Battery power  "+value("batteryWatts"," W"); }
++    if(fields.contains("storage")) { lines<<"USB/root free  "+value("storageFreeGiB"," GiB"); if(detail) lines<<"Root I/O  read "+value("diskReadMiB"," MiB/s")+" | write "+value("diskWriteMiB"," MiB/s"); }
++    return lines.join('\n');
++}
++static void registerLocalHardware() { qmlRegisterSingletonType<LocalHardware>("LocalHardware",1,0,"LocalHardware",[](QQmlEngine*,QJSEngine*)->QObject*{return new LocalHardware();}); }
++Q_COREAPP_STARTUP_FUNCTION(registerLocalHardware)
+diff --git a/app/moonlightos/localhardware.h b/app/moonlightos/localhardware.h
+new file mode 100644
+index 0000000..311fea8
+--- /dev/null
++++ b/app/moonlightos/localhardware.h
+@@ -0,0 +1,49 @@
++#pragma once
++#include <QObject>
++#include <QVariantMap>
++#include <QVariantList>
++#include <QTimer>
++#include <QSettings>
++
++class LocalHardware : public QObject {
++    Q_OBJECT
++    Q_PROPERTY(QVariantMap readings READ readings NOTIFY changed)
++    Q_PROPERTY(QVariantList history READ history NOTIFY changed)
++    Q_PROPERTY(bool overlay READ overlay WRITE setOverlay NOTIFY preferencesChanged)
++    Q_PROPERTY(bool detailed READ detailed WRITE setDetailed NOTIFY preferencesChanged)
++    Q_PROPERTY(bool streamDetailed READ streamDetailed WRITE setStreamDetailed NOTIFY preferencesChanged)
++    Q_PROPERTY(int position READ position WRITE setPosition NOTIFY preferencesChanged)
++    Q_PROPERTY(int opacity READ opacity WRITE setOpacity NOTIFY preferencesChanged)
++    Q_PROPERTY(int refreshSeconds READ refreshSeconds WRITE setRefreshSeconds NOTIFY preferencesChanged)
++    Q_PROPERTY(QStringList fields READ fields WRITE setFields NOTIFY preferencesChanged)
++public:
++    explicit LocalHardware(QObject* parent=nullptr);
++    QVariantMap readings() const { return m_readings; }
++    QVariantList history() const { return m_history; }
++    bool overlay() const { return QSettings().value("eclipse/localOverlay",false).toBool(); }
++    bool detailed() const { return QSettings().value("eclipse/localDetailed",false).toBool(); }
++    bool streamDetailed() const { return QSettings().value("eclipse/streamDetailed",true).toBool(); }
++    int position() const { return qBound(0,QSettings().value("eclipse/localPosition",1).toInt(),3); }
++    int opacity() const { return qBound(40,QSettings().value("eclipse/overlayOpacity",85).toInt(),100); }
++    int refreshSeconds() const { return qBound(1,QSettings().value("eclipse/hardwareRefresh",2).toInt(),5); }
++    QStringList fields() const { return QSettings().value("eclipse/localFields",QStringList{"cpu","memory","temperature","gpu","network","battery"}).toStringList(); }
++    void setOverlay(bool v) { save("localOverlay",v); }
++    void setDetailed(bool v) { save("localDetailed",v); }
++    void setStreamDetailed(bool v) { save("streamDetailed",v); }
++    void setPosition(int v) { save("localPosition",qBound(0,v,3)); }
++    void setOpacity(int v) { save("overlayOpacity",qBound(40,v,100)); }
++    void setRefreshSeconds(int v) { save("hardwareRefresh",qBound(1,v,5)); m_timer.setInterval(refreshSeconds()*1000); }
++    void setFields(QStringList v);
++    Q_INVOKABLE void setActive(bool active);
++    static QVariantMap sample(const QString& root=QString());
++    static QString overlayText();
++signals:
++    void changed();
++    void preferencesChanged();
++private:
++    void refresh();
++    void save(QString key, QVariant value) { QSettings().setValue("eclipse/"+key,value); emit preferencesChanged(); }
++    QTimer m_timer;
++    QVariantMap m_readings;
++    QVariantList m_history;
++};
 diff --git a/app/moonlightos/managedupdates.cpp b/app/moonlightos/managedupdates.cpp
 new file mode 100644
 index 0000000..2bfcbfd
@@ -1775,12 +2202,38 @@ index 0000000..2bfcbfd
 +    checkNow();
 +    emit installFailed(tr("Standalone Vibemis installation is disabled in EclipseOS."), m_ReleaseUrl);
 +}
+diff --git a/app/moonlightos/overlaystyle.h b/app/moonlightos/overlaystyle.h
+new file mode 100644
+index 0000000..ce30faf
+--- /dev/null
++++ b/app/moonlightos/overlaystyle.h
+@@ -0,0 +1,20 @@
++#pragma once
++#include <QImage>
++#include <QPainter>
++#include <QColor>
++namespace EclipseOverlayStyle {
++inline QColor accent(int index) {
++    const char* colors[]={"#00CCCC","#7C8CF8","#3ED598","#F0A868","#DC3658","#F25D64","#F58347","#F1BC45","#B7DC63","#63CCAE","#63C4ED","#6C9FFF","#AD85F5","#E976BC","#CAD0DA","#D995AC"};
++    return QColor(colors[qBound(0,index,15)]);
++}
++inline QImage panel(QSize size,int accentIndex,int opacity) {
++    if(size.width()<32 || size.height()<32 || size.width()>2048 || size.height()>4096) return {};
++    QImage image(size,QImage::Format_RGBA8888); image.fill(Qt::transparent);
++    QPainter painter(&image); painter.setRenderHint(QPainter::Antialiasing);
++    QColor bg("#151115"); bg.setAlpha(qBound(40,opacity,100)*255/100);
++    painter.setBrush(bg); painter.setPen(QPen(accent(accentIndex),1));
++    painter.drawRoundedRect(QRectF(1,1,image.width()-2,image.height()-2),12,12);
++    painter.setPen(QPen(accent(accentIndex),3)); painter.drawLine(15,8,image.width()-15,8);
++    return image;
++}
++}
 diff --git a/app/moonlightos/systemcontrols.cpp b/app/moonlightos/systemcontrols.cpp
 new file mode 100644
-index 0000000..77ec4c8
+index 0000000..3ee3ff9
 --- /dev/null
 +++ b/app/moonlightos/systemcontrols.cpp
-@@ -0,0 +1,83 @@
+@@ -0,0 +1,82 @@
 +#include "systemcontrols.h"
 +#include <QCoreApplication>
 +#include <QJsonDocument>
@@ -1807,16 +2260,15 @@ index 0000000..77ec4c8
 +                m_prompt = value.value("prompt").toString().left(1024);
 +                m_timeout.start(120000);
 +            }
-+            if (value.value("done").toBool()) {
-+                m_timeout.stop(); m_busy = false; m_prompt.clear();
-+                if (value.contains("items")) {
-+                    auto entries = value.value("items").toArray();
-+                    if (entries.size() > 64) { fail(tr("Invalid device list.")); return; }
-+                    m_items = entries.toVariantList();
-+                }
-+                if (value.value("state").isObject()) m_state = value.value("state").toObject().toVariantMap();
-+                m_status = value.contains("error") ? value.value("error").toString().left(1024) : value.value("status").toString();
++            if (value.contains("items")) {
++                auto entries = value.value("items").toArray();
++                if (entries.size() > 64) { fail(tr("Invalid device list.")); return; }
++                m_items = entries.toVariantList();
 +            }
++            if (value.value("state").isObject()) m_state = value.value("state").toObject().toVariantMap();
++            if(value.contains("status")) m_status=value.value("status").toString().left(1024);
++            if(value.contains("error")) m_status=value.value("error").toString().left(1024);
++            if (value.value("done").toBool()) { m_timeout.stop(); m_busy=false; m_prompt.clear(); }
 +            emit changed();
 +        }
 +    });
@@ -1842,9 +2294,9 @@ index 0000000..77ec4c8
 +}
 +void SystemControls::request(QString action, QString id, bool confirm) {
 +    if (m_busy || m_process.state() != QProcess::Running || !action.startsWith(m_mode + "-")) return;
-+    const QStringList allowed = {"wifi-list", "wifi-scan", "wifi-connect", "wifi-disconnect", "bt-list", "bt-scan", "bt-connect", "bt-disconnect", "bt-forget", "center-list", "center-volume", "center-mute", "center-output", "center-screen", "center-keyboard", "center-reboot", "center-poweroff", "center-suspend", "center-report"};
++    const QStringList allowed = {"wifi-list", "wifi-scan", "wifi-connect", "wifi-disconnect", "bt-list", "bt-scan", "bt-connect", "bt-disconnect", "bt-forget", "center-wifi-radio", "center-bt-radio", "center-airpods", "center-test-sound", "center-idle", "center-pointer-speed", "center-pointer-natural", "center-pointer-tap", "center-display", "center-frontend", "center-restart-frontend", "center-list", "center-volume", "center-mute", "center-output", "center-screen", "center-keyboard", "center-reboot", "center-poweroff", "center-suspend", "center-report"};
 +    if (!allowed.contains(action)) return;
-+    m_busy = true; m_prompt.clear(); m_status = tr("Working…"); m_timeout.start(120000);
++    m_busy = true; m_prompt.clear(); m_status = action.endsWith("scan") ? tr("Starting scan…") : tr("Working…"); m_timeout.start(action.endsWith("scan") ? 30000 : 100000);
 +    send({{"action", action}, {"id", id}, {"confirm", confirm}}); emit changed();
 +}
 +void SystemControls::answer(QString value) {
@@ -1911,15 +2363,16 @@ index 0000000..18e9deb
 +};
 diff --git a/app/moonlightos/tests/Harness.qml b/app/moonlightos/tests/Harness.qml
 new file mode 100644
-index 0000000..699af7f
+index 0000000..bf90961
 --- /dev/null
 +++ b/app/moonlightos/tests/Harness.qml
-@@ -0,0 +1,21 @@
+@@ -0,0 +1,26 @@
 +import QtQuick 2.9
 +import QtQuick.Controls 2.5
 +import QtQuick.Controls.Material 2.2
 +import Vibemis.Redesign 1.0
 +import StreamingPreferences 1.0
++import EclipseProfiles 1.0
 +import "../../gui"
 +ApplicationWindow {
 +    Material.theme: Material.Dark
@@ -1928,12 +2381,16 @@ index 0000000..699af7f
 +    Material.foreground: VbTokens.text
 +    color: VbTokens.bgApp
 +    width: 1280; height: 800; visible: true
++    function chooseScale(value) { EclipseProfiles.textScale=value }
 +    function chooseAccent(i) { StreamingPreferences.uiAccentIndex = i }
 +    Item { id: stackView }
 +    QtObject { objectName: "testState"; property color accent: VbTokens.accent; property color pressed: VbTokens.accentPressed }
 +    CrimsonStatusDialog { objectName: "testPanel" }
 +    SystemConnectionsDialog { objectName: "connectionsPanel" }
 +    EclipseControlCenter { objectName: "controlCenter" }
++    ScrollView { id:systemScroll; objectName:"systemScroll";contentWidth:availableWidth; anchors.fill:parent; anchors.margins:24; visible:systemPanel.active
++        EclipseSystemSettings { id:systemPanel;objectName:"systemSettings";width:systemScroll.availableWidth;active:false }
++    }
 +    EclipseAboutDialog { objectName: "aboutEclipse" }
 +}
 diff --git a/app/moonlightos/tests/Preferences.qml b/app/moonlightos/tests/Preferences.qml
@@ -1947,10 +2404,10 @@ index 0000000..996e5ac
 +QtObject { property int uiAccentIndex: 4; property bool uiShowHints: true; property int width: 1920; property int height: 1080; property int fps: 60; property int bitrateKbps: 20000; function save() {} }
 diff --git a/app/moonlightos/tests/test-crimson.cpp b/app/moonlightos/tests/test-crimson.cpp
 new file mode 100644
-index 0000000..d9b71ee
+index 0000000..2310c73
 --- /dev/null
 +++ b/app/moonlightos/tests/test-crimson.cpp
-@@ -0,0 +1,273 @@
+@@ -0,0 +1,355 @@
 +#include <QtTest>
 +#include <QTemporaryDir>
 +#include <QQmlEngine>
@@ -1973,6 +2430,8 @@ index 0000000..d9b71ee
 +#include "../crimsonstatus.h"
 +#include "../systemcontrols.h"
 +#include "../eclipseprofiles.h"
++#include "../localhardware.h"
++#include "../overlaystyle.h"
 +#include "../../backend/autoupdatechecker.h"
 +
 +class TlsFixture : public QTcpServer {
@@ -2140,6 +2599,66 @@ index 0000000..d9b71ee
 +        count = server.requests; QTest::qWait(500); QCOMPARE(server.requests, count); QVERIFY(status.stats().isEmpty());
 +        status.setVisible(false);
 +    }
++    void roundedOverlayAccentsAndOpacity() {
++        for(int accent=0;accent<16;++accent) {
++            auto image=EclipseOverlayStyle::panel(QSize(400,180),accent,85); QVERIFY(!image.isNull());
++            QCOMPARE(image.pixelColor(0,0).alpha(),0);
++            QCOMPARE(image.pixelColor(200,90).alpha(),85*255/100);
++            QCOMPARE(image.pixelColor(200,8).rgb(),EclipseOverlayStyle::accent(accent).rgb());
++        }
++        QVERIFY(EclipseOverlayStyle::panel(QSize(-1,100),0,85).isNull());
++        QVERIFY(EclipseOverlayStyle::panel(QSize(4096,100),0,85).isNull());
++    }
++    void localHardwareCountersAndSensors() {
++        QTemporaryDir root; QVERIFY(root.isValid());
++        auto write=[&](const QString& path,const QByteArray& data) { QString full=root.path()+path; QDir().mkpath(QFileInfo(full).absolutePath()); QFile file(full); QVERIFY(file.open(QIODevice::WriteOnly)); QCOMPARE(file.write(data),qint64(data.size())); };
++        QSettings().setValue("eclipse/hardwareRefresh",1);
++        write("/proc/stat","cpu 100 0 100 800 0 0 0 0\n");
++        write("/proc/meminfo","MemTotal: 1048576 kB\nMemAvailable: 262144 kB\nSwapTotal: 1024 kB\nSwapFree: 512 kB\n");
++        write("/sys/class/hwmon/hwmon0/name","coretemp"); write("/sys/class/hwmon/hwmon0/temp1_input","62500");
++        write("/sys/class/hwmon/hwmon0/fan1_input","2400");
++        write("/proc/net/route","Iface Destination Gateway Flags\nwlan0 00000000 01020304 0003\n");
++        write("/proc/net/dev","wlan0: 1000 0 0 0 0 0 0 0 2000 0 0 0 0 0 0 0\n");
++        QByteArray video="drm-client-id: 7\ndrm-engine-video: 100000000 ns\n";
++        write("/proc/self/fdinfo/1",video); write("/proc/self/fdinfo/2",video);
++        auto first=LocalHardware::sample(root.path()); QVERIFY(!first.contains("cpuPercent")); QVERIFY(!first.contains("videoPercent"));
++        QCOMPARE(first["memoryPercent"].toDouble(),75.0); QCOMPARE(first["temperatureC"].toDouble(),62.5); QCOMPARE(first["fanRPM"].toDouble(),2400.0);
++        QTest::qWait(1050);
++        write("/proc/stat","cpu 150 0 150 900 0 0 0 0\n");
++        video="drm-client-id: 7\ndrm-engine-video: 200000000 ns\n";
++        write("/proc/self/fdinfo/1",video); write("/proc/self/fdinfo/2",video);
++        write("/proc/net/dev","wlan0: 1049576 0 0 0 0 0 0 0 526288 0 0 0 0 0 0 0\n");
++        auto second=LocalHardware::sample(root.path()); QCOMPARE(second["cpuPercent"].toDouble(),50.0);
++        QVERIFY(second["videoPercent"].toDouble()>5 && second["videoPercent"].toDouble()<11); // duplicate fd must not double-count
++        QVERIFY(second["receiveMiB"].toDouble()>.5 && second["receiveMiB"].toDouble()<1.1);
++        QTest::qWait(1050);
++        write("/proc/stat","cpu 1 0 1 1 0 0 0 0\n"); write("/proc/net/dev","wlan0: 1 0 0 0 0 0 0 0 1 0 0 0 0 0 0 0\n");
++        auto reset=LocalHardware::sample(root.path()); QVERIFY(!reset.contains("cpuPercent")); QVERIFY(!reset.contains("receiveMiB"));
++        QSettings().setValue("eclipse/hardwareRefresh",2);
++    }
++    void localHardwareUnavailableAndBounds() {
++        QTemporaryDir root; QVERIFY(root.isValid());
++        auto empty=LocalHardware::sample(root.path()); QVERIFY(empty.isEmpty());
++        LocalHardware monitor; monitor.setPosition(999); QCOMPARE(monitor.position(),3);
++        monitor.setOpacity(-5); QCOMPARE(monitor.opacity(),40);
++        monitor.setRefreshSeconds(999); QCOMPARE(monitor.refreshSeconds(),5);
++        monitor.setFields({"cpu","password","memory"}); QCOMPARE(monitor.fields(),QStringList({"cpu","memory"}));
++        monitor.setOverlay(false); monitor.setRefreshSeconds(2); monitor.setOpacity(85);
++    }
++    void scanProgressBeforeCompletion() {
++        QTemporaryDir dir; QFile script(dir.filePath("scan.py")); QVERIFY(script.open(QIODevice::WriteOnly));
++        script.write(R"PY(import json,sys,time
++for line in sys.stdin:
++    request=json.loads(line)
++    if request['action']=='bt-scan':
++        print(json.dumps({'items':[{'id':'AA:BB:CC:DD:EE:FF','name':'Controller'}],'status':'Scanning'}),flush=True)
++        time.sleep(.5)
++    print(json.dumps({'items':[{'id':'AA:BB:CC:DD:EE:FF','name':'Controller'}],'status':'Ready','done':True}),flush=True)
++)PY"); script.close(); qputenv("MOONLIGHT_CONTROLS_FIXTURE",script.fileName().toUtf8());
++        SystemControls c; c.open("bt"); QTRY_VERIFY(!c.busy() && !c.items().isEmpty());
++        c.request("bt-scan"); QTRY_COMPARE(c.status(),QString("Scanning")); QVERIFY(c.busy()); QCOMPARE(c.items().size(),1);
++        QTRY_VERIFY(!c.busy()); c.close(); qunsetenv("MOONLIGHT_CONTROLS_FIXTURE");
++    }
 +    void iconResources() {
 +        for (const QString& name : {"eclipse-icon", "eclipse-controls", "eclipse-power", "crimson-network", "crimson-bluetooth", "crimson-battery", "crimson-host", "settings"}) {
 +            const QString path = ":/res/" + name + ".svg";
@@ -2158,7 +2677,7 @@ index 0000000..d9b71ee
 +        helper.write(R"PY(import json,sys
 +for line in sys.stdin:
 +    value=json.loads(line)
-+    print(json.dumps({'state':{'volume':50,'muted':False,'sinks':[{'id':'42','name':'Speakers','default':True},{'id':'57','name':'AirPods','default':False}],'brightness':{'screen':{'device':'intel_backlight','percent':60},'keyboard':{'device':'spi::kbd_backlight','percent':30}},'os':{'NAME':'EclipseOS','VERSION':'0.3-dev','TARGET':'Fixture hardware','FEDORA':'44'},'kernel':'fixture-kernel'},'items':[{'id':'fixture','name':'Fixture device','detail':'Available','connected':True}],'status':'Ready','done':True}),flush=True)
++    print(json.dumps({'state':{'volume':50,'muted':False,'wifi_enabled':True,'bluetooth_enabled':True,'displays':[{'id':'eDP-1|1024x640|60','name':'eDP-1 · 1024×640 · 60 Hz','current':True}],'pointers':[{'id':'12','name':'Touchpad','speed':0,'natural':True,'tap':True}],'sinks':[{'id':'42','name':'Speakers','default':True},{'id':'57','name':'AirPods','default':False}],'brightness':{'screen':{'device':'intel_backlight','percent':60},'keyboard':{'device':'spi::kbd_backlight','percent':30}},'os':{'NAME':'EclipseOS','VERSION':'0.3-dev','TARGET':'Fixture hardware','FEDORA':'44'},'kernel':'fixture-kernel'},'items':[{'id':'fixture','name':'Fixture device','detail':'Available','connected':True}],'status':'Ready','done':True}),flush=True)
 +)PY"); helper.close();
 +        qputenv("MOONLIGHT_CONTROLS_FIXTURE",helper.fileName().toUtf8());
 +        QQmlEngine engine;
@@ -2168,7 +2687,7 @@ index 0000000..d9b71ee
 +        auto state = root->findChild<QObject*>("testState"); QVERIFY(state);
 +        for (int i = 0; i < 16; ++i) {
 +            QVERIFY(QMetaObject::invokeMethod(root.data(), "chooseAccent", Q_ARG(QVariant, i)));
-+            QVERIFY(state->property("accent").value<QColor>().isValid());
++            QCOMPARE(state->property("accent").value<QColor>().rgb(),EclipseOverlayStyle::accent(i).rgb());
 +            QVERIFY(state->property("pressed").value<QColor>().isValid());
 +        }
 +        QVERIFY(QMetaObject::invokeMethod(root.data(), "chooseAccent", Q_ARG(QVariant, 4)));
@@ -2219,6 +2738,26 @@ index 0000000..d9b71ee
 +        QVERIFY(about->property("visible").toBool());
 +        if (!out.isEmpty()) QVERIFY(window->grabWindow().save(out+"/eclipse-about.png"));
 +        QVERIFY(QMetaObject::invokeMethod(about,"close"));
++        auto system=root->findChild<QObject*>("systemSettings"); QVERIFY(system);
++        for(int scale:{100,110,125}) {
++            QVERIFY(QMetaObject::invokeMethod(root.data(),"chooseScale",Q_ARG(QVariant,scale)));
++            root->setProperty("width",1024); root->setProperty("height",640);
++            system->setProperty("active",true); QTest::qWait(400);
++            QVERIFY(system->property("width").toInt()<=1024);
++            if(!out.isEmpty()) QVERIFY(window->grabWindow().save(out+"/system-controls-"+QString::number(scale)+".png"));
++            for(int accent=0;accent<16;accent++) {
++                QVERIFY(QMetaObject::invokeMethod(root.data(),"chooseAccent",Q_ARG(QVariant,accent))); QTest::qWait(10);
++                QVERIFY(state->property("accent").value<QColor>().isValid());
++            }
++            auto scroll=root->findChild<QObject*>("systemScroll"); QVERIFY(scroll);
++            auto flick=scroll->property("contentItem").value<QQuickItem*>(); QVERIFY(flick);
++            auto monitor=root->findChild<QObject*>("hardwareMonitor"); QVERIFY(monitor);
++            flick->setProperty("contentY",monitor->property("y")); QTest::qWait(200);
++            if(!out.isEmpty()) QVERIFY(window->grabWindow().save(out+"/hardware-monitor-"+QString::number(scale)+".png"));
++            flick->setProperty("contentY",0);
++            system->setProperty("active",false); QTest::qWait(100);
++        }
++        QVERIFY(QMetaObject::invokeMethod(root.data(),"chooseScale",Q_ARG(QVariant,100)));
 +        qunsetenv("MOONLIGHT_CONTROLS_FIXTURE");
 +    }
 +};
@@ -2226,10 +2765,10 @@ index 0000000..d9b71ee
 +#include "test-crimson.moc"
 diff --git a/app/moonlightos/tests/test-crimson.pro b/app/moonlightos/tests/test-crimson.pro
 new file mode 100644
-index 0000000..501ce65
+index 0000000..881f859
 --- /dev/null
 +++ b/app/moonlightos/tests/test-crimson.pro
-@@ -0,0 +1,18 @@
+@@ -0,0 +1,21 @@
 +QT += core gui quick network quickcontrols2 testlib svg
 +CONFIG += c++17 testcase
 +TARGET = test-crimson
@@ -2248,6 +2787,9 @@ index 0000000..501ce65
 +
 +# Match the production resource bundle so rendered icons are actually tested.
 +RESOURCES += ../../resources.qrc
++
++SOURCES += ../localhardware.cpp
++HEADERS += ../localhardware.h
 diff --git a/app/qml.qrc b/app/qml.qrc
 index a3c11dd..714c651 100644
 --- a/app/qml.qrc
@@ -5449,10 +5991,10 @@ index c3f3c81..7115c33 100644
 +<path d="M151 162a143 143 0 0 1 135-48" fill="none" stroke="#ffe8ee" stroke-opacity=".55" stroke-width="3" stroke-linecap="round"/>
  </svg>
 diff --git a/app/resources.qrc b/app/resources.qrc
-index b5d4ee7..f3cae0b 100644
+index b5d4ee7..08bdf2b 100644
 --- a/app/resources.qrc
 +++ b/app/resources.qrc
-@@ -1,13 +1,20 @@
+@@ -1,13 +1,23 @@
  <RCC>
      <qresource prefix="/">
 -        <file alias="res/steam/vibemis_p.png">res/steam/vibemis_p.png</file>
@@ -5463,6 +6005,9 @@ index b5d4ee7..f3cae0b 100644
 -        <file alias="res/vibemis-mark-512.png">res/vibemis-mark-512.png</file>
 -        <file alias="res/vibemis-mark-256.png">res/vibemis-mark-256.png</file>
 -        <file alias="res/vibemis-mark-128.png">res/vibemis-mark-128.png</file>
++        <file>gui/EclipseHardwareMonitor.qml</file>
++        <file>gui/EclipseSystemSettings.qml</file>
++        <file>gui/EclipseComboBox.qml</file>
 +        <file>res/crimson-network.svg</file>
 +        <file>res/crimson-bluetooth.svg</file>
 +        <file>res/eclipse-controls.svg</file>
@@ -5494,6 +6039,327 @@ index d69a913..6022b25 100644
      uiSounds = settings.value(SER_UISOUNDS, true).toBool();
      displayHdrCapability = settings.value(SER_DISPLAY_HDR_CAPABILITY, true).toBool();
      hdrTonemapping = settings.value(SER_HDR_TONEMAP, false).toBool();
+diff --git a/app/streaming/input/input.cpp b/app/streaming/input/input.cpp
+index 10505ef..3faf87f 100644
+--- a/app/streaming/input/input.cpp
++++ b/app/streaming/input/input.cpp
+@@ -88,6 +88,10 @@ SdlInputHandler::SdlInputHandler(StreamingPreferences& prefs, int streamWidth, i
+     m_SpecialKeyCombos[KeyComboToggleStatsOverlay].keyCode = SDLK_s;
+     m_SpecialKeyCombos[KeyComboToggleStatsOverlay].scanCode = SDL_SCANCODE_S;
+     m_SpecialKeyCombos[KeyComboToggleStatsOverlay].enabled = true;
++    m_SpecialKeyCombos[KeyComboToggleLocalHardware].keyCombo = KeyComboToggleLocalHardware;
++    m_SpecialKeyCombos[KeyComboToggleLocalHardware].keyCode = SDLK_h;
++    m_SpecialKeyCombos[KeyComboToggleLocalHardware].scanCode = SDL_SCANCODE_H;
++    m_SpecialKeyCombos[KeyComboToggleLocalHardware].enabled = true;
+ 
+     m_SpecialKeyCombos[KeyComboToggleMouseMode].keyCombo = KeyComboToggleMouseMode;
+     m_SpecialKeyCombos[KeyComboToggleMouseMode].keyCode = SDLK_m;
+diff --git a/app/streaming/input/input.h b/app/streaming/input/input.h
+index f828c04..7d5b1da 100644
+--- a/app/streaming/input/input.h
++++ b/app/streaming/input/input.h
+@@ -188,6 +188,7 @@ private:
+         KeyComboUngrabInput,
+         KeyComboToggleFullScreen,
+         KeyComboToggleStatsOverlay,
++        KeyComboToggleLocalHardware,
+         KeyComboToggleMouseMode,
+         KeyComboToggleCursorHide,
+         KeyComboToggleMinimize,
+diff --git a/app/streaming/input/keyboard.cpp b/app/streaming/input/keyboard.cpp
+index 993e534..942562e 100644
+--- a/app/streaming/input/keyboard.cpp
++++ b/app/streaming/input/keyboard.cpp
+@@ -51,6 +51,11 @@ void SdlInputHandler::performSpecialKeyCombo(KeyCombo combo)
+         raiseAllKeys();
+         break;
+ 
++    case KeyComboToggleLocalHardware:
++        Session::get()->getOverlayManager().setOverlayState(Overlay::OverlayLocalHardware,
++             !Session::get()->getOverlayManager().isOverlayEnabled(Overlay::OverlayLocalHardware));
++        break;
++
+     case KeyComboToggleStatsOverlay:
+         SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION,
+                     "Detected stats toggle combo");
+diff --git a/app/streaming/session.cpp b/app/streaming/session.cpp
+index 58feb96..791ef4c 100644
+--- a/app/streaming/session.cpp
++++ b/app/streaming/session.cpp
+@@ -1,4 +1,5 @@
+ #include "session.h"
++#include <QSettings>
+ #include "settings/streamingpreferences.h"
+ #include "streaming/streamutils.h"
+ #include "streaming/vrrratepolicy.h"
+@@ -2669,6 +2670,7 @@ void Session::execInternal()
+ 
+     // Toggle the stats overlay if requested by the user
+     m_OverlayManager.setOverlayState(Overlay::OverlayDebug, m_Preferences->showPerformanceOverlay);
++    m_OverlayManager.setOverlayState(Overlay::OverlayLocalHardware, QSettings().value("eclipse/localOverlay",false).toBool());
+ 
+     // Vibemis: opt-in on-screen touch controls overlay —
+     // three icon-only buttons (MENU opens the Quick Menu, KBD requests the SteamOS
+diff --git a/app/streaming/video/ffmpeg-renderers/d3d11va.cpp b/app/streaming/video/ffmpeg-renderers/d3d11va.cpp
+index 388e307..f853239 100644
+--- a/app/streaming/video/ffmpeg-renderers/d3d11va.cpp
++++ b/app/streaming/video/ffmpeg-renderers/d3d11va.cpp
+@@ -964,7 +964,7 @@ void D3D11VARenderer::notifyOverlayUpdated(Overlay::OverlayType type)
+         renderRect.x = 0;
+         renderRect.y = 0;
+     }
+-    else if (type == Overlay::OverlayDebug) {
++    else if (type == Overlay::OverlayDebug || type == Overlay::OverlayLocalHardware) {
+         // Top left
+         renderRect.x = 0;
+         renderRect.y = m_DisplayHeight - newSurface->h;
+diff --git a/app/streaming/video/ffmpeg-renderers/dxva2.cpp b/app/streaming/video/ffmpeg-renderers/dxva2.cpp
+index 32618d8..04b5d17 100644
+--- a/app/streaming/video/ffmpeg-renderers/dxva2.cpp
++++ b/app/streaming/video/ffmpeg-renderers/dxva2.cpp
+@@ -862,7 +862,7 @@ void DXVA2Renderer::notifyOverlayUpdated(Overlay::OverlayType type)
+         renderRect.x = 0;
+         renderRect.y = m_DisplayHeight - newSurface->h;
+     }
+-    else if (type == Overlay::OverlayDebug) {
++    else if (type == Overlay::OverlayDebug || type == Overlay::OverlayLocalHardware) {
+         // Top left
+         renderRect.x = 0;
+         renderRect.y = 0;
+diff --git a/app/streaming/video/ffmpeg-renderers/eglvid.cpp b/app/streaming/video/ffmpeg-renderers/eglvid.cpp
+index 9587a35..20680d8 100644
+--- a/app/streaming/video/ffmpeg-renderers/eglvid.cpp
++++ b/app/streaming/video/ffmpeg-renderers/eglvid.cpp
+@@ -234,10 +234,10 @@ void EGLRenderer::renderOverlay(Overlay::OverlayType type, int viewportWidth, in
+             overlayRect.x = 0;
+             overlayRect.y = 0;
+         }
+-        else if (type == Overlay::OverlayDebug) {
++        else if (type == Overlay::OverlayDebug || type == Overlay::OverlayLocalHardware) {
+             // Vibemis: user-configurable corner. NB: OpenGL origin is lower-left,
+             // so "top" is the high-Y edge here.
+-            int anchor = Session::get()->getOverlayManager().getDebugOverlayAnchor();
++            int anchor = Session::get()->getOverlayManager().getOverlayAnchor(type);
+             bool right = (anchor == 1 || anchor == 3);  // TR or BR
+             bool bottom = (anchor == 2 || anchor == 3); // BL or BR
+             overlayRect.x = right ? (viewportWidth - newSurface->w) : 0;
+diff --git a/app/streaming/video/ffmpeg-renderers/plvk.cpp b/app/streaming/video/ffmpeg-renderers/plvk.cpp
+index bc16ff2..bac185b 100644
+--- a/app/streaming/video/ffmpeg-renderers/plvk.cpp
++++ b/app/streaming/video/ffmpeg-renderers/plvk.cpp
+@@ -1382,10 +1382,10 @@ void PlVkRenderer::renderFrame(AVFrame *frame)
+                 overlayParts[i].dst.x0 = 0;
+                 overlayParts[i].dst.y0 = SDL_max(0, targetFrame.crop.y1 - overlayParts[i].src.y1);
+             }
+-            else if (i == Overlay::OverlayDebug) {
+-                // Top left
+-                overlayParts[i].dst.x0 = 0;
+-                overlayParts[i].dst.y0 = 0;
++            else if (i == Overlay::OverlayDebug || i == Overlay::OverlayLocalHardware) {
++                int anchor=Session::get()->getOverlayManager().getOverlayAnchor(static_cast<Overlay::OverlayType>(i));
++                overlayParts[i].dst.x0=(anchor==1 || anchor==3) ? SDL_max(0,targetFrame.crop.x1-overlayParts[i].src.x1) : 0;
++                overlayParts[i].dst.y0=(anchor==2 || anchor==3) ? SDL_max(0,targetFrame.crop.y1-overlayParts[i].src.y1) : 0;
+             }
+             else if (i == Overlay::OverlayTouchButtonMenu || i == Overlay::OverlayTouchButtonKbd ||
+                      i == Overlay::OverlayTouchButtonTouchMode) {
+diff --git a/app/streaming/video/ffmpeg-renderers/sdlvid.cpp b/app/streaming/video/ffmpeg-renderers/sdlvid.cpp
+index 567bf19..f1325ed 100644
+--- a/app/streaming/video/ffmpeg-renderers/sdlvid.cpp
++++ b/app/streaming/video/ffmpeg-renderers/sdlvid.cpp
+@@ -241,11 +241,11 @@ void SdlRenderer::renderOverlay(Overlay::OverlayType type)
+                 m_OverlayRects[type].x = 0;
+                 m_OverlayRects[type].y = viewportRect.h - newSurface->h;
+             }
+-            else if (type == Overlay::OverlayDebug) {
++            else if (type == Overlay::OverlayDebug || type == Overlay::OverlayLocalHardware) {
+                 // Vibemis: user-configurable corner (SDL origin is upper-left).
+                 SDL_Rect viewportRect;
+                 SDL_RenderGetViewport(m_Renderer, &viewportRect);
+-                int anchor = Session::get()->getOverlayManager().getDebugOverlayAnchor();
++                int anchor = Session::get()->getOverlayManager().getOverlayAnchor(type);
+                 bool right = (anchor == 1 || anchor == 3);  // TR or BR
+                 bool bottom = (anchor == 2 || anchor == 3); // BL or BR
+                 m_OverlayRects[type].x = right ? (viewportRect.w - newSurface->w) : 0;
+diff --git a/app/streaming/video/ffmpeg-renderers/vaapi.cpp b/app/streaming/video/ffmpeg-renderers/vaapi.cpp
+index ab65e0b..2843fd6 100644
+--- a/app/streaming/video/ffmpeg-renderers/vaapi.cpp
++++ b/app/streaming/video/ffmpeg-renderers/vaapi.cpp
+@@ -741,9 +741,9 @@ void VAAPIRenderer::notifyOverlayUpdated(Overlay::OverlayType type)
+             overlayRect.x = 0;
+             overlayRect.y = -newSurface->h;
+         }
+-        else if (type == Overlay::OverlayDebug) {
++        else if (type == Overlay::OverlayDebug || type == Overlay::OverlayLocalHardware) {
+             // Vibemis: user-configurable corner (upper-left origin).
+-            int anchor = Session::get()->getOverlayManager().getDebugOverlayAnchor();
++            int anchor = Session::get()->getOverlayManager().getOverlayAnchor(type);
+             bool right = (anchor == 1 || anchor == 3);  // TR or BR
+             bool bottom = (anchor == 2 || anchor == 3); // BL or BR
+             overlayRect.x = right ? (m_DisplayWidth - newSurface->w) : 0;
+diff --git a/app/streaming/video/ffmpeg-renderers/vdpau.cpp b/app/streaming/video/ffmpeg-renderers/vdpau.cpp
+index 2f9e0c3..906accc 100644
+--- a/app/streaming/video/ffmpeg-renderers/vdpau.cpp
++++ b/app/streaming/video/ffmpeg-renderers/vdpau.cpp
+@@ -436,9 +436,9 @@ void VDPAURenderer::notifyOverlayUpdated(Overlay::OverlayType type)
+             overlayRect.x0 = 0;
+             overlayRect.y0 = m_DisplayHeight - newSurface->h;
+         }
+-        else if (type == Overlay::OverlayDebug) {
++        else if (type == Overlay::OverlayDebug || type == Overlay::OverlayLocalHardware) {
+             // Vibemis: user-configurable corner (upper-left origin).
+-            int anchor = Session::get()->getOverlayManager().getDebugOverlayAnchor();
++            int anchor = Session::get()->getOverlayManager().getOverlayAnchor(type);
+             bool right = (anchor == 1 || anchor == 3);  // TR or BR
+             bool bottom = (anchor == 2 || anchor == 3); // BL or BR
+             overlayRect.x0 = right ? (m_DisplayWidth - newSurface->w) : 0;
+diff --git a/app/streaming/video/ffmpeg-renderers/vt_avsamplelayer.mm b/app/streaming/video/ffmpeg-renderers/vt_avsamplelayer.mm
+index bd55281..13d88c6 100644
+--- a/app/streaming/video/ffmpeg-renderers/vt_avsamplelayer.mm
++++ b/app/streaming/video/ffmpeg-renderers/vt_avsamplelayer.mm
+@@ -496,6 +496,7 @@ public:
+             [m_OverlayTextFields[type] setSelectable:NO];
+ 
+             switch (type) {
++            case Overlay::OverlayLocalHardware:
+             case Overlay::OverlayDebug:
+                 [m_OverlayTextFields[type] setAlignment:NSTextAlignmentLeft];
+                 break;
+diff --git a/app/streaming/video/ffmpeg-renderers/vt_metal.mm b/app/streaming/video/ffmpeg-renderers/vt_metal.mm
+index 79b165d..334eeff 100644
+--- a/app/streaming/video/ffmpeg-renderers/vt_metal.mm
++++ b/app/streaming/video/ffmpeg-renderers/vt_metal.mm
+@@ -600,7 +600,7 @@ public:
+                     renderRect.x = 0;
+                     renderRect.y = 0;
+                 }
+-                else if (i == Overlay::OverlayDebug) {
++                else if (i == Overlay::OverlayDebug || i == Overlay::OverlayLocalHardware) {
+                     // Top left
+                     renderRect.x = 0;
+                     renderRect.y = m_LastDrawableHeight - overlayTexture.height;
+diff --git a/app/streaming/video/ffmpeg.cpp b/app/streaming/video/ffmpeg.cpp
+index 2ac1a6e..4a6e0c0 100644
+--- a/app/streaming/video/ffmpeg.cpp
++++ b/app/streaming/video/ffmpeg.cpp
+@@ -1,5 +1,6 @@
+ #include <Limelight.h>
+ #include "ffmpeg.h"
++#include "moonlightos/localhardware.h"
+ #include "streaming/session.h"
+ #include "backend/systemproperties.h"
+ #include "settings/streamingpreferences.h"
+@@ -2440,6 +2441,11 @@ int FFmpegVideoDecoder::submitDecodeUnit(PDECODE_UNIT du)
+             Session::get()->getOverlayManager().setOverlayTextUpdated(Overlay::OverlayDebug);
+         }
+ 
++        if(Session::get()->getOverlayManager().isOverlayEnabled(Overlay::OverlayLocalHardware)) {
++            QByteArray text=LocalHardware::overlayText().toUtf8();
++            Session::get()->getOverlayManager().updateOverlayText(Overlay::OverlayLocalHardware,text.constData());
++        }
++
+         // Accumulate these values into the global stats
+         addVideoStats(m_ActiveWndVideoStats, m_GlobalVideoStats);
+ 
+diff --git a/app/streaming/video/overlaymanager.cpp b/app/streaming/video/overlaymanager.cpp
+index 92e6c6d..1cb3a92 100644
+--- a/app/streaming/video/overlaymanager.cpp
++++ b/app/streaming/video/overlaymanager.cpp
+@@ -1,6 +1,12 @@
+ #include "overlaymanager.h"
+ #include "path.h"
+ #include "settings/streamingpreferences.h"
++#include "moonlightos/localhardware.h"
++#include "moonlightos/overlaystyle.h"
++#include <QSettings>
++#include <QImage>
++#include <QPainter>
++#include <QColor>
+ 
+ using namespace Overlay;
+ 
+@@ -9,6 +15,13 @@ int OverlayManager::getDebugOverlayAnchor()
+     return static_cast<int>(StreamingPreferences::get()->perfOverlayPosition);
+ }
+ 
++int OverlayManager::getOverlayAnchor(OverlayType type) {
++    int stream=getDebugOverlayAnchor();
++    if(type!=OverlayLocalHardware) return stream;
++    int local=qBound(0,QSettings().value("eclipse/localPosition",1).toInt(),3);
++    return isOverlayEnabled(OverlayDebug) && local==stream ? (local ^ 1) : local;
++}
++
+ OverlayManager::OverlayManager() :
+     m_Renderer(nullptr),
+     m_FontData(Path::readDataFile("ModeSeven.ttf"))
+@@ -32,8 +45,10 @@ OverlayManager::OverlayManager() :
+         break;
+     }
+ 
+-    m_Overlays[OverlayType::OverlayDebug].color = {0xD0, 0xD0, 0x00, 0xFF};
++    m_Overlays[OverlayType::OverlayDebug].color = {0xEC, 0xEE, 0xF1, 0xFF};
+     m_Overlays[OverlayType::OverlayDebug].fontSize = debugFontSize;
++    m_Overlays[OverlayLocalHardware].color = {0xEC,0xEE,0xF1,0xFF};
++    m_Overlays[OverlayLocalHardware].fontSize = debugFontSize;
+ 
+     m_Overlays[OverlayType::OverlayStatusUpdate].color = {0xCC, 0x00, 0x00, 0xFF};
+     m_Overlays[OverlayType::OverlayStatusUpdate].fontSize = 36;
+@@ -368,11 +383,32 @@ void OverlayManager::notifyOverlayUpdated(OverlayType type)
+     }
+ 
+     if (m_Overlays[type].enabled) {
+-        // The _Wrapped variant is required for line breaks to work
+-        SDL_Surface* surface = TTF_RenderText_Blended_Wrapped(m_Overlays[type].font,
+-                                                              m_Overlays[type].text,
++        QByteArray text(m_Overlays[type].text);
++        bool card=type==OverlayDebug || type==OverlayLocalHardware;
++        if(type==OverlayDebug) {
++            if(!QSettings().value("eclipse/streamDetailed",true).toBool()) {
++                QStringList compact;
++                for(const QString& line:QString::fromUtf8(text).split('\n')) {
++                    if(line.contains("FPS",Qt::CaseInsensitive) || line.contains("frame rate",Qt::CaseInsensitive) || line.contains("latency",Qt::CaseInsensitive) || line.contains("bitrate",Qt::CaseInsensitive) || line.contains("dropped",Qt::CaseInsensitive) || line.contains("resolution",Qt::CaseInsensitive)) compact.append(line);
++                }
++                if(compact.isEmpty()) compact=QString::fromUtf8(text).split('\n').mid(0,5);
++                text=compact.join('\n').toUtf8();
++            }
++            text.prepend("EclipseOS | STREAM\n");
++        }
++        SDL_Surface* surface = TTF_RenderUTF8_Blended_Wrapped(m_Overlays[type].font,
++                                                              text.constData(),
+                                                               m_Overlays[type].color,
+-                                                              1024);
++                                                              card ? 480 : 1024);
++        if(card && surface) {
++            QImage image=EclipseOverlayStyle::panel(QSize(surface->w+28,surface->h+28),StreamingPreferences::get()->uiAccentIndex,QSettings().value("eclipse/overlayOpacity",85).toInt());
++            SDL_Surface* panel=image.isNull() ? nullptr : SDL_CreateRGBSurfaceWithFormat(0,image.width(),image.height(),32,SDL_PIXELFORMAT_RGBA32);
++            if(panel) {
++                for(int row=0;row<image.height();++row) memcpy(static_cast<char*>(panel->pixels)+row*panel->pitch,image.constScanLine(row),image.width()*4);
++                SDL_Rect dest={14,14,surface->w,surface->h}; SDL_BlitSurface(surface,nullptr,panel,&dest);
++                SDL_FreeSurface(surface); surface=panel;
++            }
++        }
+ 
+         SDL_AtomicSetPtr((void**)&m_Overlays[type].surface, surface);
+     }
+diff --git a/app/streaming/video/overlaymanager.h b/app/streaming/video/overlaymanager.h
+index e19fc0c..5095fd6 100644
+--- a/app/streaming/video/overlaymanager.h
++++ b/app/streaming/video/overlaymanager.h
+@@ -10,6 +10,7 @@ namespace Overlay {
+ 
+ enum OverlayType {
+     OverlayDebug,
++    OverlayLocalHardware,
+     OverlayStatusUpdate,
+     OverlayServerCommands,
+     OverlayQuickMenu,
+@@ -70,6 +71,7 @@ public:
+     // preference. Returns StreamingPreferences::PerfOverlayPosition as an int
+     // (0=TL, 1=TR, 2=BL, 3=BR). Renderers map this to their own coordinate space.
+     int getDebugOverlayAnchor();
++    int getOverlayAnchor(OverlayType type);
+ 
+     void setOverlayRenderer(IOverlayRenderer* renderer);
+ 
 diff --git a/packaging/flatpak/io.github.navyas321.Vibemis.desktop b/packaging/flatpak/io.github.navyas321.Vibemis.desktop
 index 045adbe..f12da5d 100644
 --- a/packaging/flatpak/io.github.navyas321.Vibemis.desktop

@@ -112,13 +112,14 @@ cmp "$ROOT/SOURCES.lock" "$work/root/usr/local/share/moonlight-os/FRONTENDS.lock
 grep -Fqx "VIBEMIS_PATCH_SHA256=$VIBEMIS_PATCH_SHA256" "$work/root/usr/local/libexec/moonlight-os/frontends/versions.conf"
 grep -Fq "VIBEMIS_COMMIT=$VIBEMIS_COMMIT" "$work/root/usr/local/libexec/moonlight-os/frontends/versions.conf"
 grep -Fq "ARTEMIS_COMMIT=$ARTEMIS_COMMIT" "$work/root/usr/local/libexec/moonlight-os/frontends/versions.conf"
-chroot "$work/root" python3 -c 'import pexpect'
+chroot "$work/root" python3 -c 'import pexpect, dbus'
 test -f "$work/root/home/moonlight/.config/pegasus-frontend/metafiles/metadata.pegasus.txt"
 test -x "$work/root/usr/local/bin/moonlight-os-verify"
 test -x "$work/root/usr/local/bin/moonlight-settings"
 test -x "$work/root/usr/local/bin/airpods-mode"
 test -x "$work/root/usr/local/bin/dualsense-check"
 test -f "$work/root/etc/moonlight-os-release"
+grep -Fxq 'NAME="EclipseOS"' "$work/root/etc/moonlight-os-release"
 test -f "$work/root/etc/systemd/system/moonlight-os-boot-marker.service"
 test -f "$work/root/etc/systemd/system/moonlight-os-grow-root.service"
 test -L "$work/root/etc/systemd/system/multi-user.target.wants/moonlight-os-boot-marker.service"
@@ -154,7 +155,7 @@ chroot "$work/root" /bin/bash -ec '
   exit "$missing"
 ' bash Xorg openbox xprop python3 libinput xinput evtest nmcli nmtui-connect bluetoothctl \
   pipewire wireplumber wpctl intel_gpu_top vainfo glxinfo growpart xfs_growfs \
-  gcc git dkms modinfo brightnessctl alsamixer alsactl
+  gcc git dkms modinfo brightnessctl alsamixer alsactl speaker-test xrandr xset systemd-run
 find "$work/root/usr/lib/modules/$INSTALLER_KERNEL" -name 'i915.ko*' -print -quit | grep -q .
 find "$work/root/usr/lib/modules/$INSTALLER_KERNEL" -name 'applespi.ko*' -print -quit | grep -q .
 find "$work/root/usr/lib/modules/$INSTALLER_KERNEL" -name 'brcmfmac.ko*' -print -quit | grep -q .

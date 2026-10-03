@@ -5,6 +5,7 @@ import re
 import subprocess
 import time
 import pexpect
+from pathlib import Path
 
 ANSI = re.compile(r'\x1b\[[0-?]*[ -/]*[@-~]')
 MAC = r'(?:[0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}'
@@ -27,8 +28,119 @@ def valid_mac(address):
 
 
 def properties(address):
-    text = ctl('info', valid_mac(address))
-    return dict(re.findall(r'^\s*(Paired|Trusted|Connected):\s*(yes|no)\s*$', text, re.M))
+    props = backend().device(address)[1]
+    return {key: 'yes' if props.get(key) else 'no' for key in ('Paired', 'Trusted', 'Connected')}
+
+
+class BlueZ:
+    """One system-bus connection and one bulk snapshot, never N CLI timeouts."""
+    def __init__(self, bus=None):
+        import dbus
+        self.dbus = dbus
+        self.bus = bus or dbus.SystemBus(private=True)
+        self.scanning = False
+        self.adapter = None
+
+    def interface(self, path, name):
+        return self.dbus.Interface(self.bus.get_object('org.bluez', path, introspect=False), name)
+
+    def objects(self):
+        try:
+            return self.interface('/', 'org.freedesktop.DBus.ObjectManager').GetManagedObjects(timeout=5)
+        except self.dbus.DBusException as error:
+            raise RuntimeError('Bluetooth service unavailable: ' + error.get_dbus_name()) from None
+
+    def rows(self):
+        result = []
+        objects=self.objects()
+        adapters=[interfaces['org.bluez.Adapter1'] for interfaces in objects.values() if 'org.bluez.Adapter1' in interfaces]
+        if not adapters:
+            raise RuntimeError('No Bluetooth adapter found. Check Adapter status in the recovery console.')
+        self.powered=any(p.get('Powered') for p in adapters)
+        for path, interfaces in objects.items():
+            p = interfaces.get('org.bluez.Device1')
+            if not p or not re.fullmatch(MAC, str(p.get('Address', ''))):
+                continue
+            result.append(dict(id=str(p['Address']).upper(), address=str(p['Address']).upper(),
+                               name=str(p.get('Alias') or p.get('Name') or p['Address'])[:80],
+                               detail='Paired' if p.get('Paired') else 'Not paired',
+                               paired=bool(p.get('Paired')), trusted=bool(p.get('Trusted')),
+                               connected=bool(p.get('Connected')), ready=bool(p.get('ServicesResolved'))))
+        return sorted(result, key=lambda item: (not item['connected'], not item['paired'], item['name']))[:64]
+
+    def device(self, address):
+        address = valid_mac(address)
+        for path, interfaces in self.objects().items():
+            props = interfaces.get('org.bluez.Device1', {})
+            if str(props.get('Address', '')).upper() == address:
+                return str(path), props
+        raise ValueError('Device is no longer available. Scan again.')
+
+    def prepare(self):
+        subprocess.run(['sudo', '-n', 'systemctl', 'start', 'bluetooth.service'], check=True, timeout=8)
+        subprocess.run(['sudo', '-n', 'rfkill', 'unblock', 'bluetooth'], check=True, timeout=5)
+        adapters = [(str(path), p['org.bluez.Adapter1']) for path, p in self.objects().items() if 'org.bluez.Adapter1' in p]
+        if not adapters:
+            raise RuntimeError('No Bluetooth adapter found. Check Adapter status in the recovery console.')
+        self.adapter = next((path for path, p in adapters if p.get('Powered')), adapters[0][0])
+        props = self.interface(self.adapter, 'org.freedesktop.DBus.Properties')
+        try:
+            for key in ('Powered', 'Pairable'):
+                props.Set('org.bluez.Adapter1', key, self.dbus.Boolean(True), timeout=5)
+        except self.dbus.DBusException as error:
+            raise RuntimeError('Bluetooth radio unavailable: '+error.get_dbus_name()) from None
+
+    def scan(self, progress=None, seconds=10):
+        self.prepare()
+        adapter = self.interface(self.adapter, 'org.bluez.Adapter1')
+        try:
+            adapter.StartDiscovery(timeout=5); self.scanning = True
+        except self.dbus.DBusException as error:
+            raise RuntimeError('Discovery failed: '+error.get_dbus_name()) from None
+        try:
+            deadline = time.monotonic() + seconds
+            while time.monotonic() < deadline:
+                rows = self.rows()
+                if progress:
+                    progress(rows, 'Scanning Bluetooth… %d device(s)' % len(rows))
+                time.sleep(min(1, max(0, deadline-time.monotonic())))
+            return self.rows()
+        finally:
+            self.stop_scan()
+
+    def stop_scan(self):
+        if self.scanning:
+            self.scanning = False
+            try:
+                self.interface(self.adapter, 'org.bluez.Adapter1').StopDiscovery(timeout=3)
+            except self.dbus.DBusException:
+                pass
+
+    def operate(self, address, action):
+        path, _ = self.device(address)
+        try:
+            if action == 'forget':
+                adapter = str(self.objects()[path]['org.bluez.Device1']['Adapter'])
+                self.interface(adapter, 'org.bluez.Adapter1').RemoveDevice(path, timeout=5)
+            else:
+                if action == 'connect':
+                    self.interface(path, 'org.freedesktop.DBus.Properties').Set('org.bluez.Device1', 'Trusted', self.dbus.Boolean(True), timeout=5)
+                if action != 'connect' or not self.device(address)[1].get('Connected'):
+                    getattr(self.interface(path, 'org.bluez.Device1'), 'Connect' if action == 'connect' else 'Disconnect')(timeout=20 if action == 'connect' else 5)
+        except self.dbus.DBusException as error:
+            raise RuntimeError('Bluetooth %s failed: %s. Wake the device and retry.' % (action, error.get_dbus_name())) from None
+
+    def close(self):
+        self.stop_scan()
+        self.bus.close()
+
+
+_backend = None
+def backend():
+    global _backend
+    if _backend is None:
+        _backend = BlueZ()
+    return _backend
 
 
 def devices(text):
@@ -94,29 +206,28 @@ def select_device(items, ask=input):
 
 
 def ready():
-    subprocess.run(['sudo', 'systemctl', 'start', 'bluetooth.service'], check=True)
-    subprocess.run(['sudo', 'rfkill', 'unblock', 'bluetooth'], check=True)
-    shown = ctl('show')
-    if not re.search(r'^Controller ' + MAC, shown, re.M):
-        raise RuntimeError('No Bluetooth adapter found. Open Status to inspect the service/radio.')
-    for command in [('power', 'on'), ('pairable', 'on')]:
-        output = ctl(*command)
-        if 'succeeded' not in output.lower() and 'successful' not in output.lower():
-            raise RuntimeError(output.strip() or 'Unable to configure Bluetooth adapter')
+    backend().prepare()
 
 
 def connect(address):
-    print(ctl('trust', address).strip())
-    print(ctl('connect', address).strip())
-    state = properties(address)
-    if state.get('Connected') != 'yes':
-        print('Device is not connected. Pairing may be saved; wake the device and use Reconnect.')
-        return False
-    if state.get('Trusted') != 'yes':
-        print('Connected, but trust was not saved. Reconnection may need confirmation.')
-        return False
-    print('Connected and trusted.')
-    return True
+    backend().operate(address, 'connect')
+    deadline = time.monotonic() + 8
+    while time.monotonic() < deadline:
+        _, state = backend().device(address)
+        if state.get('Connected') and state.get('Trusted') and state.get('ServicesResolved'):
+            controller=state.get('Icon')=='input-gaming'
+            nodes=[] if controller else [True]
+            if controller:
+                for path in Path('/sys/class/input').glob('event*/device/uniq'):
+                    try:
+                        if path.read_text(errors='replace').strip().upper()==address.upper(): nodes.append(path)
+                    except OSError:
+                        continue
+            if nodes:
+                print('Connected, trusted and services ready'+('; controller input present.' if controller else '.')); return True
+        time.sleep(.5)
+    print('Pairing is saved, but connection/services are not ready. Wake the device and use Reconnect.')
+    return False
 
 
 def pair_device(airpods=False):
@@ -127,20 +238,9 @@ def pair_device(airpods=False):
     print('Controllers, headphones, keyboards and mice all appear in the same list.')
     agent = Agent()
     try:
-        # Keep this process and its default agent alive throughout discovery/selection/pairing.
-        agent.child.sendline('scan on')
-        event = agent.child.expect(['Discovery started', r'Failed to start discovery:[^\r\n]*',
-                                   pexpect.EOF, pexpect.TIMEOUT], timeout=15)
-        if event != 0:
-            raise RuntimeError(clean(str(agent.child.after)) if event == 1 else 'Bluetooth discovery did not start')
-        print('Scanning for 6 seconds... If your device is not listed, keep it in pairing mode and scan again.')
-        end = time.monotonic() + 6
-        while time.monotonic() < end:
-            try:
-                agent.child.read_nonblocking(4096, timeout=min(1, end-time.monotonic()))
-            except pexpect.TIMEOUT:
-                pass
-        address = select_device(devices(ctl('devices')))
+        print('Scanning for 10 seconds…')
+        rows = backend().scan(lambda rows, status: print(status, flush=True))
+        address = select_device([(item['address'], item['name']) for item in rows])
         if not address:
             return False
         if properties(address).get('Paired') != 'yes':
@@ -154,14 +254,12 @@ def pair_device(airpods=False):
         print('Pairing saved. Test input/audio; connection alone does not prove every device feature.')
         return True
     finally:
-        try:
-            agent.child.sendline('scan off')
-        finally:
-            agent.close()
+        backend().stop_scan()
+        agent.close()
 
 
 def saved():
-    return devices(ctl('devices', 'Paired'))
+    return [(item['address'], item['name']) for item in backend().rows() if item['paired']]
 
 
 def status():
@@ -197,9 +295,9 @@ def main():
                         finally:
                             agent.close()
                     elif choice == '3':
-                        print(ctl('disconnect', address))
+                        backend().operate(address, 'disconnect')
                     elif input('Forget this device and its saved pairing? Type yes: ').strip().lower() == 'yes':
-                        print(ctl('remove', address))
+                        backend().operate(address, 'forget')
             elif choice == '5':
                 mode = input('1) Low latency  2) Quality: ').strip()
                 if mode in ('1', '2'):
