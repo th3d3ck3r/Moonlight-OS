@@ -65,6 +65,7 @@ grep -Fq 'VERSION="0.3-dev"' "$work/root/etc/moonlight-os-release"
 for helper in system-controls.py control-center.py; do
   cmp "$ROOT/scripts/$helper" "$work/root/usr/local/libexec/moonlight-os/$helper"
 done
+cmp "$ROOT/scripts/bluetooth-menu.py" "$work/root/usr/local/bin/moonlight-bluetooth"
 cmp "$ROOT/scripts/install-frontends.sh" "$work/root/usr/local/share/moonlight-os/install-frontends.sh"
 cmp "$ROOT/patches/vibemis-crimson.patch" "$work/root/usr/local/share/moonlight-os/vibemis-crimson.patch"
 grep -Fxq 'Name=Eclipse' "$work/root/usr/local/share/applications/com.vibemis.Vibemis.desktop"
@@ -112,7 +113,7 @@ cmp "$ROOT/SOURCES.lock" "$work/root/usr/local/share/moonlight-os/FRONTENDS.lock
 grep -Fqx "VIBEMIS_PATCH_SHA256=$VIBEMIS_PATCH_SHA256" "$work/root/usr/local/libexec/moonlight-os/frontends/versions.conf"
 grep -Fq "VIBEMIS_COMMIT=$VIBEMIS_COMMIT" "$work/root/usr/local/libexec/moonlight-os/frontends/versions.conf"
 grep -Fq "ARTEMIS_COMMIT=$ARTEMIS_COMMIT" "$work/root/usr/local/libexec/moonlight-os/frontends/versions.conf"
-chroot "$work/root" python3 -c 'import pexpect, dbus'
+chroot "$work/root" python3 -c 'import pexpect, dbus; paths=["/usr/local/bin/moonlight-bluetooth","/usr/local/libexec/moonlight-os/system-controls.py","/usr/local/libexec/moonlight-os/control-center.py"]; [compile(open(path).read(),path,"exec") for path in paths]'
 test -f "$work/root/home/moonlight/.config/pegasus-frontend/metafiles/metadata.pegasus.txt"
 test -x "$work/root/usr/local/bin/moonlight-os-verify"
 test -x "$work/root/usr/local/bin/moonlight-settings"

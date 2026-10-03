@@ -120,13 +120,17 @@ jobs:
           if-no-files-found: warn
           retention-days: 14
 
+      - name: Prepare EclipseOS download and matching checksum
+        run: |
+          mv out/moonlight-os-mbp14-1.img.xz out/eclipseos-mbp14-1.img.xz
+          (cd out && sha256sum eclipseos-mbp14-1.img.xz > eclipseos-mbp14-1.img.xz.sha256)
       - name: Upload image artifact
         uses: actions/upload-artifact@v4
         with:
-          name: moonlight-os-mbp14-1
+          name: eclipseos-mbp14-1
           path: |
-            out/moonlight-os-mbp14-1.img.xz
-            out/moonlight-os-mbp14-1.img.xz.sha256
+            out/eclipseos-mbp14-1.img.xz
+            out/eclipseos-mbp14-1.img.xz.sha256
           if-no-files-found: error
           compression-level: 0
           retention-days: 14

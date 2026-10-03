@@ -1,5 +1,7 @@
-2026-10-03: fresh Eclipse candidate image.
-Runtime source 0653e04e3312f81b33cb80f879e1badba6aae3b6 passed all seven audits: https://github.com/th3d3ck3r/Moonlight-OS/actions/runs/37095082840
-Twelve Qt tests and final-source panel previews passed; icon resources, packaging, audio output, brightness floor and private diagnostics were reviewed.
+2026-10-03: EclipseOS System Controls and local hardware candidate.
+Runtime source c858e836fe35fa84097533feb1cd0373b385ec34.
+Source audits: https://github.com/th3d3ck3r/Moonlight-OS/actions/runs/37105302223
+Sixteen Qt tests, all sixteen exact UI/native-overlay accents, scaled/rounded dialogs, live discovery, metric counters and cancellation fixtures verified.
 Require exact installed-payload inspection and strict OVMF MOONLIGHT_OS_BOOT_OK before image upload.
-Output one Rufus-ready .img.xz plus SHA-256. Preserve existing regular and experimental download links; physical Mac acceptance remains required.
+Publish EclipseOS-branded .img.xz plus basename-compatible SHA-256; preserve existing fallback downloads.
+Physical Mac controller power-off, Bluetooth firmware, sensor and sustained-streaming acceptance remain required.
