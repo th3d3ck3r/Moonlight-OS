@@ -26,7 +26,7 @@ During a stream, local panel navigation must not reach the remote host. Closing 
 | Appearance | Existing accent palette/custom accent; black/crimson default; compact/comfortable spacing; text size; reduced motion; optional transparency with opaque fallback; animation intensity; clock format; focus visibility |
 | Profiles | Gaming/desktop/low bandwidth/battery/headphones; per-host/app profiles; duplicate/reset/import/export; explicit precedence; show active profile; reversible temporary overrides |
 | Recovery | Restart frontend; switch frontend; diagnostic shell; reset display/input/audio separately; restore defaults selectively; support report with credential redaction; logs on demand; previous-image recovery instructions |
-| Updates | Moonlight-OS-owned channel; installed source/version; release notes; stable/experimental labels; manual image instructions; rollback plan; future signed custom-app updates only after compatibility review |
+| Updates | EclipseOS-owned channel; installed source/version; release notes; stable/experimental labels; manual image instructions; rollback plan; future signed custom-app updates only after compatibility review |
 | Accessibility | Larger text; high contrast; reduced motion; accessible labels; keyboard/gamepad focus; readable errors; remappable shortcuts; scalable hit targets; no color-only status indicators |
 | Setup | English default; first-run network/audio/host wizard; suggested native display scale; controller pairing help; Mac shortcut guide; optional skip; preserve existing preferences |
 | Notifications | Pair/connect/disconnect results; low battery; host unavailable; optional update notice; transient toasts; do-not-disturb during streams; bounded history |
