@@ -8,8 +8,10 @@ if [[ -r "$CONF" ]]; then
   case "$saved" in moonlight|vibemis|artemis|pegasus|cocoos) CLIENT=$saved ;; esac
 fi
 printf '\033[40m\033[1;31m\n🌑 MOONLIGHT-OS • FRONTEND\033[0;31m\n'
-printf '  1) Vibemis\n  2) Artemis\n  3) Pegasus launcher\n  4) Moonlight\n  5) CocoOS\n'
-printf 'Enter keeps %s; auto-start in 8 seconds.\nChoose: ' "$CLIENT"
+printf '  1) Eclipse\n  2) Artemis\n  3) Pegasus launcher\n  4) Moonlight\n  5) CocoOS\n'
+DISPLAY_CLIENT=$CLIENT
+[[ $CLIENT != vibemis ]] || DISPLAY_CLIENT=Eclipse
+printf 'Enter keeps %s; auto-start in 8 seconds.\nChoose: ' "$DISPLAY_CLIENT"
 choice=''
 read -r -t 8 choice || true
 case "$choice" in

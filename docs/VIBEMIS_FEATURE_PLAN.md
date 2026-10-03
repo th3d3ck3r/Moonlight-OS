@@ -1,6 +1,6 @@
-# 🖤🔴 Vibemis — lightweight frontend feature ideas
+# 🌘 Eclipse — lightweight frontend feature ideas
 
-Working proposal, not an instruction to implement every item. Only the Wi-Fi/Bluetooth buttons and managed update protection are in the current source change. No OS image build is authorized by this plan.
+Working proposal, not an instruction to implement every item. See [Eclipse implementation and limits](ECLIPSE_FRONTEND.md) for current source features. The user has authorized a candidate build after source/theme validation; publication still awaits physical validation.
 
 ## Control center
 

@@ -42,6 +42,8 @@ New experimental build **37022392821** completed from **ebce257c6429f5b363ba0ec6
 
 The next requested project, after successful physical testing, is a **Vibemis-focused minimal image**: minimize installed size, unnecessary packages and idle background work while retaining streaming/hardware/theme/settings/recovery. Measure package, source-tree and service costs first; show the space/functionality tradeoff of retaining Moonlight fallback. No minimization changes have been made, and this conditional next phase must remain separate from the current completed build and other feature prompts.
 
+Latest authorized source phase: the customized frontend is now **Eclipse**. Read `docs/ECLIPSE_FRONTEND.md` for implemented controls, compatibility choices, theme/branding and physical checks. The user authorizes a candidate build after validation; preserve published release/download links until the user's physical test. Optional feature ideas remain in a separate roadmap.
+
 ## Required invariants — do not regress these
 
 - Native **X11** for v1; no GNOME, KDE, Gamescope, compositor, or full desktop.
@@ -174,7 +176,7 @@ If the driver is genuinely incompatible with the chosen current kernel after a f
 8. Repeat targeted audit → full audit → single image build until the image completes.
 9. Run raw-image inspection.
 10. Run the OVMF boot gate.
-11. Confirm compressed `.raw.xz` + SHA-256 artifact exists.
+11. Confirm compressed `.img.xz` + SHA-256 artifact exists.
 12. Record candidate build/audit evidence in the internal integration document and report the artifact to the user. Keep README/BUILD_STATUS accurate about the experimental release and preserve the previous fallback; stable/hardware-validated promotion requires user-confirmed physical boot. Distinguish OVMF and fixture results from real Bluetooth, AirPods and streaming tests.
 
 ## Definition of done

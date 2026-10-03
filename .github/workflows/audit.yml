@@ -77,7 +77,7 @@ jobs:
       - name: Qt hardware-stats contract, TLS, palette and panel tests
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y qt6-base-dev qt6-declarative-dev qml6-module-qtquick qml6-module-qtquick-controls qml6-module-qtquick-layouts qml6-module-qtquick-window qml6-module-qtquick-templates qml6-module-qtqml-workerscript xvfb
+          sudo apt-get install -y qt6-base-dev qt6-declarative-dev qt6-svg-dev qml6-module-qtquick qml6-module-qtquick-controls qml6-module-qtquick-layouts qml6-module-qtquick-window qml6-module-qtquick-templates qml6-module-qtqml-workerscript xvfb
           CRIMSON_SCREENSHOTS="$PWD/out/crimson-previews" bash scripts/audit-vibemis-crimson.sh
       - uses: actions/upload-artifact@v4
         with:

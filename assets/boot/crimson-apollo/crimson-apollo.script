@@ -1,4 +1,4 @@
-# Moonlight-OS Crimson Apollo boot theme.
+# Moonlight-OS Eclipse boot theme. Internal paths stay compatible.
 Window.SetBackgroundTopColor(0, 0, 0);
 Window.SetBackgroundBottomColor(0, 0, 0);
 
@@ -43,8 +43,8 @@ fun refresh_callback() {
     if (angle >= 2 * pi) angle -= 2 * pi;
     index = Math.Int(angle * 72 / (2 * pi)) % 72;
     ship.SetImage(rotated[index]);
-    ship.SetPosition(origin_x + (512 + 170 * Math.Cos(angle)) * scale - rotated[index].GetWidth() / 2,
-                     origin_y + (248 + 170 * Math.Sin(angle)) * scale - rotated[index].GetHeight() / 2, 10);
+    ship.SetPosition(origin_x + (512 + 115 * Math.Cos(angle)) * scale - rotated[index].GetWidth() / 2,
+                     origin_y + (248 + 115 * Math.Sin(angle)) * scale - rotated[index].GetHeight() / 2, 10);
     for (i = 0; i < 3; i++) {
         if (Math.Int(angle * 9 / (2 * pi)) % 3 == i) dots[i].SetOpacity(1);
         else dots[i].SetOpacity(0.25);

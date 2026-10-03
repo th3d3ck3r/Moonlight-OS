@@ -11,6 +11,7 @@ import signal
 import subprocess
 import sys
 import time
+from pathlib import Path
 import pexpect
 
 
@@ -95,6 +96,7 @@ class Controls:
         self.items = []
         self.mode = None
         self.wifi_child = None
+        self.center_state = {}
 
     def wifi_list(self, scan=False):
         self.mode = "wifi"
@@ -163,6 +165,14 @@ class Controls:
 
     def execute(self, request):
         action = request.get('action')
+        if isinstance(action, str) and action.startswith('center-'):
+            import importlib.util
+            source = Path(__file__).with_name('control-center.py')
+            spec = importlib.util.spec_from_file_location('eclipse_control_center', source)
+            module = importlib.util.module_from_spec(spec); spec.loader.exec_module(module)
+            result = module.execute(request, self.center_state)
+            self.center_state = result['state']
+            return result
         if action in ('wifi-list', 'wifi-scan'):
             return self.wifi_list(action == 'wifi-scan')
         if action in ('bt-list', 'bt-scan'):
@@ -220,10 +230,10 @@ def main():
                 # Legacy helper presentation never enters the JSON/credential pipe.
                 with contextlib.redirect_stdout(io.StringIO()):
                     items = controls.execute(request)
-                emit(items=items, status='Ready', done=True)
+                emit(**items, done=True) if isinstance(items, dict) else emit(items=items, status='Ready', done=True)
             except (EOFError, KeyboardInterrupt):
                 break
-            except (RuntimeError, ValueError, KeyError, subprocess.SubprocessError, pexpect.ExceptionPexpect) as error:
+            except (RuntimeError, ValueError, KeyError, OSError, subprocess.SubprocessError, pexpect.ExceptionPexpect) as error:
                 emit(error=str(error) if isinstance(error, (RuntimeError, ValueError)) else 'The operation failed. Retry or use the diagnostic shell.', done=True)
     finally:
         controls.close()

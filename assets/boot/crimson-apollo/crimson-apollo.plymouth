@@ -1,6 +1,6 @@
 [Plymouth Theme]
-Name=Moonlight-OS Crimson Apollo
-Description=Black and crimson lunar orbit with an Apollo-inspired spacecraft
+Name=Moonlight-OS Eclipse
+Description=Minimal black and crimson eclipse with a subtle orbital light
 ModuleName=script
 
 [script]

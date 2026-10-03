@@ -23,9 +23,11 @@ Includes the **black/crimson animated Apollo moon boot screen**, a remembered se
 
 **One complete download; no split files.** The current release links to the original Actions ZIP (about **3.62 GiB**), containing the compressed image and checksum. GitHub may require sign-in; the artifact expires October 16. No image is attached as a release asset because it exceeds GitHub's per-file limit. Do not flash GitHub's automatic source-code ZIP.
 
-## 🛠️ Frontend source work — not a new download
+## 🌘 Eclipse — next candidate source
 
-Wi-Fi and Bluetooth selectors are implemented in source for the next image: scan, connect/pair, disconnect, and confirmed Bluetooth forget. All seven source audits passed, including the native frontend compile and selector tests. Customized Vibemis uses Moonlight-OS release guidance and disables upstream standalone replacement. [Feature brainstorm and control-center plan](docs/VIBEMIS_FEATURE_PLAN.md) includes lightweight audio, brightness, host, profile and recovery ideas; those ideas are not implemented by this change. No OS image build or download-link change has been started.
+The customized frontend is now **Eclipse**: black/crimson glass-inspired surfaces, matching outline controls, a control center, saved stream profiles, accessibility options, a new app icon and minimal eclipse boot animation. About shows installed versions and **Made by Th3D3ck3r**. [Eclipse features and test instructions](docs/ECLIPSE_FRONTEND.md) · [Full feature roadmap](docs/VIBEMIS_FEATURE_PLAN.md).
+
+This is candidate source work; existing release/download links remain unchanged. A candidate build is authorized after source/theme validation and must pass installed-payload inspection and strict OVMF before it is offered for physical testing. Broader optional roadmap features remain separately identified.
 
 ## 🖤🔴 New experimental — Vibemis Crimson
 

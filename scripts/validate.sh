@@ -257,3 +257,5 @@ python3 "$ROOT/scripts/sync-frontend-payloads.py" --check
 echo "Static validation passed."
 
 python3 "$ROOT/scripts/test-system-controls.py"
+
+python3 "$ROOT/scripts/test-control-center.py"
