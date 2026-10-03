@@ -77,7 +77,7 @@ index 34b8fae..0398868 100644
  Terminal=false
  Type=Application
 diff --git a/app/gui/AppView.qml b/app/gui/AppView.qml
-index 63f645d..af0d84a 100644
+index 63f645d..1346c7f 100644
 --- a/app/gui/AppView.qml
 +++ b/app/gui/AppView.qml
 @@ -5,12 +5,14 @@ import QtQuick.Layouts 1.3
@@ -125,16 +125,15 @@ index 63f645d..af0d84a 100644
  
      // Ⓨ quits the in-progress session from
      // anywhere in the app grid — the gamepad equivalent of the stop button on the
-@@ -110,7 +121,7 @@ CenteredGridView {
-         visible: true
-         height: appsTitleRow.y + appsTitleRow.height
- 
--        Rectangle { anchors.fill: parent; color: VbTokens.bgWindow }
-+        Rectangle { anchors.fill: parent; color: "transparent" }
- 
-         // Row 1 (back + host name/status + refresh/settings) and its divider now live in the
-         // always-present global toolbar (main.qml) — the toolbar reads hostOnline/hostType/
-@@ -121,13 +132,13 @@ CenteredGridView {
+@@ -98,6 +109,7 @@ CenteredGridView {
+     // Fixed header (does not scroll with the grid). Opaque bg so scrolled tiles pass behind it.
+     Item {
+         id: appChromeHeader
++        objectName: "crimsonGridHeader"
+         z: 10
+         anchors.top: parent.top
+         anchors.left: parent.left
+@@ -121,13 +133,13 @@ CenteredGridView {
          Row {
              id: appsTitleRow
              anchors.top: parent.top
@@ -151,7 +150,7 @@ index 63f645d..af0d84a 100644
                  font.family: VbTokens.fontDisplay
                  font.weight: Font.Bold
                  font.pixelSize: VbTokens.sizeScreenTitle
-@@ -143,6 +154,31 @@ CenteredGridView {
+@@ -143,6 +155,31 @@ CenteredGridView {
          }
      }
  
@@ -183,7 +182,7 @@ index 63f645d..af0d84a 100644
      // Persistent gamepad hint bar, fixed at the bottom. Grid bottomMargin clears it.
      VbHintBar {
          id: appHintBar
-@@ -226,7 +262,8 @@ CenteredGridView {
+@@ -226,7 +263,8 @@ CenteredGridView {
  
      function createModel()
      {
@@ -193,7 +192,7 @@ index 63f645d..af0d84a 100644
          model.initialize(ComputerManager, computerIndex, showHiddenGames)
          return model
      }
-@@ -265,30 +302,18 @@ CenteredGridView {
+@@ -265,30 +303,18 @@ CenteredGridView {
              focused: appDelegate.highlighted
  
              Image {
@@ -231,7 +230,7 @@ index 63f645d..af0d84a 100644
  
                  // Display a tooltip with the full name if it's truncated
                  ToolTip.text: model.name
-@@ -297,6 +322,15 @@ CenteredGridView {
+@@ -297,6 +323,15 @@ CenteredGridView {
                  ToolTip.visible: (appDelegate.hovered || appDelegate.highlighted) && (!appNameText || appNameText.truncated)
              }
  
@@ -247,7 +246,7 @@ index 63f645d..af0d84a 100644
              Loader {
                  active: model.running
                  asynchronous: true
-@@ -365,7 +399,7 @@ CenteredGridView {
+@@ -365,7 +400,7 @@ CenteredGridView {
                  // in the time in which the text loads for each game.
  
                  width: appIcon.width
@@ -256,7 +255,7 @@ index 63f645d..af0d84a 100644
  
                  anchors.left: appIcon.left
                  anchors.right: appIcon.right
-@@ -374,7 +408,10 @@ CenteredGridView {
+@@ -374,7 +409,10 @@ CenteredGridView {
                  sourceComponent: Label {
                      id: appNameText
                      text: model.name
@@ -1134,7 +1133,7 @@ index 5b64671..a799618 100644
          color: btn.activeFocus ? VbTokens.focusedFill : (btn.hovered ? VbTokens.bgElev2 : VbTokens.bgElev)
          border.width: 1
 diff --git a/app/gui/PcView.qml b/app/gui/PcView.qml
-index f0e739a..fb1984a 100644
+index f0e739a..6ec24c4 100644
 --- a/app/gui/PcView.qml
 +++ b/app/gui/PcView.qml
 @@ -43,7 +43,16 @@ CenteredGridView {
@@ -1163,15 +1162,20 @@ index f0e739a..fb1984a 100644
      objectName: qsTr("Computers")
  
      // D-pad selection state for the Add-a-computer ghost — WITHOUT focus. The
-@@ -105,19 +114,19 @@ CenteredGridView {
+@@ -100,24 +109,25 @@ CenteredGridView {
+     // So this is just the body section title below the toolbar; there is no double header.
+     Item {
+         id: pcChromeHeader
++        objectName: "crimsonGridHeader"
+         z: 10
+         anchors.top: parent.top
          anchors.left: parent.left
          anchors.right: parent.right
          visible: true
 -        height: 78
 +        height: 66
  
--        Rectangle { anchors.fill: parent; color: VbTokens.bgWindow }
-+        Rectangle { anchors.fill: parent; color: "transparent" }
+         Rectangle { anchors.fill: parent; color: VbTokens.bgWindow }
  
          Row {
              anchors.left: parent.left
@@ -1187,7 +1191,7 @@ index f0e739a..fb1984a 100644
                  font.family: VbTokens.fontDisplay
                  font.weight: Font.Bold
                  font.pixelSize: VbTokens.sizeScreenTitle
-@@ -134,6 +143,24 @@ CenteredGridView {
+@@ -134,6 +144,24 @@ CenteredGridView {
          }
      }
  
@@ -1212,7 +1216,7 @@ index f0e739a..fb1984a 100644
      // Persistent gamepad hint bar, fixed at the bottom. Grid bottomMargin clears it.
      VbHintBar {
          id: pcHintBar
-@@ -269,7 +296,7 @@ CenteredGridView {
+@@ -269,7 +297,7 @@ CenteredGridView {
  
      function createModel()
      {
@@ -1221,7 +1225,7 @@ index f0e739a..fb1984a 100644
          model.initialize(ComputerManager)
          model.pairingCompleted.connect(pairingComplete)
          model.connectionTestCompleted.connect(testConnectionDialog.connectionTestComplete)
-@@ -301,7 +328,7 @@ CenteredGridView {
+@@ -301,7 +329,7 @@ CenteredGridView {
  
      delegate: NavigableItemDelegate {
          id: pcDelegate
@@ -1230,7 +1234,7 @@ index f0e739a..fb1984a 100644
          grid: pcGrid
  
          // The Material style paints an always-visible
-@@ -444,7 +471,7 @@ CenteredGridView {
+@@ -444,7 +472,7 @@ CenteredGridView {
                          visible: model.online && model.paired,
                          trigger: function() {
                              var component = Qt.createComponent("AppView.qml")
@@ -1239,7 +1243,7 @@ index f0e739a..fb1984a 100644
                              stackView.push(appView)
                          }
                      },
-@@ -535,7 +562,7 @@ CenteredGridView {
+@@ -535,7 +563,7 @@ CenteredGridView {
                  else if (model.paired) {
                      // go to game view
                      var component = Qt.createComponent("AppView.qml")
@@ -1248,7 +1252,7 @@ index f0e739a..fb1984a 100644
                      stackView.push(appView)
                  }
                  else {
-@@ -616,7 +643,7 @@ CenteredGridView {
+@@ -616,7 +644,7 @@ CenteredGridView {
          onSelectedChanged: addPcDashedBorder.requestPaint()
          x: (pcGrid.count % columns) * pcGrid.cellWidth
          y: Math.floor(pcGrid.count / columns) * pcGrid.cellHeight
@@ -1257,7 +1261,7 @@ index f0e739a..fb1984a 100644
          height: 242
          z: 2
  
-@@ -625,7 +652,7 @@ CenteredGridView {
+@@ -625,7 +653,7 @@ CenteredGridView {
              anchors.fill: parent
              radius: 20
              color: addPcCardSlot.highlighted ? VbTokens.bgElev : "transparent"
@@ -3610,10 +3614,10 @@ index 0000000..0c3f964
 +}
 diff --git a/app/moonlightos/tests/test-crimson.cpp b/app/moonlightos/tests/test-crimson.cpp
 new file mode 100644
-index 0000000..876387b
+index 0000000..753dc60
 --- /dev/null
 +++ b/app/moonlightos/tests/test-crimson.cpp
-@@ -0,0 +1,491 @@
+@@ -0,0 +1,501 @@
 +#include <QtTest>
 +#include <QTemporaryDir>
 +#include <QQmlEngine>
@@ -4012,6 +4016,15 @@ index 0000000..876387b
 +                    QVERIFY(item->property("availableWidth").toDouble()>300);
 +                    QCOMPARE(item->property("count").toInt(),view=="PcView"?2:6);
 +                    auto grid=qobject_cast<QQuickItem*>(item);QVERIFY(grid);
++                    const double initialContentY=item->property("contentY").toDouble();
++                    auto chrome=item->findChild<QQuickItem*>("crimsonGridHeader");QVERIFY(chrome);
++                    const int left=item->property("railSpace").toInt()+item->property("hostSpace").toInt()+item->property("minMargin").toInt();
++                    const int right=size.width()-item->property("localSpace").toInt()-item->property("minMargin").toInt();
++                    const QRect headerRegion(left,0,right-left,int(chrome->height()));
++                    const QImage fixedHeader=window->grabWindow().copy(headerRegion);
++                    item->setProperty("contentY",initialContentY+item->property("cellHeight").toDouble());QTest::qWait(100);
++                    QCOMPARE(window->grabWindow().copy(headerRegion),fixedHeader); // scrolled cards cannot paint through title chrome
++                    item->setProperty("contentY",initialContentY);QTest::qWait(30);
 +                    grid->forceActiveFocus();item->setProperty("currentIndex",0);
 +                    QTest::keyClick(window,Qt::Key_Right);
 +                    QVERIFY(item->property("currentIndex").toInt()>0);
@@ -4019,6 +4032,7 @@ index 0000000..876387b
 +                        QVERIFY(button->width()>=56);button->forceActiveFocus();QVERIFY(button->hasActiveFocus());
 +                    }
 +                    grid->forceActiveFocus();item->setProperty("currentIndex",-1);
++                    item->setProperty("contentY",initialContentY);QTest::qWait(30);
 +                    if(!out.isEmpty())QVERIFY(window->grabWindow().save(out+"/crimson-glass-"+view+"-"+QString::number(size.width())+"-"+QString::number(scale)+".png"));
 +                }
 +            }
