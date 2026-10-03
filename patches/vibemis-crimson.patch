@@ -77,10 +77,17 @@ index 34b8fae..0398868 100644
  Terminal=false
  Type=Application
 diff --git a/app/gui/AppView.qml b/app/gui/AppView.qml
-index 63f645d..383adb7 100644
+index 63f645d..af0d84a 100644
 --- a/app/gui/AppView.qml
 +++ b/app/gui/AppView.qml
-@@ -11,6 +11,7 @@ import ComputerManager 1.0
+@@ -5,12 +5,14 @@ import QtQuick.Layouts 1.3
+ 
+ import Theme 1.0
+ import Vibemis.Redesign 1.0
++import CrimsonStatus 1.0
+ import AppModel 1.0
+ import AppProfileManager 1.0
+ import ComputerManager 1.0
  import SdlGamepadKeyNavigation 1.0
  
  CenteredGridView {
@@ -88,6 +95,179 @@ index 63f645d..383adb7 100644
      property int computerIndex
      property AppModel appModel : createModel()
      property bool activated
+@@ -31,17 +33,26 @@ CenteredGridView {
+     // toolbar is collapsed on all redesign screens (main.qml). Chrome block is defined below.
+     // Gap between the "Apps" title row and the tile row is 30 (HTML body flex gap), and the
+     // bottom clearance matches the body's own bottom padding (screenPadY = 52).
+-    topMargin: appChromeHeader.height + 30
++    topMargin: appChromeHeader.height + 16
+     // Same partial-row minMargin fix as PcView — align with the 56px screen padding.
++    readonly property bool glassWide: width >= 1240 && height >= 540
++    readonly property int railSpace: width >= 900 ? 84 : 0
++    readonly property int localSpace: glassWide ? Math.round(252*VbTokens.textScale) : 0
++    readonly property int hostSpace: glassWide && width >= 1580 ? Math.round(260*VbTokens.textScale) : 0
+     minMargin: VbTokens.screenPadX
++    availableWidth: width - railSpace - localSpace - hostSpace - 2*minMargin
++    onRailSpaceChanged: updateMargins()
++    onLocalSpaceChanged: updateMargins()
++    onHostSpaceChanged: updateMargins()
++    function updateMargins() { leftMargin=horizontalMargin+railSpace+hostSpace;rightMargin=horizontalMargin+localSpace }
+     bottomMargin: (appHintBar.visible ? appHintBar.height : 0) + VbTokens.screenPadY
+     // Redesign 1b: 320x430 app tiles (HTML #1b), gap 36 horizontal; cellHeight adds room for the
+     // 16px-gap + "Ⓐ Launch" hint row (or app name) below the focused tile.
+     // Cap the row height to the available viewport so tiles never clip their bottom border on
+     // shorter render surfaces (e.g. 1280x800 in Game Mode) — the absolute 474 was tuned for
+     // 1920x1200. At 1200p this stays 474; on shorter surfaces tiles shrink to fit.
+-    cellWidth: 356
+-    cellHeight: Math.max(300, Math.min(474, height - topMargin - bottomMargin))
++    cellWidth: Math.max(220,Math.min(300,availableWidth / Math.max(1,Math.floor(availableWidth/260))))
++    cellHeight: Math.max(260, Math.min(380, height - topMargin - bottomMargin))
+ 
+     // Ⓨ quits the in-progress session from
+     // anywhere in the app grid — the gamepad equivalent of the stop button on the
+@@ -110,7 +121,7 @@ CenteredGridView {
+         visible: true
+         height: appsTitleRow.y + appsTitleRow.height
+ 
+-        Rectangle { anchors.fill: parent; color: VbTokens.bgWindow }
++        Rectangle { anchors.fill: parent; color: "transparent" }
+ 
+         // Row 1 (back + host name/status + refresh/settings) and its divider now live in the
+         // always-present global toolbar (main.qml) — the toolbar reads hostOnline/hostType/
+@@ -121,13 +132,13 @@ CenteredGridView {
+         Row {
+             id: appsTitleRow
+             anchors.top: parent.top
+-            anchors.topMargin: 34
++            anchors.topMargin: 16
+             anchors.left: parent.left
+-            anchors.leftMargin: VbTokens.screenPadX
++            anchors.leftMargin: VbTokens.screenPadX+appGrid.railSpace+appGrid.hostSpace
+             spacing: 14
+             Text {
+                 id: appsTitle
+-                text: qsTr("Apps")
++                text: qsTr("Library")
+                 font.family: VbTokens.fontDisplay
+                 font.weight: Font.Bold
+                 font.pixelSize: VbTokens.sizeScreenTitle
+@@ -143,6 +154,31 @@ CenteredGridView {
+         }
+     }
+ 
++
++    // Crimson Glass dashboard chrome lives in the viewport, outside contentItem.
++    CrimsonGlassRail {
++        parent:appGrid
++        z:11;x:12;y:16;width:64;height:Math.max(280,appGrid.height-32-(appHintBar.visible?appHintBar.height:0))
++        visible:appGrid.railSpace>0;inLibrary:true
++        onHomeRequested: { if(stackView.depth>1) stackView.pop(null);else appGrid.forceActiveFocus() }
++        onSettingsRequested: settingsButton.clicked()
++        onControlsRequested: eclipseCenterButton.clicked()
++    }
++    CrimsonLocalPanel {
++        parent:appGrid
++        z:11;anchors.right:parent.right;anchors.rightMargin:16;y:16;width:Math.max(0,appGrid.localSpace-28)
++        height:Math.max(240,appGrid.height-32-(appHintBar.visible?appHintBar.height:0));visible:appGrid.localSpace>0
++        active:visible && appGrid.StackView.status===StackView.Active
++        onControlsRequested: eclipseCenterButton.clicked()
++    }
++    CrimsonHostPanel {
++        parent:appGrid
++        z:11;x:appGrid.railSpace+12;y:16;width:Math.max(0,appGrid.hostSpace-24)
++        height:Math.max(240,appGrid.height-32-(appHintBar.visible?appHintBar.height:0));visible:appGrid.hostSpace>0
++        hostName:appGrid.objectName;hostType:appGrid.hostType;transport:appGrid.hostTransport;online:appGrid.hostOnline;host:appGrid.crimsonHost
++        onHostRequested: { CrimsonStatus.selectHost(appGrid.crimsonHost.id||"",appGrid.crimsonHost.url||"");crimsonPanel.kind="host";crimsonPanel.open() }
++    }
++
+     // Persistent gamepad hint bar, fixed at the bottom. Grid bottomMargin clears it.
+     VbHintBar {
+         id: appHintBar
+@@ -226,7 +262,8 @@ CenteredGridView {
+ 
+     function createModel()
+     {
+-        var model = Qt.createQmlObject('import AppModel 1.0; AppModel {}', parent, '')
++        var model = Qt.createQmlObject('import CrimsonStatus 1.0
++import AppModel 1.0; AppModel {}', appGrid, '')
+         model.initialize(ComputerManager, computerIndex, showHiddenGames)
+         return model
+     }
+@@ -265,30 +302,18 @@ CenteredGridView {
+             focused: appDelegate.highlighted
+ 
+             Image {
+-                property bool isPlaceholder: false
++                readonly property bool isPlaceholder: source.toString().length === 0 || status === Image.Error ||
++                    (!model.isAppCollectorGame &&
++                     ((sourceSize.width === 130 && sourceSize.height === 180) ||
++                      (sourceSize.width === 628 && sourceSize.height === 888) ||
++                      (sourceSize.width === 200 && sourceSize.height === 266)))
+ 
+                 id: appIcon
+                 anchors.fill: parent
+                 anchors.margins: 5
+                 source: model.boxart
+-
+-                onSourceSizeChanged: {
+-                    // Nearly all of Nvidia's official box art does not match the dimensions of placeholder
+-                    // images, however the one known exception is Overcooked. Therefore, we only execute
+-                    // the image size checks if this is not an app collector game. We know the officially
+-                    // supported games all have box art, so this check is not required.
+-                    if (!model.isAppCollectorGame &&
+-                        ((sourceSize.width === 130 && sourceSize.height === 180) || // GFE 2.0 placeholder image
+-                         (sourceSize.width === 628 && sourceSize.height === 888) || // GFE 3.0 placeholder image
+-                         (sourceSize.width === 200 && sourceSize.height === 266)))  // Our no_app_image.png
+-                    {
+-                        isPlaceholder = true
+-                    }
+-                    else
+-                    {
+-                        isPlaceholder = false
+-                    }
+-                }
++                visible: !isPlaceholder
++                fillMode: Image.PreserveAspectCrop
+ 
+                 // Display a tooltip with the full name if it's truncated
+                 ToolTip.text: model.name
+@@ -297,6 +322,15 @@ CenteredGridView {
+                 ToolTip.visible: (appDelegate.hovered || appDelegate.highlighted) && (!appNameText || appNameText.truncated)
+             }
+ 
++            Image {
++                visible: appIcon.isPlaceholder && !model.running
++                anchors.horizontalCenter: parent.horizontalCenter
++                y: parent.height * 0.22
++                width: Math.min(64, parent.width * 0.3); height: width
++                source: "qrc:/res/eclipse-icon.svg"
++                opacity: 0.85
++            }
++
+             Loader {
+                 active: model.running
+                 asynchronous: true
+@@ -365,7 +399,7 @@ CenteredGridView {
+                 // in the time in which the text loads for each game.
+ 
+                 width: appIcon.width
+-                height: model.running ? 175 : appIcon.height
++                height: model.running ? Math.min(140, appIcon.height * 0.45) : appIcon.height * 0.55
+ 
+                 anchors.left: appIcon.left
+                 anchors.right: appIcon.right
+@@ -374,7 +408,10 @@ CenteredGridView {
+                 sourceComponent: Label {
+                     id: appNameText
+                     text: model.name
+-                    font.pointSize: 22
++                    font.family: VbTokens.fontDisplay
++                    font.pixelSize: VbTokens.typeHeading
++                    color: VbTokens.text
++                    textFormat: Text.PlainText
+                     leftPadding: 20
+                     rightPadding: 20
+                     verticalAlignment: Text.AlignVCenter
 diff --git a/app/gui/AutoResizingComboBox.qml b/app/gui/AutoResizingComboBox.qml
 index 53afcaf..f123932 100644
 --- a/app/gui/AutoResizingComboBox.qml
@@ -108,9 +288,231 @@ index 53afcaf..f123932 100644
          }
      }
  
+diff --git a/app/gui/CrimsonBackgroundPicker.qml b/app/gui/CrimsonBackgroundPicker.qml
+new file mode 100644
+index 0000000..ae15e08
+--- /dev/null
++++ b/app/gui/CrimsonBackgroundPicker.qml
+@@ -0,0 +1,30 @@
++import QtQuick 2.9
++import QtQuick.Controls 2.5
++import QtQuick.Layouts 1.3
++import Vibemis.Redesign 1.0
++import EclipseProfiles 1.0
++NavigableDialog {
++    id:picker
++    title:qsTr("Crimson Glass background")
++    width:Math.min(640,parent?parent.width-32:640);height:Math.min(600,parent?parent.height-32:600)
++    standardButtons:Dialog.Close
++    property url folder:EclipseProfiles.backgroundFolder()
++    property var files:[]
++    property string error:""
++    onOpened: {files=EclipseProfiles.backgroundFiles(folder);error=""}
++    contentItem:ColumnLayout {
++        spacing:12
++        Label { text:qsTr("Select an image. A resized copy is saved so removable media can be disconnected.");Layout.fillWidth:true;wrapMode:Text.Wrap;color:VbTokens.textDim;font.pixelSize:VbTokens.typeLabel }
++        TextField { id:path;Layout.fillWidth:true;text:picker.folder.toString();placeholderText:qsTr("Folder path or file:/// URL");selectByMouse:true;color:VbTokens.text;font.pixelSize:VbTokens.typeLabel
++            background:CrimsonGlassPanel {radius:VbTokens.radiusControl}
++            onAccepted:{picker.folder=text.indexOf("file:")===0?text:"file://"+text;picker.files=EclipseProfiles.backgroundFiles(picker.folder)}
++        }
++        EclipseActionButton {text:qsTr("Open folder");onClicked:{picker.folder=path.text.indexOf("file:")===0?path.text:"file://"+path.text;picker.files=EclipseProfiles.backgroundFiles(picker.folder)}}
++        ListView { id:list;Layout.fillWidth:true;Layout.fillHeight:true;clip:true;model:picker.files;spacing:6;keyNavigationEnabled:true;activeFocusOnTab:true
++            delegate:EclipseActionButton {width:list.width;text:(modelData.directory?"▸ ":"")+modelData.name
++                onClicked:{if(modelData.directory){picker.folder=modelData.url;path.text=picker.folder.toString();picker.files=EclipseProfiles.backgroundFiles(picker.folder)}else if(EclipseProfiles.chooseBackground(modelData.url))picker.close();else picker.error=qsTr("Unable to read this image. Choose PNG, JPEG, WebP or BMP up to 32 MiB.")}
++            }
++        }
++        Label {text:picker.error;visible:text.length>0;color:VbTokens.statusDanger;Layout.fillWidth:true;wrapMode:Text.Wrap;font.pixelSize:VbTokens.typeLabel}
++    }
++}
+diff --git a/app/gui/CrimsonGlassBackdrop.qml b/app/gui/CrimsonGlassBackdrop.qml
+new file mode 100644
+index 0000000..824f26e
+--- /dev/null
++++ b/app/gui/CrimsonGlassBackdrop.qml
+@@ -0,0 +1,21 @@
++import QtQuick 2.9
++import Vibemis.Redesign 1.0
++import EclipseProfiles 1.0
++Rectangle {
++    color: VbTokens.bgWindow
++    clip: true
++    Image {
++        id: wallpaper;anchors.fill:parent;source:EclipseProfiles.background;fillMode:Image.PreserveAspectCrop
++        asynchronous:true;cache:false;sourceSize.width:2560;sourceSize.height:2560
++        Connections { target:EclipseProfiles;function onAppearanceChanged(){var url=EclipseProfiles.background;wallpaper.source="";wallpaper.source=url} }
++    }
++    Rectangle { anchors.fill:parent;color:VbTokens.bgWindow;opacity:Math.max(EclipseProfiles.highContrast?0.8:0,EclipseProfiles.backgroundDim/100) }
++    Rectangle {
++        width: Math.min(parent.width*0.72,850); height: width; radius: width/2
++        x: parent.width-width*0.62; y: -height*0.55
++        color: Qt.rgba(VbTokens.accent.r,VbTokens.accent.g,VbTokens.accent.b,0.035)
++        border.color: Qt.rgba(VbTokens.accent.r,VbTokens.accent.g,VbTokens.accent.b,0.15); border.width: 2
++    }
++    Rectangle { anchors.fill:parent; gradient:Gradient { GradientStop { position:0;color:"#00000000" }
++        GradientStop { position:1;color:VbTokens.bgWindow } } }
++}
+diff --git a/app/gui/CrimsonGlassPanel.qml b/app/gui/CrimsonGlassPanel.qml
+new file mode 100644
+index 0000000..e9b333c
+--- /dev/null
++++ b/app/gui/CrimsonGlassPanel.qml
+@@ -0,0 +1,13 @@
++import QtQuick 2.9
++import Vibemis.Redesign 1.0
++Rectangle {
++    id:glass
++    radius: VbTokens.radiusCard
++    color: VbTokens.bgElev
++    border.color: VbTokens.stroke
++    gradient: Gradient {
++        GradientStop { position: 0; color: Qt.rgba(Qt.lighter(glass.color,1.35).r,Qt.lighter(glass.color,1.35).g,Qt.lighter(glass.color,1.35).b,VbTokens.glassOpacity) }
++        GradientStop { position: 1; color: Qt.rgba(glass.color.r,glass.color.g,glass.color.b,VbTokens.glassOpacity) }
++    }
++    Rectangle { anchors.top: parent.top; anchors.topMargin: 1; anchors.horizontalCenter: parent.horizontalCenter; width: Math.max(0,parent.width-2*parent.radius); height: 1; color: VbTokens.glassEdge }
++}
+diff --git a/app/gui/CrimsonGlassRail.qml b/app/gui/CrimsonGlassRail.qml
+new file mode 100644
+index 0000000..e1a4c5b
+--- /dev/null
++++ b/app/gui/CrimsonGlassRail.qml
+@@ -0,0 +1,23 @@
++import QtQuick 2.9
++import QtQuick.Controls 2.5
++import QtQuick.Layouts 1.3
++import Vibemis.Redesign 1.0
++CrimsonGlassPanel {
++    id:rail
++    property bool inLibrary:false
++    signal homeRequested()
++    signal settingsRequested()
++    signal controlsRequested()
++    ColumnLayout {
++        anchors.top:parent.top;anchors.left:parent.left;anchors.right:parent.right;anchors.topMargin:10;anchors.leftMargin:4;anchors.rightMargin:4;spacing:12
++        Image { source:"qrc:/res/eclipse-icon.svg";Layout.alignment:Qt.AlignHCenter;Layout.preferredWidth:38;Layout.preferredHeight:38 }
++        Repeater {
++            model:[{label:qsTr("Home"),icon:"qrc:/res/crimson-host.svg",action:"home"},{label:qsTr("Controls"),icon:"qrc:/res/eclipse-controls.svg",action:"controls"},{label:qsTr("Settings"),icon:"qrc:/res/settings.svg",action:"settings"}]
++            delegate: EclipseActionButton {
++                objectName:"crimsonRailButton";Layout.fillWidth:true;implicitWidth:56;implicitHeight:56;text:"";iconSource:modelData.icon
++                Accessible.name:modelData.label;ToolTip.text:modelData.label;ToolTip.visible:hovered||activeFocus
++                onClicked: {if(modelData.action==="home")rail.homeRequested();else if(modelData.action==="controls")rail.controlsRequested();else rail.settingsRequested()}
++            }
++        }
++    }
++}
+diff --git a/app/gui/CrimsonHostPanel.qml b/app/gui/CrimsonHostPanel.qml
+new file mode 100644
+index 0000000..2462f12
+--- /dev/null
++++ b/app/gui/CrimsonHostPanel.qml
+@@ -0,0 +1,32 @@
++import QtQuick 2.9
++import QtQuick.Controls 2.5
++import QtQuick.Layouts 1.3
++import Vibemis.Redesign 1.0
++import StreamingPreferences 1.0
++CrimsonGlassPanel {
++    id:panel
++    property string hostName:""
++    property string hostType:""
++    property string transport:""
++    property bool online:false
++    property var host:({})
++    signal hostRequested()
++    ScrollView {
++        anchors.fill:parent;anchors.margins:16;contentWidth:availableWidth;clip:true
++        ColumnLayout {
++            width:parent.width;spacing:16
++            Image { source:"qrc:/res/eclipse-icon.svg";Layout.preferredHeight:64;Layout.preferredWidth:64;Layout.alignment:Qt.AlignHCenter }
++            Label { text:panel.hostName;font.family:VbTokens.fontDisplay;font.pixelSize:VbTokens.typeHeading;font.bold:true;color:VbTokens.text;Layout.fillWidth:true;wrapMode:Text.Wrap;textFormat:Text.PlainText }
++            Label { text:panel.online?qsTr("Connected host"):qsTr("Host offline");color:panel.online?VbTokens.statusOnline:VbTokens.textDim;font.pixelSize:VbTokens.typeLabel;Layout.fillWidth:true;wrapMode:Text.Wrap }
++            Repeater {
++                model:[{label:qsTr("Host type"),value:panel.hostType||qsTr("Compatible host")},{label:qsTr("Connection"),value:panel.transport||qsTr("Checking")},{label:qsTr("Requested resolution"),value:StreamingPreferences.width+" × "+StreamingPreferences.height},{label:qsTr("Requested frame rate"),value:StreamingPreferences.fps+" FPS"},{label:qsTr("Bitrate limit"),value:(StreamingPreferences.bitrateKbps/1000).toFixed(1)+" Mbps"}]
++                delegate:ColumnLayout { Layout.fillWidth:true;spacing:5
++                    Label {text:modelData.label;font.pixelSize:VbTokens.typeCaption;color:VbTokens.textDim;Layout.fillWidth:true;wrapMode:Text.Wrap}
++                    Label {text:modelData.value;font.pixelSize:VbTokens.typeLabel;color:VbTokens.text;Layout.fillWidth:true;wrapMode:Text.Wrap;textFormat:Text.PlainText}
++                }
++            }
++            EclipseActionButton { text:qsTr("Host details");Layout.fillWidth:true;onClicked:panel.hostRequested() }
++            Label { text:qsTr("Choose an app to stream. Actual negotiated quality appears in stream statistics.");font.pixelSize:VbTokens.typeCaption;color:VbTokens.textDim;Layout.fillWidth:true;wrapMode:Text.Wrap }
++        }
++    }
++}
+diff --git a/app/gui/CrimsonLocalPanel.qml b/app/gui/CrimsonLocalPanel.qml
+new file mode 100644
+index 0000000..5fd2ed9
+--- /dev/null
++++ b/app/gui/CrimsonLocalPanel.qml
+@@ -0,0 +1,36 @@
++import QtQuick 2.9
++import QtQuick.Controls 2.5
++import QtQuick.Layouts 1.3
++import Vibemis.Redesign 1.0
++import LocalHardware 1.0
++CrimsonGlassPanel {
++    id: panel
++    property bool active: false
++    signal controlsRequested()
++    onActiveChanged: LocalHardware.setConsumerActive(panel,active)
++    Component.onCompleted: if(active) LocalHardware.setConsumerActive(panel,true)
++    Component.onDestruction: if(active) LocalHardware.setConsumerActive(panel,false)
++    function reading(key,suffix) { var v=LocalHardware.readings[key];return v===undefined?qsTr("Unavailable"):Number(v).toFixed(1)+(suffix||"") }
++    ScrollView {
++        anchors.fill:parent;anchors.margins:16;contentWidth:availableWidth;clip:true
++        ColumnLayout {
++            width:parent.width;spacing:12
++            Label { text:qsTr("Local System");font.family:VbTokens.fontDisplay;font.pixelSize:VbTokens.typeBody;font.bold:true;color:VbTokens.text;Layout.fillWidth:true;elide:Text.ElideRight }
++            Label { text:qsTr("EclipseOS console");font.pixelSize:VbTokens.typeCaption;color:VbTokens.textDim;Layout.fillWidth:true;elide:Text.ElideRight }
++            Repeater {
++                model:[{label:qsTr("CPU"),key:"cpuPercent",suffix:"%",max:100},{label:qsTr("RAM"),key:"memoryPercent",suffix:"%",max:100},{label:qsTr("Temperature"),key:"temperatureC",suffix:" °C",max:100},{label:qsTr("Network download"),key:"receiveMiB",suffix:" MiB/s",max:0}]
++                delegate:CrimsonGlassPanel {
++                    objectName:"crimsonMetric";Layout.fillWidth:true;implicitHeight:Math.max(92,VbTokens.typeBody*3+24)
++                    ColumnLayout {
++                        anchors.fill:parent;anchors.margins:12;spacing:5
++                        Label { text:modelData.label;font.pixelSize:VbTokens.typeLabel;color:VbTokens.textDim;Layout.fillWidth:true;elide:Text.ElideRight }
++                        Label { text:panel.reading(modelData.key,modelData.suffix);font.pixelSize:VbTokens.typeBody;font.bold:true;color:VbTokens.text;Layout.fillWidth:true;elide:Text.ElideRight }
++                        CrimsonSparkline { Layout.fillWidth:true;Layout.preferredHeight:24;samples:LocalHardware.history;metric:modelData.key;ceiling:modelData.max }
++                    }
++                }
++            }
++            EclipseActionButton { text:qsTr("System Controls");Layout.fillWidth:true;onClicked:panel.controlsRequested() }
++            Label { text:qsTr("Local readings • missing sensors show Unavailable");font.pixelSize:VbTokens.typeCaption;color:VbTokens.textDim;Layout.fillWidth:true;wrapMode:Text.Wrap }
++        }
++    }
++}
+diff --git a/app/gui/CrimsonSparkline.qml b/app/gui/CrimsonSparkline.qml
+new file mode 100644
+index 0000000..43dd3b4
+--- /dev/null
++++ b/app/gui/CrimsonSparkline.qml
+@@ -0,0 +1,25 @@
++import QtQuick 2.9
++import Vibemis.Redesign 1.0
++Canvas {
++    id: graph
++    property var samples: []
++    property string metric: "cpuPercent"
++    property real ceiling: 100
++    property color lineColor: VbTokens.accent
++    onSamplesChanged: requestPaint()
++    onMetricChanged: requestPaint()
++    onLineColorChanged: requestPaint()
++    onWidthChanged: requestPaint()
++    onHeightChanged: requestPaint()
++    onPaint: {
++        var c=getContext("2d");c.clearRect(0,0,width,height)
++        var high=ceiling
++        if(high<=0) { high=1;for(var j=0;j<samples.length;j++) { var n=samples[j][metric];if(n!==undefined&&isFinite(n))high=Math.max(high,n) } }
++        c.strokeStyle=lineColor;c.lineWidth=1.5;c.beginPath();var started=false
++        for(var i=0;i<samples.length;i++) { var v=samples[i][metric];if(v===undefined||!isFinite(v)){started=false;continue}
++            var x=2+(width-4)*(60-samples.length+i)/59,y=height-2-(height-4)*Math.max(0,Math.min(high,v))/high
++            if(!started)c.moveTo(x,y);else c.lineTo(x,y);started=true
++        }
++        c.stroke()
++    }
++}
 diff --git a/app/gui/CrimsonStatusDialog.qml b/app/gui/CrimsonStatusDialog.qml
 new file mode 100644
-index 0000000..6870f9c
+index 0000000..a1d4672
 --- /dev/null
 +++ b/app/gui/CrimsonStatusDialog.qml
 @@ -0,0 +1,90 @@
@@ -130,7 +532,7 @@ index 0000000..6870f9c
 +    standardButtons: Dialog.Close
 +    Material.background: VbTokens.bgElev
 +    Material.accent: VbTokens.accent
-+    background: Rectangle { color: VbTokens.bgElev; radius: VbTokens.radiusDialog; border.color: VbTokens.stroke; border.width: 1 }
++    background: CrimsonGlassPanel { color: VbTokens.bgElev; radius: VbTokens.radiusDialog; border.color: VbTokens.stroke; border.width: 1 }
 +    onOpened: {
 +        urlInput.text = CrimsonStatus.endpoint
 +        pinInput.text = CrimsonStatus.fingerprint
@@ -206,7 +608,7 @@ index 0000000..6870f9c
 +}
 diff --git a/app/gui/EclipseAboutDialog.qml b/app/gui/EclipseAboutDialog.qml
 new file mode 100644
-index 0000000..3ab7805
+index 0000000..fbd0a3f
 --- /dev/null
 +++ b/app/gui/EclipseAboutDialog.qml
 @@ -0,0 +1,34 @@
@@ -223,7 +625,7 @@ index 0000000..3ab7805
 +    standardButtons: Dialog.Close
 +    Material.background: VbTokens.bgElev
 +    Material.accent: VbTokens.accent
-+    background: Rectangle { radius: VbTokens.radiusDialog; color: VbTokens.bgElev; border.color: VbTokens.stroke
++    background: CrimsonGlassPanel { radius: VbTokens.radiusDialog; color: VbTokens.bgElev; border.color: VbTokens.stroke
 +        Rectangle { anchors.fill: parent; color: "transparent"; gradient: Gradient { GradientStop { position: 0; color: Qt.rgba(1,1,1,0.035) } GradientStop { position: 1; color: "transparent" } } }
 +    }
 +    contentItem: ColumnLayout {
@@ -246,10 +648,10 @@ index 0000000..3ab7805
 +}
 diff --git a/app/gui/EclipseActionButton.qml b/app/gui/EclipseActionButton.qml
 new file mode 100644
-index 0000000..8ad5c94
+index 0000000..a83ef01
 --- /dev/null
 +++ b/app/gui/EclipseActionButton.qml
-@@ -0,0 +1,35 @@
+@@ -0,0 +1,36 @@
 +import QtQuick 2.9
 +import QtQuick.Controls 2.5
 +import Vibemis.Redesign 1.0
@@ -271,23 +673,24 @@ index 0000000..8ad5c94
 +    Keys.onLeftPressed: nextItemInFocusChain(false).forceActiveFocus(Qt.TabFocus)
 +    Keys.onDownPressed: nextItemInFocusChain(true).forceActiveFocus(Qt.TabFocus)
 +    Keys.onUpPressed: nextItemInFocusChain(false).forceActiveFocus(Qt.TabFocus)
-+    background: Rectangle {
++    background: CrimsonGlassPanel {
 +        radius: VbTokens.radiusControl
 +        color: button.down ? VbTokens.bgElev2 : button.hovered ? VbTokens.bgElev2 : VbTokens.bgWindow
 +        border.width: button.activeFocus ? 2 : 1
 +        border.color: button.activeFocus || button.hovered ? VbTokens.accent : VbTokens.stroke
 +        opacity: button.enabled ? 1 : 0.5
 +    }
-+    contentItem: Row {
-+        spacing: 8
++    contentItem: Item {
++        implicitWidth: buttonLabel.implicitWidth + (button.iconSource !== "" ? 28 : 0)
++        implicitHeight: Math.max(buttonLabel.implicitHeight, button.iconSource !== "" ? 20 : 0)
 +        opacity: button.enabled ? 1 : 0.5
-+        IconImage { color: VbTokens.accent; visible: button.iconSource !== ""; source: button.iconSource; width: visible ? 20 : 0; height: 20; anchors.verticalCenter: parent.verticalCenter }
-+        Label { text: button.text; textFormat: Text.PlainText; color: VbTokens.text; font: button.font; anchors.verticalCenter: parent.verticalCenter }
++        IconImage { color: VbTokens.accent; visible: button.iconSource !== ""; source: button.iconSource; width: visible ? 20 : 0; height: 20; x:button.text.length===0?(parent.width-width)/2:0; anchors.verticalCenter: parent.verticalCenter }
++        Label { id:buttonLabel;text: button.text; textFormat: Text.PlainText; color: VbTokens.text; font: button.font;x:button.iconSource !== "" ? 28 : 0;width:Math.max(0,parent.width-x);elide:Text.ElideRight; anchors.verticalCenter: parent.verticalCenter }
 +    }
 +}
 diff --git a/app/gui/EclipseComboBox.qml b/app/gui/EclipseComboBox.qml
 new file mode 100644
-index 0000000..31b9c79
+index 0000000..f476de1
 --- /dev/null
 +++ b/app/gui/EclipseComboBox.qml
 @@ -0,0 +1,28 @@
@@ -303,28 +706,28 @@ index 0000000..31b9c79
 +    font.pixelSize: VbTokens.typeLabel
 +    Material.accent: VbTokens.accent
 +    leftPadding: 12; rightPadding: 36
-+    background: Rectangle { color: VbTokens.bgElev; radius: VbTokens.radiusControl; border.color: control.activeFocus ? VbTokens.accent : VbTokens.stroke; border.width: control.activeFocus ? 2 : 1; opacity: control.enabled ? 1 : .5 }
++    background: CrimsonGlassPanel { color: VbTokens.bgElev; radius: VbTokens.radiusControl; border.color: control.activeFocus ? VbTokens.accent : VbTokens.stroke; border.width: control.activeFocus ? 2 : 1; opacity: control.enabled ? 1 : .5 }
 +    contentItem: Label { text: control.displayText; textFormat: Text.PlainText; font: control.font; color: VbTokens.text; verticalAlignment: Text.AlignVCenter; elide: Text.ElideRight; opacity: control.enabled ? 1 : .5 }
 +    delegate: ItemDelegate {
 +        width: control.width
 +        implicitHeight: Math.max(44,control.font.pixelSize+24)
 +        highlighted: control.highlightedIndex === index
 +        contentItem: Label { text: control.textAt(index); textFormat:Text.PlainText; font:control.font; color:VbTokens.text; elide:Text.ElideRight }
-+        background: Rectangle { color: parent.highlighted ? VbTokens.bgElev2 : VbTokens.bgElev; radius:VbTokens.radiusControl; border.color:parent.highlighted?VbTokens.accent:"transparent" }
++        background: CrimsonGlassPanel { color: parent.highlighted ? VbTokens.bgElev2 : VbTokens.bgElev; radius:VbTokens.radiusControl; border.color:parent.highlighted?VbTokens.accent:"transparent" }
 +    }
 +    popup: Popup {
 +        y: control.height + 4; width:control.width; padding:6
 +        implicitHeight: Math.min(contentItem.implicitHeight + 12,320)
-+        background:Rectangle { color:VbTokens.bgElev;radius:VbTokens.radiusControl;border.color:VbTokens.stroke }
++        background:CrimsonGlassPanel { color:VbTokens.bgElev;radius:VbTokens.radiusControl;border.color:VbTokens.stroke }
 +        contentItem:ListView { clip:true;implicitHeight:contentHeight;model:control.popup.visible?control.delegateModel:null;currentIndex:control.highlightedIndex;ScrollIndicator.vertical:ScrollIndicator {} }
 +    }
 +}
 diff --git a/app/gui/EclipseControlCenter.qml b/app/gui/EclipseControlCenter.qml
 new file mode 100644
-index 0000000..d9c5d54
+index 0000000..e232e1e
 --- /dev/null
 +++ b/app/gui/EclipseControlCenter.qml
-@@ -0,0 +1,163 @@
+@@ -0,0 +1,164 @@
 +import QtQuick 2.9
 +import QtQuick.Controls 2.5
 +import QtQuick.Layouts 1.3
@@ -341,6 +744,7 @@ index 0000000..d9c5d54
 +    width: Math.min(560, parent.width - 24)
 +    height: parent.height
 +    modal: true
++    Overlay.modal: Rectangle {color:VbTokens.sheetScrim}
 +    enter: Transition { NumberAnimation { property: "position"; from: 0; to: 1; duration: VbTokens.sheetInMs } }
 +    exit: Transition { NumberAnimation { property: "position"; from: 1; to: 0; duration: VbTokens.sheetInMs } }
 +    property var host: ({})
@@ -355,7 +759,7 @@ index 0000000..d9c5d54
 +    Material.theme: Material.Dark
 +    Material.background: VbTokens.bgElev
 +    Material.accent: VbTokens.accent
-+    background: Rectangle { color: VbTokens.bgElev; border.color: VbTokens.stroke
++    background: CrimsonGlassPanel { color: VbTokens.bgElev; border.color: VbTokens.stroke
 +        Rectangle { anchors.fill: parent; color: "transparent"; gradient: Gradient { GradientStop { position: 0; color: Qt.rgba(1,1,1,0.035) } GradientStop { position: 1; color: "transparent" } } }
 +    }
 +    function defer(destination) { nextPanel = destination; close() }
@@ -490,7 +894,7 @@ index 0000000..d9c5d54
 +}
 diff --git a/app/gui/EclipseHardwareMonitor.qml b/app/gui/EclipseHardwareMonitor.qml
 new file mode 100644
-index 0000000..1787d01
+index 0000000..edbe191
 --- /dev/null
 +++ b/app/gui/EclipseHardwareMonitor.qml
 @@ -0,0 +1,77 @@
@@ -504,10 +908,10 @@ index 0000000..1787d01
 +    id: monitor
 +    objectName:"hardwareMonitor"
 +    property bool active: false
-+    Component.onCompleted: if(active) LocalHardware.setActive(true)
++    Component.onCompleted: if(active) LocalHardware.setConsumerActive(monitor,true)
 +    Layout.fillWidth: true
-+    onActiveChanged: LocalHardware.setActive(active)
-+    Component.onDestruction: LocalHardware.setActive(false)
++    onActiveChanged: LocalHardware.setConsumerActive(monitor,active)
++    Component.onDestruction: LocalHardware.setConsumerActive(monitor,false)
 +    function reading(key, suffix, digits) { var v=LocalHardware.readings[key]; return v === undefined ? qsTr("Unavailable") : Number(v).toFixed(digits === undefined ? 1 : digits)+(suffix || "") }
 +    Label { font.family:VbTokens.fontBody; font.pixelSize:VbTokens.typeBody; text: qsTr("LOCAL MAC • Hardware monitor"); color: VbTokens.text; font.bold: true }
 +    Label { font.family:VbTokens.fontBody; font.pixelSize:VbTokens.typeBody; Layout.fillWidth: true; wrapMode: Text.Wrap; text: qsTr("Local readings are independent of stream and host statistics. Missing sensors show Unavailable; first CPU/network rates need a second sample. Intel GPU shared memory is system RAM."); color: VbTokens.textDim }
@@ -523,7 +927,7 @@ index 0000000..1787d01
 +                {label:qsTr("Storage reads"),key:"diskReadMiB",suffix:" MiB/s"},{label:qsTr("Storage writes"),key:"diskWriteMiB",suffix:" MiB/s"},
 +                {label:qsTr("USB/root free"),key:"storageFreeGiB",suffix:" GiB"},{label:qsTr("Battery"),key:"batteryPercent",suffix:"%"}
 +            ]
-+            delegate: Rectangle {
++            delegate: CrimsonGlassPanel {
 +                Layout.fillWidth: true; implicitHeight: 84; radius: VbTokens.radiusCard; color: VbTokens.bgElev; border.color: VbTokens.stroke
 +                Column { anchors.fill: parent; anchors.margins: 12; spacing: 6
 +                    Label { text: modelData.label; color: VbTokens.textDim; font.pixelSize: VbTokens.typeBody }
@@ -661,10 +1065,10 @@ index 0000000..5d2bbc9
 +    Connections { target:SystemControls;function onChanged(){if(system.active&&SystemControls.prompt.length>0&&!connections.opened)confirmation.open();if(!SystemControls.busy)confirmation.close()} }
 +}
 diff --git a/app/gui/NavigableDialog.qml b/app/gui/NavigableDialog.qml
-index 4384d5b..c06ddf3 100644
+index 4384d5b..bd9eda5 100644
 --- a/app/gui/NavigableDialog.qml
 +++ b/app/gui/NavigableDialog.qml
-@@ -1,7 +1,33 @@
+@@ -1,7 +1,35 @@
  import QtQuick 2.0
  import QtQuick.Controls 2.5
 +import QtQuick.Controls.Material 2.2
@@ -677,7 +1081,9 @@ index 4384d5b..c06ddf3 100644
 +    Material.background: VbTokens.bgElev
 +    Material.foreground: VbTokens.text
 +    Material.accent: VbTokens.accent
-+    background: Rectangle { color:VbTokens.bgElev; radius:VbTokens.radiusDialog; border.color:VbTokens.stroke }
++    Overlay.modal: Rectangle {color:VbTokens.dialogScrim}
++    Overlay.modeless: Rectangle {color:VbTokens.dialogScrim}
++    background: CrimsonGlassPanel { radius:VbTokens.radiusDialog }
 +    header: Label {
 +        visible: dialog.title.length > 0
 +        text: dialog.title; textFormat: Text.PlainText; color:VbTokens.text
@@ -698,11 +1104,133 @@ index 4384d5b..c06ddf3 100644
      modal: true
      anchors.centerIn: Overlay.overlay
  
+diff --git a/app/gui/NavigableMenu.qml b/app/gui/NavigableMenu.qml
+index a7b20f0..505f396 100644
+--- a/app/gui/NavigableMenu.qml
++++ b/app/gui/NavigableMenu.qml
+@@ -1,8 +1,11 @@
+ import QtQuick 2.0
+ import QtQuick.Controls 2.2
++import Vibemis.Redesign 1.0
+ 
+ Menu {
+     property var initiator
++    padding: VbTokens.space2
++    background: CrimsonGlassPanel {radius:VbTokens.radiusControl}
+ 
+     onOpened: {
+         // If the initiating object currently has keyboard focus,
+diff --git a/app/gui/NavigableToolButton.qml b/app/gui/NavigableToolButton.qml
+index 5b64671..a799618 100644
+--- a/app/gui/NavigableToolButton.qml
++++ b/app/gui/NavigableToolButton.qml
+@@ -27,7 +27,7 @@ ToolButton {
+     padding: 0
+     Layout.alignment: Qt.AlignVCenter
+ 
+-    background: Rectangle {
++    background: CrimsonGlassPanel {
+         radius: VbTokens.radiusIconButton
+         color: btn.activeFocus ? VbTokens.focusedFill : (btn.hovered ? VbTokens.bgElev2 : VbTokens.bgElev)
+         border.width: 1
 diff --git a/app/gui/PcView.qml b/app/gui/PcView.qml
-index f0e739a..f4d012b 100644
+index f0e739a..fb1984a 100644
 --- a/app/gui/PcView.qml
 +++ b/app/gui/PcView.qml
-@@ -444,7 +444,7 @@ CenteredGridView {
+@@ -43,7 +43,16 @@ CenteredGridView {
+     // back to minMargin (default 10px) — cards hugged the screen edge, misaligned with the
+     // 56px header and visually clipping the focus ring's outer glow. Align partial rows with
+     // the redesign's screen padding instead.
++    readonly property bool glassWide: width >= 1240 && height >= 540
++    readonly property int railSpace: width >= 900 ? 84 : 0
++    readonly property int localSpace: glassWide ? Math.round(252*VbTokens.textScale) : 0
++    readonly property int hostSpace: 0
+     minMargin: VbTokens.screenPadX
++    availableWidth: width - railSpace - localSpace - hostSpace - 2*minMargin
++    onRailSpaceChanged: updateMargins()
++    onLocalSpaceChanged: updateMargins()
++    onHostSpaceChanged: updateMargins()
++    function updateMargins() { leftMargin=horizontalMargin+railSpace+hostSpace;rightMargin=horizontalMargin+localSpace }
+     // The "Add a computer" ghost card is hand-placed at the index==count cell (see the delegate's
+     // sibling below). GridView.contentHeight only counts real delegates, so when the last row is FULL
+     // (count is a multiple of the column count) the ghost card starts a brand-new virtual row at
+@@ -52,7 +61,7 @@ CenteredGridView {
+     bottomMargin: (pcHintBar.visible ? pcHintBar.height : 0) + 12
+                   + ((count > 0 && (count % Math.max(1, Math.floor(itemsPerRow))) === 0) ? cellHeight : 0)
+     // Redesign: 430px rich host cards (gap 32) in a centered wrapping row.
+-    cellWidth: 462; cellHeight: 274;
++    cellWidth: 392; cellHeight: 266;
+     objectName: qsTr("Computers")
+ 
+     // D-pad selection state for the Add-a-computer ghost — WITHOUT focus. The
+@@ -105,19 +114,19 @@ CenteredGridView {
+         anchors.left: parent.left
+         anchors.right: parent.right
+         visible: true
+-        height: 78
++        height: 66
+ 
+-        Rectangle { anchors.fill: parent; color: VbTokens.bgWindow }
++        Rectangle { anchors.fill: parent; color: "transparent" }
+ 
+         Row {
+             anchors.left: parent.left
+-            anchors.leftMargin: VbTokens.screenPadX
++            anchors.leftMargin: VbTokens.screenPadX+pcGrid.railSpace+pcGrid.hostSpace
+             anchors.bottom: parent.bottom
+             anchors.bottomMargin: 6
+             spacing: 14
+             Text {
+                 id: sectionTitle
+-                text: qsTr("Computers")
++                text: qsTr("Hosts")
+                 font.family: VbTokens.fontDisplay
+                 font.weight: Font.Bold
+                 font.pixelSize: VbTokens.sizeScreenTitle
+@@ -134,6 +143,24 @@ CenteredGridView {
+         }
+     }
+ 
++
++    // Crimson Glass dashboard chrome lives in the viewport, outside contentItem.
++    CrimsonGlassRail {
++        parent:pcGrid
++        z:11;x:12;y:16;width:64;height:Math.max(280,pcGrid.height-32-(pcHintBar.visible?pcHintBar.height:0))
++        visible:pcGrid.railSpace>0;inLibrary:false
++        onHomeRequested: { if(stackView.depth>1) stackView.pop(null);else pcGrid.forceActiveFocus() }
++        onSettingsRequested: settingsButton.clicked()
++        onControlsRequested: eclipseCenterButton.clicked()
++    }
++    CrimsonLocalPanel {
++        parent:pcGrid
++        z:11;anchors.right:parent.right;anchors.rightMargin:16;y:16;width:Math.max(0,pcGrid.localSpace-28)
++        height:Math.max(240,pcGrid.height-32-(pcHintBar.visible?pcHintBar.height:0));visible:pcGrid.localSpace>0
++        active:visible && pcGrid.StackView.status===StackView.Active
++        onControlsRequested: eclipseCenterButton.clicked()
++    }
++
+     // Persistent gamepad hint bar, fixed at the bottom. Grid bottomMargin clears it.
+     VbHintBar {
+         id: pcHintBar
+@@ -269,7 +296,7 @@ CenteredGridView {
+ 
+     function createModel()
+     {
+-        var model = Qt.createQmlObject('import ComputerModel 1.0; ComputerModel {}', parent, '')
++        var model = Qt.createQmlObject('import ComputerModel 1.0; ComputerModel {}', pcGrid, '')
+         model.initialize(ComputerManager)
+         model.pairingCompleted.connect(pairingComplete)
+         model.connectionTestCompleted.connect(testConnectionDialog.connectionTestComplete)
+@@ -301,7 +328,7 @@ CenteredGridView {
+ 
+     delegate: NavigableItemDelegate {
+         id: pcDelegate
+-        width: 430; height: 242;
++        width: pcGrid.cellWidth - 20; height: 242;
+         grid: pcGrid
+ 
+         // The Material style paints an always-visible
+@@ -444,7 +471,7 @@ CenteredGridView {
                          visible: model.online && model.paired,
                          trigger: function() {
                              var component = Qt.createComponent("AppView.qml")
@@ -711,7 +1239,7 @@ index f0e739a..f4d012b 100644
                              stackView.push(appView)
                          }
                      },
-@@ -535,7 +535,7 @@ CenteredGridView {
+@@ -535,7 +562,7 @@ CenteredGridView {
                  else if (model.paired) {
                      // go to game view
                      var component = Qt.createComponent("AppView.qml")
@@ -720,11 +1248,76 @@ index f0e739a..f4d012b 100644
                      stackView.push(appView)
                  }
                  else {
+@@ -616,7 +643,7 @@ CenteredGridView {
+         onSelectedChanged: addPcDashedBorder.requestPaint()
+         x: (pcGrid.count % columns) * pcGrid.cellWidth
+         y: Math.floor(pcGrid.count / columns) * pcGrid.cellHeight
+-        width: 430
++        width: pcGrid.cellWidth-20
+         height: 242
+         z: 2
+ 
+@@ -625,7 +652,7 @@ CenteredGridView {
+             anchors.fill: parent
+             radius: 20
+             color: addPcCardSlot.highlighted ? VbTokens.bgElev : "transparent"
+-            Behavior on color { ColorAnimation { duration: 120 } }
++            Behavior on color { ColorAnimation { duration: VbTokens.motionEnabled ? 120 : 0 } }
+         }
+ 
+         Canvas {
 diff --git a/app/gui/QuickMenu.qml b/app/gui/QuickMenu.qml
-index b033d26..0d9794d 100644
+index b033d26..872fff9 100644
 --- a/app/gui/QuickMenu.qml
 +++ b/app/gui/QuickMenu.qml
-@@ -449,7 +449,7 @@ Rectangle {
+@@ -21,6 +21,10 @@ Rectangle {
+     radius: VbTokens.radiusWindow
+     border.color: VbTokens.divider
+     border.width: 1
++    gradient: Gradient {
++        GradientStop {position:0;color:VbTokens.glassTop}
++        GradientStop {position:1;color:VbTokens.surfaceRaised}
++    }
+     visible: true  // Always visible when created
+     opacity: 1.0
+     
+@@ -36,7 +40,7 @@ Rectangle {
+     
+     // Animation for smooth show/hide
+     Behavior on opacity {
+-        NumberAnimation { duration: 200 }
++        NumberAnimation { duration: VbTokens.motionEnabled ? 200 : 0 }
+     }
+     
+     // Handle keyboard input for navigation
+@@ -139,7 +143,7 @@ Rectangle {
+                 // Sheet-row recipe — focusedFill surface + accent border when
+                 // current (flat variant: the outer glow would clip inside this scrolling
+                 // clipped list, so the ring is border-only here).
+-                background: Rectangle {
++                background: CrimsonGlassPanel {
+                     radius: VbTokens.radiusControl
+                     color: menuRow.down ? Qt.darker(VbTokens.interactiveFocus, 1.15)
+                                         : (menuRow.active ? VbTokens.interactiveFocus : "transparent")
+@@ -229,7 +233,7 @@ Rectangle {
+                 leftPadding: 12
+                 rightPadding: 12
+                 // Token field — window-dark well + accent focus border.
+-                background: Rectangle {
++                background: CrimsonGlassPanel {
+                     color: VbTokens.surfaceBase
+                     border.color: sendTextField.activeFocus ? VbTokens.accent : VbTokens.divider
+                     border.width: VbTokens.focusBorder
+@@ -372,7 +376,7 @@ Rectangle {
+         opacity: showToast ? 1.0 : 0.0
+ 
+         Behavior on opacity {
+-            NumberAnimation { duration: 200 }
++            NumberAnimation { duration: VbTokens.motionEnabled ? 200 : 0 }
+         }
+ 
+         Text {
+@@ -449,7 +453,7 @@ Rectangle {
              text: qsTr("Quit game")
              icon: "power"
              action: "quit"
@@ -733,11 +1326,94 @@ index b033d26..0d9794d 100644
          }
          ListElement {
              text: qsTr("Server commands")
+@@ -714,4 +718,3 @@ Rectangle {
+         }
+     }
+ }
+-
+diff --git a/app/gui/ServerCommands.qml b/app/gui/ServerCommands.qml
+index a0ba47e..9ce83d0 100644
+--- a/app/gui/ServerCommands.qml
++++ b/app/gui/ServerCommands.qml
+@@ -155,7 +155,7 @@ GroupBox {
+     }
+ 
+     // Confirmation dialog
+-    Dialog {
++    NavigableDialog {
+         id: confirmDialog
+         anchors.centerIn: parent
+         width: Math.min(400, parent.width * 0.9)
+@@ -168,7 +168,7 @@ GroupBox {
+         title: qsTr("Confirm Command")
+         modal: true
+ 
+-        background: Rectangle {
++        background: CrimsonGlassPanel {
+             color: VbTokens.surfaceRaised
+             radius: VbTokens.radiusDialog
+             border.width: 1
+@@ -216,7 +216,7 @@ GroupBox {
+     }
+ 
+     // Custom command dialog
+-    Dialog {
++    NavigableDialog {
+         id: customCommandDialog
+         anchors.centerIn: parent
+         width: Math.min(400, parent.width * 0.9)
+@@ -225,7 +225,7 @@ GroupBox {
+         title: qsTr("Custom Command")
+         modal: true
+ 
+-        background: Rectangle {
++        background: CrimsonGlassPanel {
+             color: VbTokens.surfaceRaised
+             radius: VbTokens.radiusDialog
+             border.width: 1
 diff --git a/app/gui/SettingsView.qml b/app/gui/SettingsView.qml
-index 494e35b..90ba3c6 100644
+index 494e35b..e98916b 100644
 --- a/app/gui/SettingsView.qml
 +++ b/app/gui/SettingsView.qml
-@@ -346,12 +346,13 @@ Item {
+@@ -13,9 +13,11 @@ import AutoUpdateChecker 1.0
+ import UiSoundManager 1.0
+ 
+ import Vibemis.Redesign 1.0
++import EclipseProfiles 1.0
+ 
+ Item {
+     id: settingsPage
++    CrimsonBackgroundPicker { id:backgroundPicker }
+     objectName: qsTr("Settings")
+ 
+     // LB/RB category flips change `category` without moving item focus,
+@@ -68,7 +70,7 @@ Item {
+     component VbSettingsCard: GroupBox {
+         padding: VbTokens.space5
+         label: Item {}
+-        background: Rectangle {
++        background: CrimsonGlassPanel {
+             color: VbTokens.bgElev
+             radius: VbTokens.radiusCard
+             border.width: 1
+@@ -162,14 +164,14 @@ Item {
+                     anchors.verticalCenter: parent.verticalCenter
+                     x: toggleRoot.checked ? parent.width - width - 4 : 4
+                     color: toggleRoot.checked ? VbTokens.textOnAccent : VbTokens.textDim
+-                    Behavior on x { NumberAnimation { duration: 120 } }
++                    Behavior on x { NumberAnimation { duration: VbTokens.motionEnabled ? 120 : 0 } }
+                 }
+             }
+         }
+     }
+ 
+     // Full-bleed window background.
+-    Rectangle { anchors.fill: parent; color: VbTokens.bgWindow }
++    CrimsonGlassBackdrop { anchors.fill: parent }
+ 
+     // StackView attached handlers must stay on the pushed page (the Item root).
+     StackView.onActivated: {
+@@ -346,12 +348,13 @@ Item {
                      { icon: "gamepad",   label: qsTr("Input & gamepad") },
                      { icon: "streaming", label: qsTr("Streaming") },
                      { icon: "apps",      label: qsTr("App & UI") },
@@ -753,7 +1429,25 @@ index 494e35b..90ba3c6 100644
                      padding: 0
                      leftPadding: VbTokens.space4
                      rightPadding: VbTokens.space4
-@@ -571,6 +572,12 @@ Item {
+@@ -379,7 +382,7 @@ Item {
+                             border.width: (catButton.selected || catButton.activeFocus) ? VbTokens.focusBorder : 1
+                             border.color: (catButton.selected || catButton.activeFocus) ? VbTokens.accent : VbTokens.stroke
+                             antialiasing: true
+-                            Behavior on color { ColorAnimation { duration: 120 } }
++                            Behavior on color { ColorAnimation { duration: VbTokens.motionEnabled ? 120 : 0 } }
+                         }
+                     }
+ 
+@@ -524,7 +527,7 @@ Item {
+ 
+         NumberAnimation on contentY {
+             id: autoScrollAnimation
+-            duration: 100
++            duration: VbTokens.motionEnabled ? 100 : 0
+         }
+ 
+         Window.onActiveFocusItemChanged: {
+@@ -571,6 +574,12 @@ Item {
              color: VbTokens.text
          }
  
@@ -766,7 +1460,52 @@ index 494e35b..90ba3c6 100644
          // ---- Live stream summary line (redesign), relocated here (was inside Basic
          // Settings) so it sits directly under the "Video" title like the design.
          // Numbers render in accent; the rest stays dim. Content/bindings unchanged.
-@@ -1681,7 +1688,7 @@ Item {
+@@ -602,7 +611,7 @@ Item {
+             width: (parent.width - (parent.leftPadding + parent.rightPadding))
+             padding: VbTokens.space5
+             label: Item {}
+-            background: Rectangle {
++            background: CrimsonGlassPanel {
+                 color: VbTokens.bgElev
+                 radius: VbTokens.radiusCard
+                 border.width: 1
+@@ -756,7 +765,7 @@ Item {
+                         // toward the control's implicit height, so the value text used to render
+                         // past the card's bottom edge. Size the card to content + both margins.
+                         implicitHeight: resolutionCardContent.implicitHeight + 48
+-                        background: Rectangle {
++                        background: CrimsonGlassPanel {
+                             color: VbTokens.bgElev
+                             radius: VbTokens.radiusCard
+                             border.width: resolutionComboBox.activeFocus ? VbTokens.focusBorder : 1
+@@ -1125,7 +1134,7 @@ Item {
+                         // Same content-margin sizing fix as the Resolution card — keeps
+                         // the frame-rate value text inside the card bounds.
+                         implicitHeight: fpsCardContent.implicitHeight + 48
+-                        background: Rectangle {
++                        background: CrimsonGlassPanel {
+                             color: VbTokens.bgElev
+                             radius: VbTokens.radiusCard
+                             border.width: fpsComboBox.activeFocus ? VbTokens.focusBorder : 1
+@@ -1513,7 +1522,7 @@ Item {
+                 }
+ 
+                 // ---- Video bitrate card (redesign) ----
+-                Rectangle {
++                CrimsonGlassPanel {
+                     width: parent.width
+                     height: bitrateCardColumn.implicitHeight + 52
+                     radius: VbTokens.radiusCard
+@@ -1673,7 +1682,7 @@ Item {
+                                 anchors.verticalCenter: parent.verticalCenter
+                                 x: adaptiveBitrateCheck.checked ? parent.width - width - 4 : 4
+                                 color: adaptiveBitrateCheck.checked ? VbTokens.textOnAccent : VbTokens.textDim
+-                                Behavior on x { NumberAnimation { duration: 120 } }
++                                Behavior on x { NumberAnimation { duration: VbTokens.motionEnabled ? 120 : 0 } }
+                             }
+                         }
+                     }
+@@ -1681,7 +1690,7 @@ Item {
                      ToolTip.delay: 1000
                      ToolTip.timeout: 5000
                      ToolTip.visible: hovered
@@ -775,7 +1514,34 @@ index 494e35b..90ba3c6 100644
                  }
  
                  // Vibemis (perf guidance): advise when the bitrate is set well above the recommended
-@@ -2482,7 +2489,7 @@ Item {
+@@ -1929,7 +1938,7 @@ Item {
+                                 anchors.verticalCenter: parent.verticalCenter
+                                 x: vsyncCheck.checked ? parent.width - width - 4 : 4
+                                 color: vsyncCheck.checked ? VbTokens.textOnAccent : VbTokens.textDim
+-                                Behavior on x { NumberAnimation { duration: 120 } }
++                                Behavior on x { NumberAnimation { duration: VbTokens.motionEnabled ? 120 : 0 } }
+                             }
+                         }
+                     }
+@@ -2024,7 +2033,7 @@ Item {
+                                 anchors.verticalCenter: parent.verticalCenter
+                                 x: framePacingCheck.checked ? parent.width - width - 4 : 4
+                                 color: framePacingCheck.checked ? VbTokens.textOnAccent : VbTokens.textDim
+-                                Behavior on x { NumberAnimation { duration: 120 } }
++                                Behavior on x { NumberAnimation { duration: VbTokens.motionEnabled ? 120 : 0 } }
+                             }
+                         }
+                     }
+@@ -2096,7 +2105,7 @@ Item {
+                                 anchors.verticalCenter: parent.verticalCenter
+                                 x: vrrCheck.checked ? parent.width - width - 4 : 4
+                                 color: vrrCheck.checked ? VbTokens.textOnAccent : VbTokens.textDim
+-                                Behavior on x { NumberAnimation { duration: 120 } }
++                                Behavior on x { NumberAnimation { duration: VbTokens.motionEnabled ? 120 : 0 } }
+                             }
+                         }
+                     }
+@@ -2482,7 +2491,7 @@ Item {
                      ToolTip.delay: 1000
                      ToolTip.timeout: 5000
                      ToolTip.visible: hovered
@@ -784,7 +1550,7 @@ index 494e35b..90ba3c6 100644
                  }
              }
          }
-@@ -2546,7 +2553,7 @@ Item {
+@@ -2546,7 +2555,7 @@ Item {
                  spacing: VbTokens.space3
  
                  VbSectionHeader {
@@ -793,7 +1559,7 @@ index 494e35b..90ba3c6 100644
                  }
  
                  Label {
-@@ -2776,7 +2783,7 @@ Item {
+@@ -2776,7 +2785,7 @@ Item {
  
                  VbToggleRow {
                      id: muteOnFocusLossCheck
@@ -802,7 +1568,7 @@ index 494e35b..90ba3c6 100644
                      visible: SystemProperties.hasDesktopEnvironment
                      checked: StreamingPreferences.muteOnFocusLoss
                      onCheckedChanged: {
-@@ -2786,7 +2793,7 @@ Item {
+@@ -2786,7 +2795,7 @@ Item {
                      ToolTip.delay: 1000
                      ToolTip.timeout: 5000
                      ToolTip.visible: hovered
@@ -811,7 +1577,7 @@ index 494e35b..90ba3c6 100644
                  }
              }
          }
-@@ -2971,7 +2978,7 @@ Item {
+@@ -2971,7 +2980,7 @@ Item {
                          if (StreamingPreferences.language !== new_language) {
                              StreamingPreferences.language = languageListModel.get(currentIndex).val
                              if (!StreamingPreferences.retranslate()) {
@@ -820,7 +1586,21 @@ index 494e35b..90ba3c6 100644
                              }
                              else {
                                  // Force the back operation to pop any AppView pages that exist.
-@@ -3055,14 +3062,26 @@ Item {
+@@ -3040,6 +3049,13 @@ Item {
+                     }
+                 }
+ 
++                Label { text:qsTr("Crimson Glass • Background");font.pixelSize:VbTokens.typeBody;color:VbTokens.text;font.bold:true }
++                Flow { width:parent.width;spacing:12
++                    EclipseActionButton { text:qsTr("Choose background");onClicked:backgroundPicker.open() }
++                    EclipseActionButton { text:qsTr("Reset background");onClicked:EclipseProfiles.resetBackground() }
++                }
++                Label { text:qsTr("Background dimming: %1%").arg(EclipseProfiles.backgroundDim);font.pixelSize:VbTokens.typeLabel;color:VbTokens.text }
++                Slider { width:parent.width;from:30;to:90;stepSize:5;value:EclipseProfiles.backgroundDim;Accessible.name:qsTr("Background dimming");onMoved:EclipseProfiles.backgroundDim=Math.round(value) }
+                 // BL-2263 (Settings IA): relocated from the Gamepad card -
+                 // app-wide appearance, nothing gamepad-specific.
+                 Label {
+@@ -3055,14 +3071,26 @@ Item {
                      textRole: "text"
                      hoverEnabled: true
                      model: ListModel {
@@ -849,7 +1629,7 @@ index 494e35b..90ba3c6 100644
                      ToolTip.delay: 1000
                      ToolTip.visible: hovered
                  }
-@@ -3147,7 +3166,7 @@ Item {
+@@ -3147,7 +3175,7 @@ Item {
                          ToolTip.delay: 1000
                          ToolTip.timeout: 5000
                          ToolTip.visible: hovered
@@ -858,7 +1638,7 @@ index 494e35b..90ba3c6 100644
                      }
  
                      Button {
-@@ -3402,7 +3421,7 @@ Item {
+@@ -3402,7 +3430,7 @@ Item {
                      ToolTip.timeout: 10000
                      ToolTip.visible: hovered
                      ToolTip.text: qsTr("This enables the capture of system-wide keyboard shortcuts like Alt+Tab that would normally be handled by the client OS while streaming.") + "\n\n" +
@@ -867,7 +1647,7 @@ index 494e35b..90ba3c6 100644
                  }
  
                  AutoResizingComboBox {
-@@ -3643,7 +3662,7 @@ Item {
+@@ -3643,7 +3671,7 @@ Item {
  
                  VbToggleRow {
                      id: backgroundGamepadCheck
@@ -876,7 +1656,7 @@ index 494e35b..90ba3c6 100644
                      visible: SystemProperties.hasDesktopEnvironment
                      checked: StreamingPreferences.backgroundGamepad
                      onCheckedChanged: {
-@@ -3653,7 +3672,7 @@ Item {
+@@ -3653,7 +3681,7 @@ Item {
                      ToolTip.delay: 1000
                      ToolTip.timeout: 5000
                      ToolTip.visible: hovered
@@ -885,7 +1665,7 @@ index 494e35b..90ba3c6 100644
                  }
  
                  VbToggleRow {
-@@ -3724,7 +3743,7 @@ Item {
+@@ -3724,7 +3752,7 @@ Item {
                  Label {
                      width: parent.width
                      id: updateChannelTitle
@@ -894,7 +1674,7 @@ index 494e35b..90ba3c6 100644
                      font.pixelSize: VbTokens.typeLabel
                      font.family: VbTokens.fontBody
                      wrapMode: Text.Wrap
-@@ -3733,6 +3752,7 @@ Item {
+@@ -3733,6 +3761,7 @@ Item {
  
                  AutoResizingComboBox {
                      id: updateChannelComboBox
@@ -902,7 +1682,7 @@ index 494e35b..90ba3c6 100644
                      textRole: "text"
                      model: ListModel {
                          id: updateChannelListModel
-@@ -3787,6 +3807,7 @@ Item {
+@@ -3787,6 +3816,7 @@ Item {
                      // install in flight at a time), so buttons stay enabled.
                      Button {
                          id: checkUpdatesButton
@@ -910,7 +1690,7 @@ index 494e35b..90ba3c6 100644
                          text: qsTr("Check for updates")
                          onClicked: {
                              AutoUpdateChecker.checkNow()
-@@ -3804,8 +3825,8 @@ Item {
+@@ -3804,8 +3834,8 @@ Item {
  
                      Button {
                          id: viewReleaseButton
@@ -921,7 +1701,7 @@ index 494e35b..90ba3c6 100644
                                   && AutoUpdateChecker.releaseUrl !== ""
                                   && SystemProperties.hasBrowser
                          onClicked: {
-@@ -3842,7 +3863,7 @@ Item {
+@@ -3842,7 +3872,7 @@ Item {
                  spacing: VbTokens.space3
  
                  VbSectionHeader {
@@ -930,7 +1710,7 @@ index 494e35b..90ba3c6 100644
                  }
  
                  ClipboardSettings {
-@@ -3947,7 +3968,7 @@ Item {
+@@ -3947,7 +3977,7 @@ Item {
                  Repeater {
                      width: parent.width
                      model: [
@@ -939,7 +1719,7 @@ index 494e35b..90ba3c6 100644
                          { k: qsTr("Architecture"),    v: SystemProperties.friendlyNativeArchName },
                          { k: qsTr("SteamOS / gamescope"), v: SystemProperties.isSteamDeck ? qsTr("Yes") : qsTr("No") },
                          { k: qsTr("Display server"),  v: SystemProperties.isRunningWayland ? (SystemProperties.isRunningXWayland ? "XWayland" : "Wayland") : "X11" },
-@@ -4013,7 +4034,7 @@ Item {
+@@ -4013,7 +4043,7 @@ Item {
  
                  Label {
                      width: parent.width
@@ -948,7 +1728,7 @@ index 494e35b..90ba3c6 100644
                      font.pixelSize: VbTokens.typeBody
                      font.bold: true
                      wrapMode: Text.Wrap
-@@ -4058,7 +4079,7 @@ Item {
+@@ -4058,7 +4088,7 @@ Item {
  
                  Label {
                      width: parent.width
@@ -957,7 +1737,7 @@ index 494e35b..90ba3c6 100644
                      font.pixelSize: VbTokens.typeCaption
                      font.family: VbTokens.fontBody
                      wrapMode: Text.Wrap
-@@ -4066,7 +4087,7 @@ Item {
+@@ -4066,7 +4096,7 @@ Item {
                  }
  
                  Button {
@@ -968,7 +1748,7 @@ index 494e35b..90ba3c6 100644
                  Button {
 diff --git a/app/gui/SystemConnectionsDialog.qml b/app/gui/SystemConnectionsDialog.qml
 new file mode 100644
-index 0000000..96cc099
+index 0000000..ec5b58b
 --- /dev/null
 +++ b/app/gui/SystemConnectionsDialog.qml
 @@ -0,0 +1,115 @@
@@ -989,7 +1769,7 @@ index 0000000..96cc099
 +    standardButtons: Dialog.Close
 +    Material.background: VbTokens.bgElev
 +    Material.accent: VbTokens.accent
-+    background: Rectangle { color: VbTokens.bgElev; radius: VbTokens.radiusDialog; border.color: VbTokens.stroke }
++    background: CrimsonGlassPanel { color: VbTokens.bgElev; radius: VbTokens.radiusDialog; border.color: VbTokens.stroke }
 +    onOpened: { selected = ({}); SystemControls.open(kind) }
 +    onClosed: { credential.close(); secret.text = ""; forget.close(); SystemControls.close() }
 +    contentItem: ColumnLayout {
@@ -1127,10 +1907,23 @@ index fb91c85..57c9f84 100644
      // ---- Typography (pointSize; pair with bold where noted in DESIGN_SYSTEM.md) ----
      readonly property int fontDisplay: 24  // overlay/Quick Menu title (bold)
 diff --git a/app/gui/VbCard.qml b/app/gui/VbCard.qml
-index 37f2e32..1e90a02 100644
+index 37f2e32..1c9710d 100644
 --- a/app/gui/VbCard.qml
 +++ b/app/gui/VbCard.qml
-@@ -27,7 +27,7 @@ Item {
+@@ -19,15 +19,19 @@ Item {
+         radius: card.radius
+     }
+ 
+-    Rectangle {
++    CrimsonGlassPanel {
+         id: surface
+         anchors.fill: parent
+         radius: card.radius
+         color: card.focused ? VbTokens.focusedFill : card.baseColor
++        gradient: Gradient {
++            GradientStop { position:0;color:card.focused ? VbTokens.bgElev2 : VbTokens.glassTop }
++            GradientStop { position:1;color:card.focused ? VbTokens.focusedFill : card.baseColor }
++        }
          border.width: 1
          border.color: VbTokens.stroke
          opacity: card.contentOpacity
@@ -1139,6 +1932,113 @@ index 37f2e32..1e90a02 100644
      }
  
      Item {
+diff --git a/app/gui/VbHostCard.qml b/app/gui/VbHostCard.qml
+index 9e1fe7f..9dba6a6 100644
+--- a/app/gui/VbHostCard.qml
++++ b/app/gui/VbHostCard.qml
+@@ -29,7 +29,7 @@ Item {
+         radius: 20
+     }
+ 
+-    Rectangle {
++    CrimsonGlassPanel {
+         id: surface
+         anchors.fill: parent
+         radius: 20
+@@ -45,20 +45,20 @@ Item {
+ 
+         ColumnLayout {
+             anchors.fill: parent
+-            anchors.margins: 32
++            anchors.margins: 24
+             // Reserve the bottom strip for the anchored badge/meta row below. The old
+             // single-column flow overflowed the fixed 242px card by ~11px with real device fonts
+             // (32+58+20+name+6+access+20+badge+32 > 242), shoving the badge row onto the border.
+             anchors.bottomMargin: 64
+-            spacing: 20
++            spacing: 14
+ 
+             // ---- Row 1: monitor outline + status pill ----
+             RowLayout {
+                 Layout.fillWidth: true
+                 // Monitor: an 82×58 rounded rectangle drawn as a 5px outline (no fill), like the HTML.
+                 Rectangle {
+-                    Layout.preferredWidth: 82
+-                    Layout.preferredHeight: 58
++                    Layout.preferredWidth: 64
++                    Layout.preferredHeight: 48
+                     radius: 10
+                     color: "transparent"
+                     border.width: 5
+@@ -85,7 +85,7 @@ Item {
+                             color: card.online ? VbTokens.statusOnline
+                                                : (card.statusUnknown ? VbTokens.textDim : "#5A626C")
+                             SequentialAnimation on opacity {
+-                                running: card.online || card.statusUnknown
++                                running: VbTokens.motionEnabled && (card.online || card.statusUnknown)
+                                 loops: Animation.Infinite
+                                 NumberAnimation { from: 1.0; to: 0.45; duration: VbTokens.onlinePulseMs / 2 }
+                                 NumberAnimation { from: 0.45; to: 1.0; duration: VbTokens.onlinePulseMs / 2 }
+@@ -96,7 +96,7 @@ Item {
+                             text: card.online ? qsTr("ONLINE")
+                                               : (card.statusUnknown ? qsTr("CHECKING") : qsTr("OFFLINE"))
+                             font.family: VbTokens.fontBody
+-                            font.pixelSize: 14
++                            font.pixelSize: VbTokens.typeLabel
+                             font.weight: Font.Bold
+                             font.letterSpacing: 0.7
+                             color: card.online ? VbTokens.statusOnline : VbTokens.textDim
+@@ -114,7 +114,7 @@ Item {
+                     text: card.hostName
+                     font.family: VbTokens.fontDisplay
+                     font.weight: Font.Bold
+-                    font.pixelSize: 27
++                    font.pixelSize: VbTokens.typeHeading
+                     color: card.online ? VbTokens.text : VbTokens.textMute
+                     elide: Text.ElideRight
+                 }
+@@ -123,7 +123,7 @@ Item {
+                     text: card.accessText
+                     visible: card.accessText !== ""
+                     font.family: VbTokens.fontBody
+-                    font.pixelSize: 17
++                    font.pixelSize: VbTokens.typeLabel
+                     color: VbTokens.textDim
+                     elide: Text.ElideRight
+                 }
+@@ -139,8 +139,8 @@ Item {
+             anchors.left: parent.left
+             anchors.right: parent.right
+             anchors.bottom: parent.bottom
+-            anchors.leftMargin: 32
+-            anchors.rightMargin: 32
++            anchors.leftMargin: 24
++            anchors.rightMargin: 24
+             anchors.bottomMargin: 22
+             spacing: 10
+             // Host-type badge (accent outline for Apollo-lineage, neutral for Sunshine).
+@@ -157,7 +157,7 @@ Item {
+                     anchors.centerIn: parent
+                     text: card.hostBadge
+                     font.family: VbTokens.fontBody
+-                    font.pixelSize: 13
++                    font.pixelSize: VbTokens.typeCaption
+                     font.weight: Font.ExtraBold
+                     font.letterSpacing: 1.2
+                     color: card.badgeAccent ? VbTokens.accent : VbTokens.textDim
+diff --git a/app/gui/VbHostSheet.qml b/app/gui/VbHostSheet.qml
+index b4a1af8..57fcbb6 100644
+--- a/app/gui/VbHostSheet.qml
++++ b/app/gui/VbHostSheet.qml
+@@ -78,7 +78,7 @@ Popup {
+         }
+ 
+         // ---- Right panel ----
+-        Rectangle {
++        CrimsonGlassPanel {
+             id: panel
+             width: Math.min(560, root.width * 0.62)
+             height: parent.height
 diff --git a/app/gui/VbStatusPill.qml b/app/gui/VbStatusPill.qml
 index 89c4770..c728f05 100644
 --- a/app/gui/VbStatusPill.qml
@@ -1153,18 +2053,20 @@ index 89c4770..c728f05 100644
                  NumberAnimation { from: 1.0; to: 0.45; duration: VbTokens.onlinePulseMs / 2; easing.type: Easing.InOutSine }
                  NumberAnimation { from: 0.45; to: 1.0; duration: VbTokens.onlinePulseMs / 2; easing.type: Easing.InOutSine }
 diff --git a/app/gui/VbTokens.qml b/app/gui/VbTokens.qml
-index 52a34de..cbf7985 100644
+index 52a34de..7cd88d0 100644
 --- a/app/gui/VbTokens.qml
 +++ b/app/gui/VbTokens.qml
-@@ -1,6 +1,7 @@
+@@ -1,57 +1,63 @@
  pragma Singleton
  import QtQuick 2.9
  import StreamingPreferences 1.0
 +import EclipseProfiles 1.0
  
- // Vibemis redesign design tokens.
+-// Vibemis redesign design tokens.
++// Crimson Glass — EclipseOS frontend design tokens.
  // Dark theme only. Canvas 1920x1200 (Legion Go S),
-@@ -9,43 +10,44 @@ import StreamingPreferences 1.0
+ // scales to 1280x800 (Steam Deck) via anchors/Layouts — never hard-code coordinates against these.
+ // Registered as a QML singleton in app/main.cpp: qmlRegisterSingletonType(qrc:/gui/VbTokens.qml).
  QtObject {
      id: t
  
@@ -1180,8 +2082,8 @@ index 52a34de..cbf7985 100644
 -    readonly property color stroke:       Qt.rgba(1, 1, 1, 0.08)  // default 1px card border
 +    readonly property color bgApp:        "#060607"  // outermost app bg behind the rounded window
 +    readonly property color bgWindow:     "#0B0B0E"  // main screen background
-+    readonly property color bgElev:       "#151115"  // cards, panels, dialogs, sidebar rows
-+    readonly property color bgElev2:      "#21171C"  // focused/selected surface fill, chips
++    readonly property color bgElev:       "#151316"  // cards, panels, dialogs, sidebar rows
++    readonly property color bgElev2:      "#271B22"  // focused/selected surface fill, chips
 +    readonly property color bgFooter:     "#09080B"  // bottom gamepad hint bar
 +    readonly property color stroke:       Qt.rgba(1, 1, 1, EclipseProfiles.highContrast ? 0.25 : 0.08)  // default 1px card border
      readonly property color strokeSoft:   Qt.rgba(1, 1, 1, 0.06)  // header/footer dividers
@@ -1210,6 +2112,10 @@ index 52a34de..cbf7985 100644
 -    readonly property color textOnAccent: "#08090B"  // text on an accent-filled button
 +    readonly property color textOnAccent: "#060607"  // text on an accent-filled button
  
++    readonly property real glassOpacity: EclipseProfiles.highContrast ? 1.0 : 0.92
++    readonly property string designName: "Crimson Glass"
++    readonly property color glassTop: EclipseProfiles.highContrast ? "#252126" : "#211D23"
++    readonly property color glassEdge: Qt.rgba(1,1,1,EclipseProfiles.highContrast ? 0.35 : 0.16)
      // ---- Typography (families + sizes; weights per the type scale) ----
      readonly property string fontDisplay: "Sora"     // titles, card names, wordmark, all-caps labels
      readonly property string fontBody:    "Manrope"  // body + UI text
@@ -1230,7 +2136,31 @@ index 52a34de..cbf7985 100644
      readonly property real wordmarkSpacing: 3.0
      readonly property real badgeSpacing:    1.2
  
-@@ -83,7 +85,7 @@ QtObject {
+     // ---- Radius ----
+     readonly property int radiusWindow:     20
+-    readonly property int radiusCard:       16
++    readonly property int radiusCard:       20
+     readonly property int radiusDialog:     24
+     readonly property int radiusControl:    14
+     readonly property int radiusIconButton: 14
+@@ -59,12 +65,12 @@ QtObject {
+     readonly property int radiusBadge:      7
+ 
+     // ---- Spacing ----
+-    readonly property int screenPadX: 56
+-    readonly property int screenPadY: 52
++    readonly property int screenPadX: 24
++    readonly property int screenPadY: 24
+     readonly property int headerH:    84
+     readonly property int footerH:    72
+-    readonly property int cardGap:    32
+-    readonly property int tileGap:    36
++    readonly property int cardGap:    20
++    readonly property int tileGap:    20
+     readonly property int iconButton: 52
+ 
+     // ---- Gamepad ergonomics ----
+@@ -83,7 +89,7 @@ QtObject {
      // ---- Motion (ms) ----
      readonly property int onlinePulseMs: 2400   // opacity 1 -> 0.45 -> 1, infinite
      readonly property int caretBlinkMs:  1000   // Add-PC input caret
@@ -1239,7 +2169,7 @@ index 52a34de..cbf7985 100644
      readonly property color dialogScrim: Qt.rgba(4/255, 5/255, 7/255, 0.72)
      readonly property color sheetScrim:  Qt.rgba(4/255, 5/255, 7/255, 0.60)
  
-@@ -119,7 +121,7 @@ QtObject {
+@@ -119,7 +125,7 @@ QtObject {
      // textOnAccent (#08090B) is defined in the base block above — text on an accent fill.
  
      // ---- Interactive states: normal / hover / focus / pressed / disabled ----
@@ -1249,9 +2179,18 @@ index 52a34de..cbf7985 100644
      readonly property color interactiveFocus:   focusedFill// focused fill (= bgElev2) — pair with the focus ring
      readonly property color interactivePressed: bgElev     // pressed neutral fill (recedes under the press)
 diff --git a/app/gui/VbWelcomeSheet.qml b/app/gui/VbWelcomeSheet.qml
-index 173119b..4383cb0 100644
+index 173119b..a14eae7 100644
 --- a/app/gui/VbWelcomeSheet.qml
 +++ b/app/gui/VbWelcomeSheet.qml
+@@ -26,7 +26,7 @@ NavigableDialog {
+     // Token scrim behind the modal card (matches the redesign dialog language).
+     Overlay.modal: Rectangle { color: VbTokens.dialogScrim }
+ 
+-    background: Rectangle {
++    background: CrimsonGlassPanel {
+         color: VbTokens.bgElev
+         radius: VbTokens.radiusDialog
+         border.width: 1
 @@ -108,14 +108,13 @@ NavigableDialog {
              spacing: VbTokens.space2  // 8
              RowLayout {
@@ -1326,7 +2265,7 @@ index 6ecae30..2ee73c1 100644
  
      Q_INVOKABLE QString generatePinString();
 diff --git a/app/gui/main.qml b/app/gui/main.qml
-index 9bce510..848fc14 100644
+index 9bce510..14f3508 100644
 --- a/app/gui/main.qml
 +++ b/app/gui/main.qml
 @@ -12,8 +12,25 @@ import SystemProperties 1.0
@@ -1372,7 +2311,16 @@ index 9bce510..848fc14 100644
  
          SdlGamepadKeyNavigation.enable()
      }
-@@ -267,6 +283,25 @@ ApplicationWindow {
+@@ -129,6 +145,8 @@ ApplicationWindow {
+         }
+     }
+ 
++    CrimsonGlassBackdrop { anchors.fill:parent }
++
+     StackView {
+         id: stackView
+         anchors.fill: parent
+@@ -267,6 +285,25 @@ ApplicationWindow {
          }
      }
  
@@ -1398,7 +2346,17 @@ index 9bce510..848fc14 100644
      header: ToolBar {
          id: toolBar
          // Redesign: EVERY redesigned launcher screen (Computers, App grid, Settings, Help)
-@@ -338,20 +373,19 @@ ApplicationWindow {
+@@ -325,7 +362,8 @@ ApplicationWindow {
+         // redesign rather than the default Material indigo, which read as an "ugly blue" header
+         // clashing with the dark UI below it. Height is constant on the home screens (no runtime
+         // geometry change) so the black-screen fix is preserved.
+-        background: Rectangle {
++        background: CrimsonGlassPanel {
++            radius:0
+             color: VbTokens.bgWindow
+             Rectangle {
+                 anchors.bottom: parent.bottom
+@@ -338,20 +376,19 @@ ApplicationWindow {
          // VIBEMIS wordmark (diamond + wordmark), shown on the Computers screen in place of a title,
          // matching the design header. Left-aligned at the HTML's 40px padding.
          Row {
@@ -1424,7 +2382,7 @@ index 9bce510..848fc14 100644
                  font.family: VbTokens.fontDisplay
                  font.weight: Font.ExtraBold
                  font.pixelSize: 21
-@@ -365,7 +399,7 @@ ApplicationWindow {
+@@ -365,7 +402,7 @@ ApplicationWindow {
              // Hidden on Computers (the wordmark stands in) and on the App grid (which shows a
              // left-aligned host + status block instead). On Settings/Help it shows the screen name;
              // the streaming segues keep their default objectName title.
@@ -1433,7 +2391,7 @@ index 9bce510..848fc14 100644
              anchors.fill: parent
              text: toolBar.onSettings ? qsTr("Settings")
                  : toolBar.onHelp ? qsTr("Help")
-@@ -487,6 +521,54 @@ ApplicationWindow {
+@@ -487,6 +524,54 @@ ApplicationWindow {
                  }
              }
  
@@ -1488,7 +2446,7 @@ index 9bce510..848fc14 100644
              NavigableToolButton {
                  id: discordButton
                  visible: false // Temporarily disabled for Vibemis
-@@ -564,7 +646,7 @@ ApplicationWindow {
+@@ -564,7 +649,7 @@ ApplicationWindow {
                  // an install failure falls back to the release page on its own.
                  ToolTip.text: AutoUpdateChecker.installing
                                ? qsTr("Downloading update…")
@@ -1497,7 +2455,7 @@ index 9bce510..848fc14 100644
  
                  // Strictly-newer builds only (a channel-switch downgrade offer
                  // lives in Settings, not on the toolbar).
-@@ -646,6 +728,21 @@ ApplicationWindow {
+@@ -646,6 +731,21 @@ ApplicationWindow {
                  }
              }
  
@@ -1519,7 +2477,7 @@ index 9bce510..848fc14 100644
              NavigableToolButton {
                  id: settingsButton
  
-@@ -673,7 +770,7 @@ ApplicationWindow {
+@@ -673,7 +773,7 @@ ApplicationWindow {
  
      ErrorMessageDialog {
          id: noHwDecoderDialog
@@ -1528,7 +2486,7 @@ index 9bce510..848fc14 100644
                     "Your streaming performance may be severely degraded in this configuration.")
          helpText: qsTr("Click the Help button for more information on solving this problem.")
          helpUrl: "https://github.com/navyas321/vibemis"
-@@ -690,7 +787,7 @@ ApplicationWindow {
+@@ -690,7 +790,7 @@ ApplicationWindow {
      NavigableMessageDialog {
          id: wow64Dialog
          standardButtons: Dialog.Ok | Dialog.Cancel
@@ -1537,7 +2495,7 @@ index 9bce510..848fc14 100644
          onAccepted: {
              SystemProperties.openUrl("https://github.com/navyas321/vibemis/releases");
          }
-@@ -699,7 +796,7 @@ ApplicationWindow {
+@@ -699,7 +799,7 @@ ApplicationWindow {
      ErrorMessageDialog {
          id: unmappedGamepadDialog
          property string unmappedGamepads : ""
@@ -1558,6 +2516,75 @@ index 2922277..3ec94db 100644
  
      // Vibemis: the Qt Quick Controls Material style renders button text in ALL CAPS by default
      // (e.g. the bitrate "USE DEFAULT (30 MBPS)" button), which looks off. Force mixed case for the
+diff --git a/app/moonlightos/crimsongraphs.h b/app/moonlightos/crimsongraphs.h
+new file mode 100644
+index 0000000..cdcc3a0
+--- /dev/null
++++ b/app/moonlightos/crimsongraphs.h
+@@ -0,0 +1,63 @@
++#pragma once
++#include <QMap>
++#include <QVector>
++#include <QVariantMap>
++#include <QRegularExpression>
++#include <QPainter>
++#include <QPainterPath>
++#include <QFont>
++#include <QtMath>
++#include <limits>
++#include "overlaystyle.h"
++namespace CrimsonGraphs {
++using History=QMap<QString,QVector<double>>;
++inline double missing() { return std::numeric_limits<double>::quiet_NaN(); }
++inline QMap<QString,double> values(const QString& text,bool local,const QVariantMap& hardware) {
++    QMap<QString,double> result;
++    auto take=[&](const QString& key,const QString& source) {
++        bool ok=false;
++        const auto value=hardware.value(source);
++        double number=value.toDouble(&ok);
++        result[key]=!value.isNull()&&ok&&qIsFinite(number)&&number>=0?number:missing();
++    };
++    take("Local CPU","cpuPercent");take("Local RAM","memoryUsedGiB");
++    if(local) {take("Temperature","temperatureC");take("Download","receiveMiB");}
++    else {
++        auto fps=QRegularExpression("Rendering frame rate: ([0-9]+(?:\\.[0-9]+)?) FPS").match(text);
++        if(!fps.hasMatch()) fps=QRegularExpression("^([0-9]+(?:\\.[0-9]+)?) fps",QRegularExpression::CaseInsensitiveOption).match(text);
++        result["FPS"]=fps.hasMatch()?fps.captured(1).toDouble():missing();
++        auto latency=QRegularExpression("Average network latency: ([0-9]+(?:\\.[0-9]+)?)").match(text);
++        if(!latency.hasMatch()) latency=QRegularExpression("\\bnet ([0-9]+(?:\\.[0-9]+)?) ms").match(text);
++        result["Network latency"]=latency.hasMatch()?latency.captured(1).toDouble():missing();
++    }
++    return result;
++}
++inline void push(History& history,const QMap<QString,double>& values) {
++    for(auto i=values.cbegin();i!=values.cend();++i) {auto& series=history[i.key()];series.append(qIsFinite(i.value())&&i.value()>=0?i.value():missing());while(series.size()>60)series.removeFirst();}
++}
++inline QStringList keys(bool local) {return local?QStringList{"Local CPU","Local RAM","Temperature","Download"}:QStringList{"FPS","Network latency","Local CPU","Local RAM"};}
++inline void paint(QImage& image,int top,int fontSize,int accentIndex,const History& history,bool local) {
++    QPainter p(&image);p.setRenderHint(QPainter::Antialiasing);QFont font("DejaVu Sans");font.setPixelSize(fontSize);p.setFont(font);
++    const int rowHeight=fontSize+22;int row=0;
++    for(const auto& key:keys(local)) {
++        const auto series=history.value(key);double current=series.isEmpty()?missing():series.last();
++        QString unit=key=="Local CPU"?"%":key=="Local RAM"?" GiB":key=="Temperature"?" °C":key=="Download"?" MiB/s":key=="Network latency"?" ms":"";
++        QString value=qIsFinite(current)?QString::number(current,'f',key=="FPS"?0:1)+unit:QString("Unavailable");
++        const int y=top+row++*rowHeight;
++        p.setPen(QColor("#98A1AB"));p.drawText(QRect(16,y,image.width()-32,rowHeight),Qt::AlignVCenter,key);
++        const int graphWidth=96;
++        p.setPen(QColor("#ECEEF1"));p.drawText(QRect(185,y,image.width()-graphWidth-215,rowHeight),Qt::AlignRight|Qt::AlignVCenter,value);
++        QRectF bounds(image.width()-graphWidth-14,y+7,graphWidth,rowHeight-14);
++        double high=key=="Local CPU"?100:1;
++        if(key!="Local CPU")for(double n:series)if(qIsFinite(n))high=qMax(high,n*1.15);
++        QPainterPath path;bool started=false;
++        for(int i=0;i<series.size();i++) {double v=series[i];if(!qIsFinite(v)){started=false;continue;}
++            QPointF point(bounds.left()+bounds.width()*(60-series.size()+i)/59.0,bounds.bottom()-bounds.height()*qBound(0.0,v/high,1.0));
++            if(!started)path.moveTo(point);else path.lineTo(point);started=true;
++        }
++        p.setPen(QPen(EclipseOverlayStyle::accent(accentIndex),1.5));p.drawPath(path);
++        if(qIsFinite(current)) {p.setBrush(EclipseOverlayStyle::accent(accentIndex));p.drawEllipse(QPointF(bounds.right(),bounds.bottom()-bounds.height()*qBound(0.0,current/high,1.0)),1.5,1.5);}
++        p.setPen(QColor(255,255,255,14));p.drawLine(16,y+rowHeight-1,image.width()-16,y+rowHeight-1);
++    }
++}
++}
 diff --git a/app/moonlightos/crimsonstatus.cpp b/app/moonlightos/crimsonstatus.cpp
 new file mode 100644
 index 0000000..dafca2e
@@ -1846,14 +2873,20 @@ index 0000000..2dac0d1
 +};
 diff --git a/app/moonlightos/eclipseprofiles.cpp b/app/moonlightos/eclipseprofiles.cpp
 new file mode 100644
-index 0000000..a63d52d
+index 0000000..fe60fad
 --- /dev/null
 +++ b/app/moonlightos/eclipseprofiles.cpp
-@@ -0,0 +1,41 @@
+@@ -0,0 +1,80 @@
 +#include "eclipseprofiles.h"
 +#include <QCryptographicHash>
 +#include <QCoreApplication>
 +#include <QQmlEngine>
++#include <QImageReader>
++#include <QImage>
++#include <QDir>
++#include <QFileInfo>
++#include <QSaveFile>
++#include <QStandardPaths>
 +QString EclipseProfiles::key(QString host, QString name) {
 +    return "eclipse/profiles/" + QString::fromLatin1(QCryptographicHash::hash(host.toUtf8(), QCryptographicHash::Sha256).toHex()) + "/" + QString::fromLatin1(QCryptographicHash::hash(name.trimmed().toUtf8(), QCryptographicHash::Sha256).toHex());
 +}
@@ -1891,21 +2924,58 @@ index 0000000..a63d52d
 +    qmlRegisterSingletonType<EclipseProfiles>("EclipseProfiles",1,0,"EclipseProfiles",[](QQmlEngine*,QJSEngine*) -> QObject* { return new EclipseProfiles(); });
 +}
 +Q_COREAPP_STARTUP_FUNCTION(registerEclipseProfiles)
++
++QUrl EclipseProfiles::backgroundFolder() const {
++    QString path=QStandardPaths::writableLocation(QStandardPaths::PicturesLocation);
++    return QUrl::fromLocalFile(QDir(path).exists()?path:QDir::homePath());
++}
++QVariantList EclipseProfiles::backgroundFiles(QUrl directory) {
++    if(directory.isEmpty()) directory=backgroundFolder();
++    if(!directory.isLocalFile()) return {};
++    QDir dir(directory.toLocalFile()); if(!dir.exists()) return {};
++    QVariantList result;
++    if(!dir.isRoot()) { QDir up=dir;up.cdUp();result.append(QVariantMap{{"name",QString("..")},{"url",QUrl::fromLocalFile(up.absolutePath())},{"directory",true}}); }
++    for(const QFileInfo& file:dir.entryInfoList(QDir::Dirs|QDir::Files|QDir::NoDotAndDotDot|QDir::Readable,QDir::DirsFirst|QDir::Name)) {
++        if(result.size()>=512) break;
++        if(!file.isDir()&&!QStringList{"png","jpg","jpeg","webp","bmp"}.contains(file.suffix().toLower())) continue;
++        result.append(QVariantMap{{"name",file.fileName()},{"url",QUrl::fromLocalFile(file.absoluteFilePath())},{"directory",file.isDir()}});
++    }
++    return result;
++}
++bool EclipseProfiles::chooseBackground(QUrl source) {
++    if(!source.isLocalFile()) return false;
++    QFileInfo file(source.toLocalFile()); if(!file.isFile()||file.size()>32*1024*1024) return false;
++    QImageReader reader(file.absoluteFilePath());reader.setAutoTransform(true);
++    QSize size=reader.size();if(!size.isValid()||size.width()>16384||size.height()>16384||qint64(size.width())*size.height()>64000000) return false;
++    if(size.width()>2560||size.height()>2560) reader.setScaledSize(size.scaled(2560,2560,Qt::KeepAspectRatio));
++    QImage image=reader.read();if(image.isNull()) return false;
++    QString folder=QStandardPaths::writableLocation(QStandardPaths::AppDataLocation)+"/appearance";
++    if(!QDir().mkpath(folder)) return false;
++    QString path=folder+"/crimson-glass-background.png";
++    QSaveFile output(path);if(!output.open(QIODevice::WriteOnly)||!image.save(&output,"PNG")||!output.commit()) return false;
++    QSettings settings;settings.setValue("eclipse/backgroundPath",path);settings.sync();
++    emit appearanceChanged();return settings.status()==QSettings::NoError;
++}
++void EclipseProfiles::resetBackground() { QSettings().remove("eclipse/backgroundPath");emit appearanceChanged(); }
 diff --git a/app/moonlightos/eclipseprofiles.h b/app/moonlightos/eclipseprofiles.h
 new file mode 100644
-index 0000000..d398387
+index 0000000..91b9675
 --- /dev/null
 +++ b/app/moonlightos/eclipseprofiles.h
-@@ -0,0 +1,27 @@
+@@ -0,0 +1,38 @@
 +#pragma once
 +#include <QObject>
 +#include <QVariantMap>
 +#include <QSettings>
++#include <QUrl>
++#include <QVariantList>
 +class EclipseProfiles : public QObject {
 +    Q_OBJECT
 +    Q_PROPERTY(int textScale READ textScale WRITE setTextScale NOTIFY appearanceChanged)
 +    Q_PROPERTY(bool reducedMotion READ reducedMotion WRITE setReducedMotion NOTIFY appearanceChanged)
 +    Q_PROPERTY(bool highContrast READ highContrast WRITE setHighContrast NOTIFY appearanceChanged)
++    Q_PROPERTY(QUrl background READ background NOTIFY appearanceChanged)
++    Q_PROPERTY(int backgroundDim READ backgroundDim WRITE setBackgroundDim NOTIFY appearanceChanged)
 +public:
 +    explicit EclipseProfiles(QObject* parent = nullptr) : QObject(parent) {}
 +    int textScale() const { return qBound(100,QSettings().value("eclipse/textScale",100).toInt(),125); }
@@ -1914,6 +2984,13 @@ index 0000000..d398387
 +    void setTextScale(int value) { QSettings().setValue("eclipse/textScale",qBound(100,value,125)); emit appearanceChanged(); }
 +    void setReducedMotion(bool value) { QSettings().setValue("eclipse/reducedMotion",value); emit appearanceChanged(); }
 +    void setHighContrast(bool value) { QSettings().setValue("eclipse/highContrast",value); emit appearanceChanged(); }
++    QUrl background() const { QString path=QSettings().value("eclipse/backgroundPath").toString();return path.isEmpty()?QUrl():QUrl::fromLocalFile(path); }
++    int backgroundDim() const { return qBound(30,QSettings().value("eclipse/backgroundDim",65).toInt(),90); }
++    void setBackgroundDim(int value) { QSettings().setValue("eclipse/backgroundDim",qBound(30,value,90)); emit appearanceChanged(); }
++    Q_INVOKABLE bool chooseBackground(QUrl source);
++    Q_INVOKABLE void resetBackground();
++    Q_INVOKABLE QVariantList backgroundFiles(QUrl directory=QUrl());
++    Q_INVOKABLE QUrl backgroundFolder() const;
 +    Q_INVOKABLE bool save(QString host, QString name, QVariantMap values);
 +    Q_INVOKABLE QVariantMap load(QString host, QString name);
 +    Q_INVOKABLE bool remove(QString host, QString name, bool confirmed);
@@ -1926,10 +3003,10 @@ index 0000000..d398387
 +};
 diff --git a/app/moonlightos/localhardware.cpp b/app/moonlightos/localhardware.cpp
 new file mode 100644
-index 0000000..413cc61
+index 0000000..19f818d
 --- /dev/null
 +++ b/app/moonlightos/localhardware.cpp
-@@ -0,0 +1,123 @@
+@@ -0,0 +1,138 @@
 +#include "localhardware.h"
 +#include <QtMath>
 +#include <QFile>
@@ -1947,7 +3024,22 @@ index 0000000..413cc61
 +static QString read(const QString& path) { QFile f(path); return f.open(QIODevice::ReadOnly) ? QString::fromUtf8(f.read(32768)).trimmed() : QString(); }
 +static double number(const QString& path) { bool ok; double n=read(path).toDouble(&ok); return ok && qIsFinite(n) ? n : -1; }
 +LocalHardware::LocalHardware(QObject* parent):QObject(parent) { m_timer.setInterval(refreshSeconds()*1000); connect(&m_timer,&QTimer::timeout,this,&LocalHardware::refresh); }
-+void LocalHardware::setActive(bool active) { if (active) { refresh(); m_timer.start(); } else m_timer.stop(); }
++void LocalHardware::setActive(bool active) { m_legacyActive=active;updateSampling(); }
++void LocalHardware::updateSampling() {
++    if(!m_legacyActive && m_consumers.isEmpty()) m_timer.stop();
++    else if(!m_timer.isActive()) {refresh();m_timer.start();}
++}
++void LocalHardware::setConsumerActive(QObject* consumer,bool active) {
++    if(!consumer) return;
++    if(active && !m_consumers.contains(consumer)) {
++        m_consumers.insert(consumer);
++        if(!m_knownConsumers.contains(consumer)) {
++            m_knownConsumers.insert(consumer);
++            connect(consumer,&QObject::destroyed,this,[this,consumer]{m_knownConsumers.remove(consumer);m_consumers.remove(consumer);updateSampling();});
++        }
++    } else if(!active) m_consumers.remove(consumer);
++    updateSampling();
++}
 +void LocalHardware::refresh() { m_readings=sample(); m_history.append(m_readings); while(m_history.size()>60) m_history.removeFirst(); emit changed(); }
 +void LocalHardware::setFields(QStringList v) { QStringList clean; for(const QString& key:QStringList{"cpu","memory","temperature","gpu","network","battery","storage"}) if(v.contains(key)) clean.append(key); save("localFields",clean); }
 +
@@ -2055,16 +3147,17 @@ index 0000000..413cc61
 +Q_COREAPP_STARTUP_FUNCTION(registerLocalHardware)
 diff --git a/app/moonlightos/localhardware.h b/app/moonlightos/localhardware.h
 new file mode 100644
-index 0000000..311fea8
+index 0000000..6b6eaa6
 --- /dev/null
 +++ b/app/moonlightos/localhardware.h
-@@ -0,0 +1,49 @@
+@@ -0,0 +1,55 @@
 +#pragma once
 +#include <QObject>
 +#include <QVariantMap>
 +#include <QVariantList>
 +#include <QTimer>
 +#include <QSettings>
++#include <QSet>
 +
 +class LocalHardware : public QObject {
 +    Q_OBJECT
@@ -2083,7 +3176,7 @@ index 0000000..311fea8
 +    QVariantList history() const { return m_history; }
 +    bool overlay() const { return QSettings().value("eclipse/localOverlay",false).toBool(); }
 +    bool detailed() const { return QSettings().value("eclipse/localDetailed",false).toBool(); }
-+    bool streamDetailed() const { return QSettings().value("eclipse/streamDetailed",true).toBool(); }
++    bool streamDetailed() const { return QSettings().value("eclipse/streamDetailed",false).toBool(); }
 +    int position() const { return qBound(0,QSettings().value("eclipse/localPosition",1).toInt(),3); }
 +    int opacity() const { return qBound(40,QSettings().value("eclipse/overlayOpacity",85).toInt(),100); }
 +    int refreshSeconds() const { return qBound(1,QSettings().value("eclipse/hardwareRefresh",2).toInt(),5); }
@@ -2096,6 +3189,7 @@ index 0000000..311fea8
 +    void setRefreshSeconds(int v) { save("hardwareRefresh",qBound(1,v,5)); m_timer.setInterval(refreshSeconds()*1000); }
 +    void setFields(QStringList v);
 +    Q_INVOKABLE void setActive(bool active);
++    Q_INVOKABLE void setConsumerActive(QObject* consumer,bool active);
 +    static QVariantMap sample(const QString& root=QString());
 +    static QString overlayText();
 +signals:
@@ -2103,7 +3197,11 @@ index 0000000..311fea8
 +    void preferencesChanged();
 +private:
 +    void refresh();
++    void updateSampling();
++    bool m_legacyActive=false;
 +    void save(QString key, QVariant value) { QSettings().setValue("eclipse/"+key,value); emit preferencesChanged(); }
++    QSet<QObject*> m_consumers;
++    QSet<QObject*> m_knownConsumers;
 +    QTimer m_timer;
 +    QVariantMap m_readings;
 +    QVariantList m_history;
@@ -2248,14 +3346,15 @@ index 0000000..2bfcbfd
 +}
 diff --git a/app/moonlightos/overlaystyle.h b/app/moonlightos/overlaystyle.h
 new file mode 100644
-index 0000000..ce30faf
+index 0000000..911a5c3
 --- /dev/null
 +++ b/app/moonlightos/overlaystyle.h
-@@ -0,0 +1,20 @@
+@@ -0,0 +1,22 @@
 +#pragma once
 +#include <QImage>
 +#include <QPainter>
 +#include <QColor>
++#include <QLinearGradient>
 +namespace EclipseOverlayStyle {
 +inline QColor accent(int index) {
 +    const char* colors[]={"#00CCCC","#7C8CF8","#3ED598","#F0A868","#DC3658","#F25D64","#F58347","#F1BC45","#B7DC63","#63CCAE","#63C4ED","#6C9FFF","#AD85F5","#E976BC","#CAD0DA","#D995AC"};
@@ -2266,8 +3365,9 @@ index 0000000..ce30faf
 +    QImage image(size,QImage::Format_RGBA8888); image.fill(Qt::transparent);
 +    QPainter painter(&image); painter.setRenderHint(QPainter::Antialiasing);
 +    QColor bg("#151115"); bg.setAlpha(qBound(40,opacity,100)*255/100);
-+    painter.setBrush(bg); painter.setPen(QPen(accent(accentIndex),1));
-+    painter.drawRoundedRect(QRectF(1,1,image.width()-2,image.height()-2),12,12);
++    QLinearGradient glass(0,0,0,size.height());QColor shine("#29242B");shine.setAlpha(bg.alpha());glass.setColorAt(0,shine);glass.setColorAt(1,bg);
++    painter.setBrush(glass); painter.setPen(QPen(QColor(255,255,255,48),1));
++    painter.drawRoundedRect(QRectF(1,1,image.width()-2,image.height()-2),18,18);
 +    painter.setPen(QPen(accent(accentIndex),3)); painter.drawLine(15,8,image.width()-15,8);
 +    return image;
 +}
@@ -2407,10 +3507,10 @@ index 0000000..18e9deb
 +};
 diff --git a/app/moonlightos/tests/Harness.qml b/app/moonlightos/tests/Harness.qml
 new file mode 100644
-index 0000000..bf90961
+index 0000000..211e693
 --- /dev/null
 +++ b/app/moonlightos/tests/Harness.qml
-@@ -0,0 +1,26 @@
+@@ -0,0 +1,63 @@
 +import QtQuick 2.9
 +import QtQuick.Controls 2.5
 +import QtQuick.Controls.Material 2.2
@@ -2427,7 +3527,23 @@ index 0000000..bf90961
 +    width: 1280; height: 800; visible: true
 +    function chooseScale(value) { EclipseProfiles.textScale=value }
 +    function chooseAccent(i) { StreamingPreferences.uiAccentIndex = i }
-+    Item { id: stackView }
++    function chooseAccessibility(contrast,motion) { EclipseProfiles.highContrast=contrast;EclipseProfiles.reducedMotion=motion }
++    function chooseWallpaper(url) { return EclipseProfiles.chooseBackground(url) }
++    function resetWallpaper() { EclipseProfiles.resetBackground() }
++    CrimsonGlassBackdrop {anchors.fill:parent}
++    Button {id:settingsButton;visible:false}
++    Button {id:eclipseCenterButton;visible:false}
++    QtObject {id:crimsonPanel;property string kind:"";function open(){}}
++    QtObject {id:addPcDialog;function open(){}}
++    QtObject {id:quickMenuManager;property var serverCommandManager:null;function hide(){} function executeAction(action){} function setTextInputActive(active){} }
++    Loader {objectName:"quickMenuLoader";active:false;anchors.centerIn:parent;sourceComponent:QuickMenu {}}
++    StackView { id:stackView;objectName:"productionStack";anchors.fill:parent;visible:false }
++    function showProductionView(view) {
++        stackView.visible=true;stackView.clear()
++        var props=view==="AppView"?{computerIndex:0,objectName:"Gaming PC",hostType:"VIBEPOLLO",hostTransport:"LAN",hostOnline:true,showGames:true}:{}
++        stackView.push(Qt.resolvedUrl("../../gui/"+view+".qml"),props)
++    }
++    function hideProductionView(){stackView.clear();stackView.visible=false}
 +    QtObject { objectName: "testState"; property color accent: VbTokens.accent; property color pressed: VbTokens.accentPressed }
 +    CrimsonStatusDialog { objectName: "testPanel" }
 +    SystemConnectionsDialog { objectName: "connectionsPanel" }
@@ -2435,23 +3551,67 @@ index 0000000..bf90961
 +    ScrollView { id:systemScroll; objectName:"systemScroll";contentWidth:availableWidth; anchors.fill:parent; anchors.margins:24; visible:systemPanel.active
 +        EclipseSystemSettings { id:systemPanel;objectName:"systemSettings";width:systemScroll.availableWidth;active:false }
 +    }
++    CrimsonBackgroundPicker {objectName:"glassBackgroundPicker"}
++    Item {
++        id:dashboard;objectName:"glassDashboard";anchors.fill:parent;visible:false
++        CrimsonGlassBackdrop {anchors.fill:parent}
++        CrimsonGlassRail {x:16;y:16;width:64;height:parent.height-32}
++        CrimsonHostPanel {objectName:"glassHost";x:96;y:16;width:parent.width>=1580?260:0;height:parent.height-32;visible:width>0;hostName:"Gaming PC";hostType:"Vibepollo";transport:"LAN";online:true}
++        CrimsonLocalPanel {active:dashboard.visible;x:parent.width-width-16;y:16;width:Math.round(252*VbTokens.textScale);height:parent.height-32;visible:parent.width>=1240}
++        Column {
++            x:parent.width>=1580?376:104;y:24;width:parent.width-x-(parent.width>=1240?Math.round(252*VbTokens.textScale)+40:24);spacing:16
++            Label {text:"Crimson Glass • Library";font.pixelSize:VbTokens.typeTitle;color:VbTokens.text}
++            Label {text:"UI verification fixture • illustrative host and app data";font.pixelSize:VbTokens.typeLabel;color:VbTokens.textDim;width:parent.width;wrapMode:Text.Wrap}
++            Flow {width:parent.width;spacing:16
++                Repeater {model:["Desktop","Steam Big Picture","Game library","Media"]
++                    delegate:VbCard {width:Math.max(180,Math.min(250,(parent.width-32)/2));height:220
++                        Image {anchors.centerIn:parent;width:64;height:64;source:"qrc:/res/eclipse-icon.svg"}
++                        Label {anchors.bottom:parent.bottom;anchors.bottomMargin:20;anchors.horizontalCenter:parent.horizontalCenter;text:modelData;color:VbTokens.text;font.pixelSize:VbTokens.typeBody}
++                    }
++                }
++            }
++        }
++    }
 +    EclipseAboutDialog { objectName: "aboutEclipse" }
 +}
 diff --git a/app/moonlightos/tests/Preferences.qml b/app/moonlightos/tests/Preferences.qml
 new file mode 100644
-index 0000000..996e5ac
+index 0000000..03adc68
 --- /dev/null
 +++ b/app/moonlightos/tests/Preferences.qml
 @@ -0,0 +1,3 @@
 +pragma Singleton
 +import QtQuick 2.9
-+QtObject { property int uiAccentIndex: 4; property bool uiShowHints: true; property int width: 1920; property int height: 1080; property int fps: 60; property int bitrateKbps: 20000; function save() {} }
++QtObject { property int uiAccentIndex: 4; property bool enableMdns:true; property bool uiShowHints: true; property int width: 1920; property int height: 1080; property int fps: 60; property int bitrateKbps: 20000; function save() {} }
+diff --git a/app/moonlightos/tests/UiServices.qml b/app/moonlightos/tests/UiServices.qml
+new file mode 100644
+index 0000000..0c3f964
+--- /dev/null
++++ b/app/moonlightos/tests/UiServices.qml
+@@ -0,0 +1,17 @@
++pragma Singleton
++import QtQuick 2.9
++QtObject {
++    property bool hasBrowser: false
++    property string versionString: "UI fixture"
++    signal otpStage1Completed(string pin,string error)
++    signal computerAddCompleted(bool success,bool blocked)
++    function getConnectedGamepads(){return 0}
++    function activated(){}
++    function focusMoved(){}
++    function back(){}
++    function startPolling(){}
++    function stopPolling(){}
++    function openUrl(url){}
++    function hasProfile(host,app){return false}
++    function profileSummary(host,app){return ""}
++}
 diff --git a/app/moonlightos/tests/test-crimson.cpp b/app/moonlightos/tests/test-crimson.cpp
 new file mode 100644
-index 0000000..96c5fef
+index 0000000..e0ce45e
 --- /dev/null
 +++ b/app/moonlightos/tests/test-crimson.cpp
-@@ -0,0 +1,371 @@
+@@ -0,0 +1,479 @@
 +#include <QtTest>
 +#include <QTemporaryDir>
 +#include <QQmlEngine>
@@ -2476,6 +3636,8 @@ index 0000000..96c5fef
 +#include "../eclipseprofiles.h"
 +#include "../localhardware.h"
 +#include "../overlaystyle.h"
++#include "../crimsongraphs.h"
++#include "uimodels.h"
 +#include "../../backend/autoupdatechecker.h"
 +
 +class TlsFixture : public QTcpServer {
@@ -2653,6 +3815,45 @@ index 0000000..96c5fef
 +        QVERIFY(EclipseOverlayStyle::panel(QSize(-1,100),0,85).isNull());
 +        QVERIFY(EclipseOverlayStyle::panel(QSize(4096,100),0,85).isNull());
 +    }
++    void graphSamplesPreserveMissingAndWindow() {
++        auto values=CrimsonGraphs::values("Video stream: 1920x1080 120.00 FPS\nRendering frame rate: 59.25 FPS\nAverage network latency: 12 ms",false,{{"cpuPercent",25.0},{"memoryUsedGiB",4.5}});
++        QCOMPARE(values["FPS"],59.25);QCOMPARE(values["Network latency"],12.0);QCOMPARE(values["Local CPU"],25.0);
++        auto compact=CrimsonGraphs::values("60 fps · 1920x1080 H264 · net 7 ms · dec 2.0 ms",false,{});
++        QCOMPARE(compact["FPS"],60.0);QCOMPARE(compact["Network latency"],7.0);QVERIFY(qIsNaN(compact["Local RAM"]));
++        auto unavailable=CrimsonGraphs::values("Average network latency: N/A\nVideo stream: 1920x1080 120.00 FPS",false,{});
++        QVERIFY(qIsNaN(unavailable["FPS"]));QVERIFY(qIsNaN(unavailable["Network latency"]));
++        auto invalid=CrimsonGraphs::values("",true,{{"cpuPercent",QVariant()},{"memoryUsedGiB","invalid"},{"temperatureC",-1},{"receiveMiB",0.0}});
++        QVERIFY(qIsNaN(invalid["Local CPU"]));QVERIFY(qIsNaN(invalid["Local RAM"]));QVERIFY(qIsNaN(invalid["Temperature"]));QCOMPARE(invalid["Download"],0.0);
++        CrimsonGraphs::History history;for(int i=0;i<80;i++)CrimsonGraphs::push(history,values);
++        QCOMPARE(history["FPS"].size(),60);CrimsonGraphs::push(history,unavailable);QVERIFY(qIsNaN(history["FPS"].last()));
++        for(int i=0;i<60;i++){values["FPS"]=60+qSin(i*0.4)*2;values["Network latency"]=12+qSin(i*0.3)*3;values["Local CPU"]=25+qSin(i*0.5)*10;values["Local RAM"]=4.5+qSin(i*0.2)*0.2;CrimsonGraphs::push(history,values);}
++        QImage image=EclipseOverlayStyle::panel(QSize(480,250),4,85);CrimsonGraphs::paint(image,40,18,4,history,false);
++        {QPainter painter(&image);painter.setPen(QColor("#ECEEF1"));painter.drawText(16,28,"EclipseOS | STREAM — graph fixture");}
++        QString out=qEnvironmentVariable("CRIMSON_SCREENSHOTS");if(!out.isEmpty()){QDir().mkpath(out);QVERIFY(image.save(out+"/crimson-glass-overlay.png"));}
++    }
++    void backgroundSelectionAndPersistence() {
++        EclipseProfiles profile;profile.resetBackground();QTemporaryDir folder;QVERIFY(folder.isValid());
++        QImage input(3000,1800,QImage::Format_RGB32);input.fill(QColor("#772233"));QString source=folder.filePath("wallpaper.png");QVERIFY(input.save(source));
++        QVERIFY(!profile.chooseBackground(QUrl("https://example.com/wallpaper.png")));
++        QVERIFY(!profile.chooseBackground(QUrl::fromLocalFile(folder.filePath("missing.png"))));
++        QFile invalid(folder.filePath("invalid.png"));QVERIFY(invalid.open(QIODevice::WriteOnly));invalid.write("not an image");invalid.close();
++        QVERIFY(!profile.chooseBackground(QUrl::fromLocalFile(invalid.fileName())));
++        QFile oversized(folder.filePath("oversized.png"));QVERIFY(oversized.open(QIODevice::WriteOnly));QVERIFY(oversized.resize(32*1024*1024+1));oversized.close();
++        QVERIFY(!profile.chooseBackground(QUrl::fromLocalFile(oversized.fileName())));
++        QVERIFY(profile.chooseBackground(QUrl::fromLocalFile(source)));QVERIFY(profile.background().isLocalFile());
++        QString saved=profile.background().toLocalFile();QVERIFY(saved!=source);QVERIFY(QFile::remove(source));QVERIFY(!QImage(saved).isNull());QVERIFY(QImage(saved).width()<=2560);
++        EclipseProfiles reloaded;QCOMPARE(reloaded.background(),profile.background());reloaded.setBackgroundDim(0);QCOMPARE(reloaded.backgroundDim(),30);reloaded.setBackgroundDim(999);QCOMPARE(reloaded.backgroundDim(),90);
++        QVERIFY(!profile.backgroundFiles(QUrl("https://example.com/")).size());profile.resetBackground();QVERIFY(profile.background().isEmpty());profile.setBackgroundDim(65);
++    }
++    void hardwareVisibleConsumers() {
++        LocalHardware monitor;monitor.setRefreshSeconds(1);QObject first,second;QSignalSpy samples(&monitor,&LocalHardware::changed);
++        monitor.setConsumerActive(&first,true);QCOMPARE(samples.count(),1);
++        monitor.setConsumerActive(&first,true);QCOMPARE(samples.count(),1);
++        monitor.setConsumerActive(&second,true);monitor.setConsumerActive(&first,false);
++        monitor.setActive(true);monitor.setActive(false); // legacy caller must not revoke another view's lease
++        QTest::qWait(2100);QVERIFY(samples.count()>=2);
++        monitor.setConsumerActive(&second,false);int count=samples.count();QTest::qWait(2100);QCOMPARE(samples.count(),count);
++    }
 +    void localHardwareCountersAndSensors() {
 +        QTemporaryDir root; QVERIFY(root.isValid());
 +        auto write=[&](const QString& path,const QByteArray& data) { QString full=root.path()+path; QDir().mkpath(QFileInfo(full).absolutePath()); QFile file(full); QVERIFY(file.open(QIODevice::WriteOnly)); QCOMPARE(file.write(data),qint64(data.size())); };
@@ -2724,7 +3925,13 @@ index 0000000..96c5fef
 +    print(json.dumps({'state':{'volume':50,'muted':False,'wifi_enabled':True,'bluetooth_enabled':True,'displays':[{'id':'eDP-1|1024x640|60','name':'eDP-1 · 1024×640 · 60 Hz','current':True}],'pointers':[{'id':'12','name':'Touchpad','speed':0,'natural':True,'tap':True}],'sinks':[{'id':'42','name':'Speakers','default':True},{'id':'57','name':'AirPods','default':False}],'brightness':{'screen':{'device':'intel_backlight','percent':60},'keyboard':{'device':'spi::kbd_backlight','percent':30}},'os':{'NAME':'EclipseOS','VERSION':'0.3-dev','TARGET':'Fixture hardware','FEDORA':'44'},'kernel':'fixture-kernel'},'items':[{'id':'fixture','name':'Fixture device','detail':'Available','connected':True}],'status':'Ready','done':True}),flush=True)
 +)PY"); helper.close();
 +        qputenv("MOONLIGHT_CONTROLS_FIXTURE",helper.fileName().toUtf8());
++        qmlRegisterType<UiComputerModel>("ComputerModel",1,0,"ComputerModel");
++        qmlRegisterType<UiAppModel>("AppModel",1,0,"AppModel");
++        qmlRegisterSingletonType(QUrl::fromLocalFile(source+"/app/gui/Theme.qml"),"Theme",1,0,"Theme");
++        for(const QString& module:QStringList{"ComputerManager","AppProfileManager","SystemProperties","SdlGamepadKeyNavigation","UiSoundManager","ServerCommandManager"})
++            qmlRegisterSingletonType(QUrl::fromLocalFile(source+"/app/moonlightos/tests/UiServices.qml"),module.toUtf8().constData(),1,0,module.toUtf8().constData());
 +        QQmlEngine engine;
++        QSignalSpy qmlWarnings(&engine,&QQmlEngine::warnings);
 +        QQmlComponent component(&engine, QUrl::fromLocalFile(source + "/app/moonlightos/tests/Harness.qml"));
 +        QScopedPointer<QObject> root(component.create()); QVERIFY2(root, qPrintable(component.errorString()));
 +        auto panel = root->findChild<QObject*>("testPanel"); QVERIFY(panel);
@@ -2792,6 +3999,66 @@ index 0000000..96c5fef
 +        auto window = qobject_cast<QQuickWindow*>(root.data()); QVERIFY(window);
 +        if (!out.isEmpty()) QVERIFY(window->grabWindow().save(out+"/eclipse-control-center.png"));
 +        QVERIFY(QMetaObject::invokeMethod(center,"close")); QTest::qWait(300);
++        for(const QString& view:QStringList{"PcView","AppView"}) {
++            for(int scale:{100,110,125}) {
++                QVERIFY(QMetaObject::invokeMethod(root.data(),"chooseScale",Q_ARG(QVariant,scale)));
++                for(QSize size:{QSize(1920,1080),QSize(1280,720),QSize(900,640)}) {
++                    root->setProperty("width",size.width());root->setProperty("height",size.height());
++                    QVERIFY(QMetaObject::invokeMethod(root.data(),"showProductionView",Q_ARG(QVariant,view)));QTest::qWait(300);
++                    auto stack=root->findChild<QObject*>("productionStack");QVERIFY(stack);auto item=stack->property("currentItem").value<QObject*>();QVERIFY(item);
++                    QVERIFY(item->property("availableWidth").toDouble()>300);
++                    QCOMPARE(item->property("count").toInt(),view=="PcView"?2:6);
++                    auto grid=qobject_cast<QQuickItem*>(item);QVERIFY(grid);
++                    grid->forceActiveFocus();item->setProperty("currentIndex",0);
++                    QTest::keyClick(window,Qt::Key_Right);
++                    QVERIFY(item->property("currentIndex").toInt()>0);
++                    for(auto button:item->findChildren<QQuickItem*>("crimsonRailButton")) {
++                        QVERIFY(button->width()>=56);button->forceActiveFocus();QVERIFY(button->hasActiveFocus());
++                    }
++                    grid->forceActiveFocus();item->setProperty("currentIndex",-1);
++                    if(!out.isEmpty())QVERIFY(window->grabWindow().save(out+"/crimson-glass-"+view+"-"+QString::number(size.width())+"-"+QString::number(scale)+".png"));
++                }
++            }
++        }
++        root->setProperty("width",1920);root->setProperty("height",1080);
++        QVERIFY(QMetaObject::invokeMethod(root.data(),"showProductionView",Q_ARG(QVariant,QString("AppView"))));
++        for(int accent=0;accent<16;accent++) {
++            QVERIFY(QMetaObject::invokeMethod(root.data(),"chooseAccent",Q_ARG(QVariant,accent)));QTest::qWait(30);
++            if(!out.isEmpty())QVERIFY(window->grabWindow().save(out+"/crimson-glass-accent-"+QString::number(accent)+".png"));
++        }
++        QVERIFY(QMetaObject::invokeMethod(root.data(),"chooseAccessibility",Q_ARG(QVariant,true),Q_ARG(QVariant,true)));QTest::qWait(100);
++        if(!out.isEmpty())QVERIFY(window->grabWindow().save(out+"/crimson-glass-high-contrast.png"));
++        QVERIFY(QMetaObject::invokeMethod(root.data(),"chooseAccessibility",Q_ARG(QVariant,false),Q_ARG(QVariant,false)));
++        QVERIFY(QMetaObject::invokeMethod(root.data(),"chooseAccent",Q_ARG(QVariant,4)));
++        QTemporaryDir wallpaperFolder;QVERIFY(wallpaperFolder.isValid());
++        QImage wallpaper(1920,1080,QImage::Format_RGB32);
++        {QPainter painter(&wallpaper);QLinearGradient gradient(0,0,1920,1080);gradient.setColorAt(0,QColor("#321122"));gradient.setColorAt(1,QColor("#151D42"));painter.fillRect(wallpaper.rect(),gradient);painter.setPen(QPen(QColor("#9D3555"),8));painter.drawEllipse(QPointF(1150,550),550,550);}
++        QString wallpaperPath=wallpaperFolder.filePath("fixture-background.png");QVERIFY(wallpaper.save(wallpaperPath));
++        QVariant selected;QVERIFY(QMetaObject::invokeMethod(root.data(),"chooseWallpaper",Q_RETURN_ARG(QVariant,selected),Q_ARG(QVariant,QUrl::fromLocalFile(wallpaperPath))));QVERIFY(selected.toBool());
++        QTest::qWait(250);
++        if(!out.isEmpty())QVERIFY(window->grabWindow().save(out+"/crimson-glass-selected-background.png"));
++        QVERIFY(QMetaObject::invokeMethod(root.data(),"resetWallpaper"));
++        QVERIFY(QMetaObject::invokeMethod(root.data(),"hideProductionView"));
++        auto quickMenu=root->findChild<QObject*>("quickMenuLoader");QVERIFY(quickMenu);quickMenu->setProperty("active",true);QTest::qWait(150);
++        QVERIFY(quickMenu->property("item").value<QObject*>());
++        QTest::keyClick(window,Qt::Key_Down);
++        if(!out.isEmpty())QVERIFY(window->grabWindow().save(out+"/crimson-glass-quick-menu.png"));
++        quickMenu->setProperty("active",false);
++        QCOMPARE(qmlWarnings.count(),0);
++        auto dashboard=root->findChild<QObject*>("glassDashboard");QVERIFY(dashboard);
++        for(int scale:{100,110,125}) {
++            QVERIFY(QMetaObject::invokeMethod(root.data(),"chooseScale",Q_ARG(QVariant,scale)));
++            for(QSize size:{QSize(1920,1080),QSize(1280,720),QSize(900,640)}) {
++                root->setProperty("width",size.width());root->setProperty("height",size.height());dashboard->setProperty("visible",true);QTest::qWait(250);
++                if(!out.isEmpty())QVERIFY(window->grabWindow().save(out+"/crimson-glass-dashboard-"+QString::number(size.width())+"-"+QString::number(scale)+".png"));
++                auto cards=dashboard->findChildren<QQuickItem*>("crimsonMetric");for(auto card:cards)QVERIFY(card->width()>100);
++                auto host=dashboard->findChild<QQuickItem*>("glassHost");QVERIFY(host);QVERIFY(host->width()>=0);
++            }
++        }
++        dashboard->setProperty("visible",false);
++        auto picker=root->findChild<QObject*>("glassBackgroundPicker");QVERIFY(picker);QVERIFY(QMetaObject::invokeMethod(picker,"open"));QTest::qWait(150);QVERIFY(picker->property("visible").toBool());
++        if(!out.isEmpty())QVERIFY(window->grabWindow().save(out+"/crimson-glass-background-picker.png"));
++        QVERIFY(QMetaObject::invokeMethod(picker,"close"));
 +        auto about = root->findChild<QObject*>("aboutEclipse"); QVERIFY(about);
 +        about->setProperty("info", QVariantMap{{"os",QVariantMap{{"NAME","EclipseOS"},{"VERSION","0.3-dev"},{"TARGET","Fixture hardware"},{"FEDORA","44"}}},{"kernel","fixture-kernel"}});
 +        QVERIFY(QMetaObject::invokeMethod(about,"open")); QTest::qWait(300);
@@ -2818,6 +4085,7 @@ index 0000000..96c5fef
 +            system->setProperty("active",false); QTest::qWait(100);
 +        }
 +        QVERIFY(QMetaObject::invokeMethod(root.data(),"chooseScale",Q_ARG(QVariant,100)));
++        QCOMPARE(qmlWarnings.count(),0);
 +        qunsetenv("MOONLIGHT_CONTROLS_FIXTURE");
 +    }
 +};
@@ -2825,10 +4093,10 @@ index 0000000..96c5fef
 +#include "test-crimson.moc"
 diff --git a/app/moonlightos/tests/test-crimson.pro b/app/moonlightos/tests/test-crimson.pro
 new file mode 100644
-index 0000000..881f859
+index 0000000..9257c36
 --- /dev/null
 +++ b/app/moonlightos/tests/test-crimson.pro
-@@ -0,0 +1,21 @@
+@@ -0,0 +1,23 @@
 +QT += core gui quick network quickcontrols2 testlib svg
 +CONFIG += c++17 testcase
 +TARGET = test-crimson
@@ -2850,11 +4118,74 @@ index 0000000..881f859
 +
 +SOURCES += ../localhardware.cpp
 +HEADERS += ../localhardware.h
++
++HEADERS += uimodels.h
+diff --git a/app/moonlightos/tests/uimodels.h b/app/moonlightos/tests/uimodels.h
+new file mode 100644
+index 0000000..a001eb8
+--- /dev/null
++++ b/app/moonlightos/tests/uimodels.h
+@@ -0,0 +1,40 @@
++#pragma once
++#include <QAbstractListModel>
++#include <QVariantMap>
++class UiComputerModel : public QAbstractListModel {
++    Q_OBJECT
++public:
++    enum Roles {NameRole=Qt::UserRole,OnlineRole,PairedRole,BusyRole,WakeableRole,StatusUnknownRole,ServerSupportedRole,DetailsRole,ApolloVersionRole,IsApolloServerRole,PermissionSummaryRole,HostTypeRole,TransportRole,LatencyTextRole,LastSeenTextRole};Q_ENUM(Roles)
++    explicit UiComputerModel(QObject* parent=nullptr):QAbstractListModel(parent){}
++    Q_INVOKABLE void initialize(QObject*){}
++    Q_INVOKABLE QVariantMap crimsonHost(int) const {return {{"id","ui-fixture"},{"url","https://127.0.0.1:47990"}};}
++    int rowCount(const QModelIndex& = QModelIndex()) const override{return 2;}
++    QHash<int,QByteArray> roleNames()const override {return {{NameRole,"name"},{OnlineRole,"online"},{PairedRole,"paired"},{BusyRole,"busy"},{WakeableRole,"wakeable"},{StatusUnknownRole,"statusUnknown"},{ServerSupportedRole,"serverSupported"},{DetailsRole,"details"},{ApolloVersionRole,"apolloVersion"},{IsApolloServerRole,"isApolloServer"},{PermissionSummaryRole,"permissionSummary"},{HostTypeRole,"hostType"},{TransportRole,"transport"},{LatencyTextRole,"latencyText"},{LastSeenTextRole,"lastSeenText"}};}
++    Q_INVOKABLE QVariant data(const QModelIndex& index,int role) const override {
++        if(role==NameRole)return index.row()?"Backup PC":"Gaming PC";
++        if(role==OnlineRole||role==PairedRole||role==ServerSupportedRole||role==IsApolloServerRole)return true;
++        if(role==HostTypeRole)return "VIBEPOLLO";if(role==TransportRole)return "LAN";
++        if(role==LatencyTextRole)return "4 ms";if(role==PermissionSummaryRole)return "Full access";
++        if(role==DetailsRole)return QVariantList();if(role==LastSeenTextRole||role==ApolloVersionRole)return QString();return false;
++    }
++signals:
++    void otpStage1Completed();
++    void pairingCompleted(QVariant error);
++    void connectionTestCompleted(int result);
++};
++class UiAppModel : public QAbstractListModel {
++    Q_OBJECT
++public:
++    explicit UiAppModel(QObject* parent=nullptr):QAbstractListModel(parent){}
++    Q_INVOKABLE void initialize(QObject*,int,bool){}
++    Q_INVOKABLE int getRunningAppId(){return 0;}
++    Q_INVOKABLE QString getRunningAppName(){return {};}
++    Q_INVOKABLE int getDirectLaunchAppIndex(){return -1;}
++    Q_INVOKABLE QString getComputerUuid(){return "ui-fixture";}
++    Q_INVOKABLE void resyncRunningState(){}
++    int rowCount(const QModelIndex& = QModelIndex())const override{return 6;}
++    QHash<int,QByteArray> roleNames()const override{return {{256,"name"},{257,"running"},{258,"boxart"},{259,"hidden"},{260,"appid"},{261,"directLaunch"},{262,"isAppCollectorGame"}};}
++    QVariant data(const QModelIndex& index,int role)const override {if(role==256)return QStringList{"Desktop","Steam Big Picture","Game library","Media","Browser","Tools"}.value(index.row());if(role==258)return "qrc:/res/no_app_image.png";if(role==260)return index.row()+1;return false;}
++signals:
++    void computerLost();
++};
 diff --git a/app/qml.qrc b/app/qml.qrc
-index a3c11dd..714c651 100644
+index a3c11dd..48e9d57 100644
 --- a/app/qml.qrc
 +++ b/app/qml.qrc
-@@ -14,6 +14,11 @@
+@@ -2,6 +2,14 @@
+     <qresource prefix="/">
+         <file>gui/Theme.qml</file>
+         <file>gui/VbTokens.qml</file>
++        <file>gui/CrimsonGlassPanel.qml</file>
++        <file>gui/CrimsonBackgroundPicker.qml</file>
++        <file>gui/CrimsonGlassBackdrop.qml</file>
++        <file>gui/CrimsonSparkline.qml</file>
++        <file>gui/CrimsonLocalPanel.qml</file>
++        <file>gui/CrimsonGlassRail.qml</file>
++        <file>gui/CrimsonHostPanel.qml</file>
++
+         <file>gui/VbFocusRing.qml</file>
+         <file>gui/VbDropShadow.qml</file>
+         <file>gui/VbHintBar.qml</file>
+@@ -14,6 +22,11 @@
          <file>gui/VbHostCard.qml</file>
          <file>gui/VbWelcomeSheet.qml</file>
          <file>gui/main.qml</file>
@@ -6321,7 +7652,7 @@ index 2ac1a6e..4a6e0c0 100644
          addVideoStats(m_ActiveWndVideoStats, m_GlobalVideoStats);
  
 diff --git a/app/streaming/video/overlaymanager.cpp b/app/streaming/video/overlaymanager.cpp
-index 92e6c6d..1cb3a92 100644
+index 92e6c6d..483ffdb 100644
 --- a/app/streaming/video/overlaymanager.cpp
 +++ b/app/streaming/video/overlaymanager.cpp
 @@ -1,6 +1,12 @@
@@ -6363,48 +7694,71 @@ index 92e6c6d..1cb3a92 100644
  
      m_Overlays[OverlayType::OverlayStatusUpdate].color = {0xCC, 0x00, 0x00, 0xFF};
      m_Overlays[OverlayType::OverlayStatusUpdate].fontSize = 36;
-@@ -368,11 +383,32 @@ void OverlayManager::notifyOverlayUpdated(OverlayType type)
+@@ -126,6 +141,10 @@ SDL_Surface* OverlayManager::getUpdatedOverlaySurface(OverlayType type)
+ 
+ void OverlayManager::setOverlayTextUpdated(OverlayType type)
+ {
++    if(m_Overlays[type].enabled && (type==OverlayDebug || type==OverlayLocalHardware)) {
++        QMutexLocker graphLock(&m_GraphLock);
++        CrimsonGraphs::push(m_GraphHistory[type],CrimsonGraphs::values(QString::fromUtf8(m_Overlays[type].text),type==OverlayLocalHardware,LocalHardware::sample()));
++    }
+     // Only update the overlay state if it's enabled. If it's not enabled,
+     // the renderer has already been notified by setOverlayState().
+     if (m_Overlays[type].enabled) {
+@@ -143,6 +162,7 @@ void OverlayManager::setOverlayState(OverlayType type, bool enabled)
+         if (!enabled) {
+             // Set the text to empty string on disable
+             m_Overlays[type].text[0] = 0;
++            { QMutexLocker graphLock(&m_GraphLock);m_GraphHistory[type].clear(); }
+         }
+ 
+         notifyOverlayUpdated(type);
+@@ -368,11 +388,27 @@ void OverlayManager::notifyOverlayUpdated(OverlayType type)
      }
  
      if (m_Overlays[type].enabled) {
 -        // The _Wrapped variant is required for line breaks to work
 -        SDL_Surface* surface = TTF_RenderText_Blended_Wrapped(m_Overlays[type].font,
 -                                                              m_Overlays[type].text,
-+        QByteArray text(m_Overlays[type].text);
-+        bool card=type==OverlayDebug || type==OverlayLocalHardware;
-+        if(type==OverlayDebug) {
-+            if(!QSettings().value("eclipse/streamDetailed",true).toBool()) {
-+                QStringList compact;
-+                for(const QString& line:QString::fromUtf8(text).split('\n')) {
-+                    if(line.contains("FPS",Qt::CaseInsensitive) || line.contains("frame rate",Qt::CaseInsensitive) || line.contains("latency",Qt::CaseInsensitive) || line.contains("bitrate",Qt::CaseInsensitive) || line.contains("dropped",Qt::CaseInsensitive) || line.contains("resolution",Qt::CaseInsensitive)) compact.append(line);
-+                }
-+                if(compact.isEmpty()) compact=QString::fromUtf8(text).split('\n').mid(0,5);
-+                text=compact.join('\n').toUtf8();
-+            }
-+            text.prepend("EclipseOS | STREAM\n");
-+        }
-+        SDL_Surface* surface = TTF_RenderUTF8_Blended_Wrapped(m_Overlays[type].font,
-+                                                              text.constData(),
-                                                               m_Overlays[type].color,
+-                                                              m_Overlays[type].color,
 -                                                              1024);
-+                                                              card ? 480 : 1024);
++        QByteArray text(m_Overlays[type].text);
++        const bool card=type==OverlayDebug || type==OverlayLocalHardware;
++        const bool detailed=QSettings().value(type==OverlayDebug?"eclipse/streamDetailed":"eclipse/localDetailed",false).toBool();
++        if(card && !detailed) text=(type==OverlayDebug?"EclipseOS | STREAM":"EclipseOS | LOCAL");
++        else if(type==OverlayDebug) text.prepend("EclipseOS | STREAM\n");
++        SDL_Surface* surface=TTF_RenderUTF8_Blended_Wrapped(m_Overlays[type].font,text.constData(),m_Overlays[type].color,card?480:1024);
 +        if(card && surface) {
-+            QImage image=EclipseOverlayStyle::panel(QSize(surface->w+28,surface->h+28),StreamingPreferences::get()->uiAccentIndex,QSettings().value("eclipse/overlayOpacity",85).toInt());
-+            SDL_Surface* panel=image.isNull() ? nullptr : SDL_CreateRGBSurfaceWithFormat(0,image.width(),image.height(),32,SDL_PIXELFORMAT_RGBA32);
++            int fontSize=m_Overlays[type].fontSize;
++            int graphHeight=4*(fontSize+22)+12;
++            int width=qMax(surface->w+32,480);
++            QImage image=EclipseOverlayStyle::panel(QSize(width,surface->h+32+graphHeight),StreamingPreferences::get()->uiAccentIndex,QSettings().value("eclipse/overlayOpacity",85).toInt());
++            CrimsonGraphs::History history;
++            { QMutexLocker graphLock(&m_GraphLock);history=m_GraphHistory[type]; }
++            if(!image.isNull()) CrimsonGraphs::paint(image,surface->h+24,qMin(fontSize,20),StreamingPreferences::get()->uiAccentIndex,history,type==OverlayLocalHardware);
++            SDL_Surface* panel=image.isNull()?nullptr:SDL_CreateRGBSurfaceWithFormat(0,image.width(),image.height(),32,SDL_PIXELFORMAT_RGBA32);
 +            if(panel) {
 +                for(int row=0;row<image.height();++row) memcpy(static_cast<char*>(panel->pixels)+row*panel->pitch,image.constScanLine(row),image.width()*4);
-+                SDL_Rect dest={14,14,surface->w,surface->h}; SDL_BlitSurface(surface,nullptr,panel,&dest);
-+                SDL_FreeSurface(surface); surface=panel;
++                SDL_Rect dest={16,16,surface->w,surface->h};SDL_BlitSurface(surface,nullptr,panel,&dest);
++                SDL_FreeSurface(surface);surface=panel;
 +            }
 +        }
  
          SDL_AtomicSetPtr((void**)&m_Overlays[type].surface, surface);
      }
 diff --git a/app/streaming/video/overlaymanager.h b/app/streaming/video/overlaymanager.h
-index e19fc0c..5095fd6 100644
+index e19fc0c..4112a1d 100644
 --- a/app/streaming/video/overlaymanager.h
 +++ b/app/streaming/video/overlaymanager.h
-@@ -10,6 +10,7 @@ namespace Overlay {
+@@ -2,6 +2,7 @@
+ 
+ #include <QString>
+ #include <QMutex>
++#include "moonlightos/crimsongraphs.h"
+ 
+ #include "SDL_compat.h"
+ #include <SDL_ttf.h>
+@@ -10,6 +11,7 @@ namespace Overlay {
  
  enum OverlayType {
      OverlayDebug,
@@ -6412,7 +7766,7 @@ index e19fc0c..5095fd6 100644
      OverlayStatusUpdate,
      OverlayServerCommands,
      OverlayQuickMenu,
-@@ -70,6 +71,7 @@ public:
+@@ -70,6 +72,7 @@ public:
      // preference. Returns StreamingPreferences::PerfOverlayPosition as an int
      // (0=TL, 1=TR, 2=BL, 3=BR). Renderers map this to their own coordinate space.
      int getDebugOverlayAnchor();
@@ -6420,6 +7774,15 @@ index e19fc0c..5095fd6 100644
  
      void setOverlayRenderer(IOverlayRenderer* renderer);
  
+@@ -117,6 +120,8 @@ private:
+     IOverlayRenderer* m_Renderer;
+     QMutex m_RendererLock;   // guards m_Renderer swap vs cross-thread notify
+     QByteArray m_FontData;
++    QMutex m_GraphLock;
++    CrimsonGraphs::History m_GraphHistory[OverlayMax];
+ };
+ 
+ }
 diff --git a/packaging/flatpak/io.github.navyas321.Vibemis.desktop b/packaging/flatpak/io.github.navyas321.Vibemis.desktop
 index 045adbe..f12da5d 100644
 --- a/packaging/flatpak/io.github.navyas321.Vibemis.desktop

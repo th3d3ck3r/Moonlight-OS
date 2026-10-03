@@ -262,3 +262,4 @@ python3 "$ROOT/scripts/test-system-controls.py"
 python3 "$ROOT/scripts/test-control-center.py"
 
 python3 "$ROOT/scripts/test-bluez.py"
+python3 "$ROOT/scripts/test-source-audits.py"

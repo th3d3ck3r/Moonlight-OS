@@ -22,6 +22,10 @@ jobs:
       - uses: actions/checkout@v4
       - name: Static validation
         run: bash ./scripts/validate.sh
+      - name: Require all seven exact-source audits before image installation
+        env:
+          GH_AUDIT_TOKEN: ${{ github.token }}
+        run: python3 scripts/wait-source-audits.py
 
   build:
     needs: validate
@@ -69,7 +73,7 @@ jobs:
             -e VALIDATION_RUN_ID="${{ steps.mode.outputs.run_id }}" \
             -v "$PWD:/workspace" -w /workspace \
             fedora:44 bash -euxo pipefail -c '
-              dnf -y install lorax-lmc-virt qemu-kvm qemu-img edk2-ovmf curl xz util-linux findutils xfsprogs e2fsprogs dosfstools pykickstart dracut &&
+              dnf -y install lorax-lmc-virt qemu-kvm qemu-img edk2-ovmf git curl xz util-linux findutils xfsprogs e2fsprogs dosfstools pykickstart dracut &&
               ksvalidator ./config/moonlight-os.ks &&
               if [ -n "$VALIDATION_RUN_ID" ]; then
                 bash ./scripts/build-image.sh --validate-only
@@ -122,15 +126,15 @@ jobs:
 
       - name: Prepare EclipseOS download and matching checksum
         run: |
-          mv out/moonlight-os-mbp14-1.img.xz out/eclipseos-mbp14-1.img.xz
-          (cd out && sha256sum eclipseos-mbp14-1.img.xz > eclipseos-mbp14-1.img.xz.sha256)
+          mv out/moonlight-os-mbp14-1.img.xz out/eclipseos-crimson-glass-mbp14-1.img.xz
+          (cd out && sha256sum eclipseos-crimson-glass-mbp14-1.img.xz > eclipseos-crimson-glass-mbp14-1.img.xz.sha256)
       - name: Upload image artifact
         uses: actions/upload-artifact@v4
         with:
-          name: eclipseos-mbp14-1
+          name: eclipseos-crimson-glass-mbp14-1
           path: |
-            out/eclipseos-mbp14-1.img.xz
-            out/eclipseos-mbp14-1.img.xz.sha256
+            out/eclipseos-crimson-glass-mbp14-1.img.xz
+            out/eclipseos-crimson-glass-mbp14-1.img.xz.sha256
           if-no-files-found: error
           compression-level: 0
           retention-days: 14

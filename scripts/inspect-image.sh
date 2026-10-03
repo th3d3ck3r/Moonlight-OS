@@ -68,6 +68,10 @@ done
 cmp "$ROOT/scripts/bluetooth-menu.py" "$work/root/usr/local/bin/moonlight-bluetooth"
 cmp "$ROOT/scripts/install-frontends.sh" "$work/root/usr/local/share/moonlight-os/install-frontends.sh"
 cmp "$ROOT/patches/vibemis-crimson.patch" "$work/root/usr/local/share/moonlight-os/vibemis-crimson.patch"
+# The installed source must contain the complete reviewed UI, not just its patch file.
+installed_source="$work/root/usr/local/src/vibemis"
+[[ "$(git -c safe.directory="$installed_source" -C "$installed_source" rev-parse HEAD)" == "$VIBEMIS_COMMIT" ]]
+git -c safe.directory="$installed_source" -C "$installed_source" apply --reverse --check "$ROOT/patches/vibemis-crimson.patch"
 grep -Fxq 'Name=Eclipse' "$work/root/usr/local/share/applications/com.vibemis.Vibemis.desktop"
 grep -Fxq 'Icon=eclipse' "$work/root/usr/local/share/applications/com.vibemis.Vibemis.desktop"
 grep -Fxq 'Exec=/usr/local/bin/moonlight-launch vibemis' "$work/root/usr/local/share/applications/com.vibemis.Vibemis.desktop"
