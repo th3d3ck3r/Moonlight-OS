@@ -27,3 +27,14 @@ The reviewed patch is stored in `patches/vibemis-crimson.patch`, SHA-256-pinned 
 Four passes: structure/payload/patch checks; focused Qt parser/TLS/palette/panel tests plus Fedora native compilation; installed-payload inspection; strict OVMF boot validation. All four passes completed; installed-image inspection passed at 15:10:20 UTC and OVMF at 15:10:31 UTC. Current physical success belongs to the existing download, not this source revision. New colors/panels, host API setup, Wi-Fi/battery readouts, Bluetooth discovery timing and streaming regression still need a physical test after flashing the new experimental build.
 
 The five-way selector, other clients, Intel decode, native Retina/Openbox session, confirmed Mac media keys, speaker save/restore, 100-row console, AirPods policy, DualSense HID/audio policy, animation, root growth and recovery consoles remain in scope for regression checks. No browser/dashboard launch, graphical appliance settings redesign or OS minimization is included here.
+
+## Next-image source: connection selectors and managed updates
+
+Source commit `766f07849067b7f0b80e2d36f56413a54dd3da90` adds a Wi-Fi selector to the network button and a matching Bluetooth button. These are source changes, not part of the existing download. No image build or release change was started.
+
+- Wi-Fi: open the network button, Scan, select a visible network, and Connect. Enter a requested password in the private prompt. Select a connected network to Disconnect. Hidden and advanced enterprise networks remain available through the diagnostic shell.
+- Bluetooth: put the device in pairing mode, open the Bluetooth button, Scan, select it, then Pair / Connect. Enter PINs or type yes/no when BlueZ requests confirmation. Disconnect retains the saved bond; Forget explicitly confirms its removal. The pairing agent stays alive between discovery and pairing while the panel remains open.
+- Close the panel to cancel an operation. Scans and helper processes run on demand. Errors offer retry/recovery guidance; no saved bonds are automatically removed.
+- Customized Vibemis disables upstream standalone download/replacement and points to Moonlight-OS releases. This does not implement automatic OS image updates.
+
+Six deterministic helper fixtures and ten Qt tests pass, including private credential transport, update replacement prevention, existing TLS/palette tests, and selector rendering at 1024×640. Physical Wi-Fi/authentication and Bluetooth hardware testing remains necessary after an authorized image build. [Feature brainstorm and control-center proposal](VIBEMIS_FEATURE_PLAN.md) remains planning only.
