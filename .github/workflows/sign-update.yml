@@ -1,0 +1,46 @@
+name: Sign and publish EclipseOS helper update
+on:
+  workflow_dispatch:
+    inputs:
+      plan:
+        description: Reviewed release-plan JSON path committed on main
+        required: true
+        type: string
+permissions:
+  contents: read
+concurrency:
+  group: eclipseos-update-publishing
+  cancel-in-progress: false
+jobs:
+  validate:
+    if: github.ref == 'refs/heads/main' && github.repository == 'th3d3ck3r/Moonlight-OS'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # pinned official v4
+        with:
+          persist-credentials: false
+      - run: sudo apt-get update && sudo apt-get install -y python3-dbus python3-pexpect
+      - run: bash scripts/validate.sh
+      - run: python3 scripts/audit-runtime.py
+      - run: python3 scripts/test-github-signing.py
+      - name: Validate reviewed plan without access to signing secret
+        env:
+          UPDATE_PLAN: ${{ inputs.plan }}
+        run: python3 scripts/github-sign-update.py --validate-only
+  publish:
+    needs: validate
+    runs-on: ubuntu-latest
+    environment: eclipseos-signing
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # pinned official v4
+        with:
+          persist-credentials: false
+      - name: Sign, verify and publish approved helper update
+        env:
+          UPDATE_PLAN: ${{ inputs.plan }}
+          ECLIPSEOS_SIGNING_KEY: ${{ secrets.ECLIPSEOS_SIGNING_KEY }}
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: th3d3ck3r/Moonlight-OS
+        run: python3 scripts/github-sign-update.py
