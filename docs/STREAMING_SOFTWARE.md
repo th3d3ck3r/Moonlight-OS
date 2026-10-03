@@ -45,7 +45,8 @@ The complete production patch remains rooted in the pinned Vibemis commit. Its u
 | `auto-renderer` | Restore automatic renderer preference; does not restore every preset key |
 | `restore` | Restore the original owned keys, leaving unrelated later edits intact |
 | `status` | Show only tuning keys and snapshot availability, not hosts/tokens |
-| `diagnose` | Bounded read-only capture of display/driver/radio and CPU/GPU/power context |
+| `diagnose` | Bounded read-only capture of display/driver/radio context, installed driver package versions, filtered renderer identity and pipeline counters appended during capture |
+| `launch-diagnostic` | Close Eclipse first, then launch it through the normal updater preflight with the existing per-second pipeline sampler enabled for this child session only; does not save a preset |
 
 These are **testable presets**, not a promise of better FPS. The renderer preference is an attempt; use the actual Renderer line/log after a later native build to confirm what initialized. Compare the same game/host scene at 60 FPS for at least a minute per mode, changing one variable at a time. Compare with overlays off, then re-enable the selected compact/detailed graphs to measure their effect. Keep host frame-generation, encoder settings and refresh-rate changes separate from client comparisons.
 
@@ -57,7 +58,9 @@ eclipseos-streaming status
 # Close Eclipse before these saved-setting changes:
 eclipseos-streaming balanced
 eclipseos-streaming opengl-test
-# Run during a stream; no rescan or networking/service changes:
+# Optional: close Eclipse and launch a session with temporary pipeline counters:
+eclipseos-streaming launch-diagnostic
+# During that stream, use another tty for this capture; no rescan or service changes:
 eclipseos-streaming diagnose --seconds 30
 # Close Eclipse, then return to your original settings:
 eclipseos-streaming restore
@@ -72,11 +75,15 @@ The settings menu offers **s) Streaming tuning / renderer diagnostics** on a fut
 3. Compare actual presentation frontend, V-sync on/off, overlay off/on and matched client/display rates. Capture incoming, decoded, rendered and drop counts over sustained intervals; a single screenshot cannot identify the scheduler/driver that caused the queue overflow. Do not raise queue depth just to lower the displayed drop percentage.
 4. If EGL import/presentation fails, inspect its initialization error and capabilities before changing Intel/Mesa/libva packages. Such driver/library changes require a separately validated base release under the current update policy.
 
-An optional diagnostic report is saved privately to `~/.local/state/eclipseos/streaming/diagnostics.json`. It includes display modes, filtered OpenGL/VA-API identity, active AP radio measurements without SSID/BSSID, per-core CPU load/frequency, GPU frequency, memory-pressure counters, power source and thermal counter trends. It does not probe paired devices, export network credentials/host tokens or modify services. Missing readings remain Unavailable; a quiet sample does not certify hardware health. The current priority is software/rendering.
+An optional diagnostic report is saved privately to `~/.local/state/eclipseos/streaming/diagnostics.json`. It includes display modes, filtered OpenGL/VA-API identity, active AP radio measurements without SSID/BSSID, per-core CPU load/frequency, GPU frequency, memory-pressure counters, power source and thermal counter trends. It does not probe paired devices, export network credentials/host tokens or modify services. Missing readings remain Unavailable; a quiet sample does not certify hardware health. The current priority is software/rendering. Driver versions are queried from a fixed RPM package list without updating packages. GLX identity describes glxinfo's own context, not Eclipse's EGL frontend; the latter comes from known renderer names in the client log.
+
+Pipeline evidence reads at most 256 KiB from a recent, regular, user-owned Vibemis log and never exports raw lines. Only numeric samples appended during the capture are summarized; prior stream samples are excluded, reinitializations/counter resets start a new segment, and at most 120 samples are retained. Renderer identity may precede the capture. Missing/stale logs or a sampler-disabled launch remain explicitly unavailable. Counter rates count render calls, not physical display timestamps. The sampler adds per-second logging, so compare ordinary launches again after diagnosis; it is never enabled globally.
+
+A remaining source finding is synchronous hardware sampling on the decoder's overlay-refresh path. The graph-lock change removes the render-thread dependency, but does not move those reads off the decoder thread. A new worker would need native shutdown, enable/disable and session-overlap tests; it is not introduced without that verification. Use the fully overlay-disabled comparisons first.
 
 ## Source validation
 
-- **93 Python tests pass:** 35 updater, 7 controls, 17 control-center, 6 BlueZ lifecycle, 4 real D-Bus serialization, 5 terminal Wi-Fi, 5 real Wi-Fi PTY and 14 preset/diagnostic tests.
+- **100 Python tests pass:** 35 updater, 7 controls, 17 control-center, 6 BlueZ lifecycle, 4 real D-Bus serialization, 5 terminal Wi-Fi, 5 real Wi-Fi PTY and 21 preset/diagnostic tests.
 - Static validation, exact-source gate fixtures, runtime GPU/media-key fixtures, embedded payload equality, patch application against clean pinned source and `git diff --check` pass.
 - The new manual source-only workflow requires the real D-Bus and PTY tests, rather than silently skipping missing dependencies.
 - No new native frontend, OS image or deployable signed package has been built, and no Mac installation/performance improvement is claimed.

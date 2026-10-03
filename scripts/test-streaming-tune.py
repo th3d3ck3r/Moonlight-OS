@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import importlib.util
 import json
+import os
 from pathlib import Path
 import tempfile
 import unittest
@@ -91,6 +92,66 @@ class TuningTest(unittest.TestCase):
         result=t.settings_edit('[General]\nfps=60\n[eclipse]\naccent=7',{'eclipse/localOverlay':'false'})
         self.assertIn('accent=7\nlocalOverlay=false\n',result)
         with self.assertRaises(ValueError):t.settings_parse('[eclipse]\nlocalOverlay=true\nlocalOverlay=false\n')
+    def pipeline_line(self, recv=60, dec=60, pres=57, drop=3, total=60):
+        return f'[BL-2546] pipeline +1000ms: recv +{recv} dec +{dec} pres +{pres} drop +{drop} queue 3 | totals recv {total} dec {total} pres {total} drop {total} | mode none'
+    def test_pipeline_rates_and_egl_identity_without_raw_log_content(self):
+        text="SECRET_PASSWORD=never-export\nEGLRenderer: Presentation: swap-vsync; reported swap interval: 0; fence wait: enabled\nRenderer 'EGL/GLES' with 'VAAPI' backend chosen\n"+self.pipeline_line()+'\n'+self.pipeline_line(total=120)
+        result=t.pipeline_evidence(text)
+        self.assertEqual(result['rates_fps'],{'received':60,'decoded':60,'presented':57})
+        self.assertEqual(result['drop_percent'],5)
+        self.assertEqual(result['identity']['renderer'],'EGL/GLES')
+        self.assertEqual(result['identity']['reported_swap_interval'],0)
+        self.assertNotIn('SECRET_PASSWORD',json.dumps(result))
+    def test_pipeline_counter_reset_uses_latest_segment_and_is_bounded(self):
+        text='\n'.join(self.pipeline_line(total=(i+1)*60) for i in range(130))
+        self.assertEqual(len(t.pipeline_evidence(text)['samples']),120)
+        result=t.pipeline_evidence(text+'\n'+self.pipeline_line(recv=30,dec=30,pres=30,drop=0,total=30))
+        self.assertEqual(len(result['samples']),1)
+        self.assertEqual(result['rates_fps']['presented'],30)
+    def test_pipeline_reinitialization_and_invalid_lines(self):
+        text="EGLRenderer: Presentation: swap-vsync; reported swap interval: 1; fence wait: enabled\nRenderer 'EGL/GLES' chosen\n"+self.pipeline_line()+"\nRenderer 'Vulkan (libplacebo)' with 'VAAPI' backend chosen\n"+self.pipeline_line(total=1)+'\n'+self.pipeline_line().replace('+1000ms','+0ms')
+        result=t.pipeline_evidence(text)
+        self.assertEqual(result['identity'],{'renderer':'Vulkan (libplacebo)','backend':'VAAPI'})
+        self.assertEqual(len(result['samples']),1)
+        self.assertEqual(t.pipeline_evidence("Renderer 'SECRET_HOST' chosen")['identity'],{})
+    def test_recent_log_excludes_symlinks_and_stale_files(self):
+        root,_,_=self.fixture();target=root/'secret';target.write_text('TOKEN_SECRET')
+        (root/'Vibemis-1.log').symlink_to(target)
+        old=root/'Vibemis-2.log';old.write_text(self.pipeline_line());os.utime(old,(100,100))
+        self.assertIn('unavailable',t.recent_pipeline(root,now=1000)['status'])
+        fresh=root/'Vibemis-3.log';fresh.write_text(self.pipeline_line());os.utime(fresh,(999,999))
+        result=t.recent_pipeline(root,now=1000)
+        self.assertEqual(result['log_age_seconds'],1)
+        self.assertEqual(result['rates_fps']['presented'],57)
+        self.assertNotIn('TOKEN_SECRET',json.dumps(result))
+    def test_capture_excludes_prior_stream_samples_and_preserves_renderer_identity(self):
+        root,_,_=self.fixture();log=root/'Vibemis-4.log'
+        log.write_text("Renderer 'EGL/GLES' with 'VAAPI' backend chosen\n"+self.pipeline_line()+'\n')
+        positions=t.pipeline_log_positions(root)
+        self.assertEqual(t.recent_pipeline(root,positions=positions)['samples'],[])
+        with log.open('a') as out:out.write(self.pipeline_line(pres=59,drop=1,total=120)+'\n')
+        result=t.recent_pipeline(root,positions=positions)
+        self.assertEqual(len(result['samples']),1)
+        self.assertEqual(result['rates_fps']['presented'],59)
+        self.assertEqual(result['identity']['renderer'],'EGL/GLES')
+    def test_diagnostic_launch_is_child_only_and_uses_existing_preflight_launcher(self):
+        before=dict(os.environ)
+        with patch.object(t,'idle'),patch.object(t.subprocess,'call',return_value=7) as call:
+            self.assertEqual(t.launch_diagnostic(),7)
+        args,kwargs=call.call_args
+        self.assertEqual(args[0],['/usr/local/bin/moonlight-launch','vibemis'])
+        self.assertEqual(kwargs['env']['VIBEMIS_PIPELINE_SAMPLER'],'1')
+        self.assertEqual(dict(os.environ),before)
+    def test_driver_report_filters_failed_package_errors_and_marks_missing(self):
+        root,_,_=self.fixture()
+        def command(args):
+            if args[0]=='rpm':return 1,'mesa-libEGL 26.1-1.fc44.x86_64\npackage intel-media-driver is not installed\nSECRET_HOST TOKEN\n'
+            return 1,'Unavailable'
+        with patch.object(t,'command',command),patch.object(t,'recent_pipeline',return_value={'status':'fixture'}):
+            report=t.diagnose(2,root,sleeper=lambda _:None)
+        self.assertEqual(report['driver_packages'],{'mesa-libEGL':'26.1-1.fc44.x86_64'})
+        self.assertIn('intel-media-driver',report['driver_packages_unavailable'])
+        self.assertNotIn('SECRET_HOST',json.dumps(report))
     def test_hardware_snapshot_and_throttle_delta(self):
         root,_,_=self.fixture()
         for relative,value in {'sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq':'2300000',
@@ -110,7 +171,7 @@ class TuningTest(unittest.TestCase):
     def test_diagnostics_are_bounded_and_do_not_scan_or_change_services(self):
         root,_,_=self.fixture();calls=[]
         def command(args):calls.append(args);return 1,'Unavailable'
-        with patch.object(t,'command',command):
+        with patch.object(t,'command',command),patch.object(t,'recent_pipeline',return_value={'status':'fixture'}):
             report=t.diagnose(2,root,sleeper=lambda _:None)
         self.assertEqual(len(report['samples']),2)
         self.assertTrue(any('--rescan' in c and 'no' in c for c in calls))

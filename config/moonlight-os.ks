@@ -11160,6 +11160,7 @@ import json
 import os
 from pathlib import Path
 import re
+import stat
 import subprocess
 import tempfile
 import time
@@ -11171,6 +11172,100 @@ PROFILES = {
     'opengl-test': {'rendererbackend':'2'},
     'auto-renderer': {'rendererbackend':'0'},
 }
+
+DRIVER_PACKAGES = ('mesa-dri-drivers','mesa-libEGL','mesa-libGL','mesa-vulkan-drivers',
+                   'libva','libva-utils','intel-media-driver','libplacebo','SDL2','ffmpeg-free')
+RENDERERS = ('Unknown','Vulkan (libplacebo)','CUDA','D3D11VA','DRM','DXVA2 (D3D9)',
+             'EGL/GLES','MMAL','SDL','VAAPI','VDPAU','VideoToolbox (AVSampleBufferDisplayLayer)',
+             'VideoToolbox (Metal)')
+
+def pipeline_evidence(text):
+    """Return typed counters/known renderer identities, never raw log lines."""
+    samples=[];identity={};last_totals=None
+    pattern=re.compile(r'\[BL-2546\] pipeline \+(\d{1,5})ms: recv \+(\d{1,20}) dec \+(\d{1,20}) pres \+(\d{1,20}) drop \+(\d{1,20}) queue (\d{1,3}) \| totals recv (\d{1,20}) dec (\d{1,20}) pres (\d{1,20}) drop (\d{1,20}) \| mode ([a-z-]{1,12})(?:\s|$)')
+    for line in text.splitlines():
+        match=re.search(r"Renderer '([^']+)'(?: with '([^']+)' backend)? chosen",line)
+        if match and match[1] in RENDERERS and (match[2] is None or match[2] in RENDERERS):
+            # A decoder reinitialization is a new comparison segment.
+            identity.update(renderer=match[1],backend=match[2] or match[1]);samples=[];last_totals=None
+            if match[1]!='EGL/GLES':
+                for key in ('egl_presentation','reported_swap_interval','fence_wait'):identity.pop(key,None)
+        presentation=re.search(r'EGLRenderer: Presentation: (swap-vsync|swap-immediate|swap-failed|compositor); reported swap interval: (-?\d{1,2}); fence wait: (enabled|disabled)',line)
+        if presentation:
+            identity.update(egl_presentation=presentation[1],reported_swap_interval=int(presentation[2]),fence_wait=presentation[3])
+        match=pattern.search(line)
+        if not match:continue
+        values=[int(match[i]) for i in range(1,11)]
+        if not 1<=values[0]<=60000 or match[11] not in ('none','vsync','vrr-worker','vrr-unpaced'):continue
+        totals=values[6:10]
+        if last_totals and any(new<old for new,old in zip(totals,last_totals)):samples=[]
+        last_totals=totals
+        samples.append(dict(zip(('milliseconds','received','decoded','presented','dropped','queue'),values[:6]),mode=match[11]))
+        samples=samples[-120:]
+    result={'identity':identity,'samples':samples,'scope':'Latest bounded log segment; renderer calls are not physical display timestamps.'}
+    if samples:
+        duration=sum(s['milliseconds'] for s in samples)/1000
+        result['seconds']=round(duration,3)
+        result['rates_fps']={key:round(sum(s[key] for s in samples)/duration,3) for key in ('received','decoded','presented')}
+        decoded=sum(s['decoded'] for s in samples)
+        result['dropped']=sum(s['dropped'] for s in samples)
+        result['drop_percent']=round(100*result['dropped']/decoded,3) if decoded else None
+        result['max_queue']=max(s['queue'] for s in samples)
+    else:result['status']='No pipeline samples; use launch-diagnostic for a temporary diagnostic session.'
+    return result
+
+def pipeline_log_positions(directory=None):
+    positions={}
+    for path in Path(directory or tempfile.gettempdir()).glob('Vibemis-*.log'):
+        try:
+            info=path.lstat()
+            if stat.S_ISREG(info.st_mode) and info.st_uid==os.getuid():
+                positions[str(path)]=(info.st_dev,info.st_ino,info.st_size)
+        except OSError:continue
+    return positions
+
+def recent_pipeline(directory=None, now=None, positions=None):
+    """Inspect at most 256 KiB of a recent, regular, user-owned client log."""
+    directory=Path(directory or tempfile.gettempdir());now=time.time() if now is None else now
+    candidates=[]
+    for path in directory.glob('Vibemis-*.log'):
+        try:
+            info=path.lstat()
+            if stat.S_ISREG(info.st_mode) and info.st_uid==os.getuid() and 0<=now-info.st_mtime<=300:
+                candidates.append((info.st_mtime,path))
+        except OSError:continue
+    if not candidates:return {'status':'No recent user-owned client log; pipeline evidence unavailable.'}
+    path=max(candidates,key=lambda item:item[0])[1]
+    try:
+        fd=os.open(path,os.O_RDONLY|os.O_NOFOLLOW|os.O_NONBLOCK)
+        with os.fdopen(fd,'rb') as source:
+            info=os.fstat(source.fileno())
+            if not stat.S_ISREG(info.st_mode) or info.st_uid!=os.getuid():return {'status':'Client log changed; unavailable.'}
+            offset=max(0,info.st_size-262144);source.seek(offset);data=source.read(262144)
+        if offset:
+            first=data.find(b'\n')
+            offset+=first+1;data=data[first+1:] if first>=0 else b''
+        result=pipeline_evidence(data.decode('utf-8',errors='replace'))
+        if positions is not None:
+            before=positions.get(str(path))
+            start=before[2] if before and before[:2]==(info.st_dev,info.st_ino) and before[2]<=info.st_size else 0
+            start=max(0,start-offset)
+            fresh=pipeline_evidence(data[start:].decode('utf-8',errors='replace'))
+            # Identity can precede capture; numeric samples must be appended
+            # during it. A counter reset inside capture starts a new segment.
+            if not fresh['identity']:fresh['identity']=result['identity']
+            result=fresh
+            result['scope']='Counters appended during capture, latest bounded segment; renderer calls are not physical display timestamps.'
+        result['log_age_seconds']=round(max(0,now-info.st_mtime),1)
+        return result
+    except OSError:return {'status':'Client log unavailable.'}
+
+def launch_diagnostic():
+    idle()
+    env=dict(os.environ,VIBEMIS_PIPELINE_SAMPLER='1')
+    # Counters run only in this child session, with the normal update preflight.
+    # No saved preferences, global environment, per-frame trace or services change.
+    return subprocess.call(['/usr/local/bin/moonlight-launch','vibemis'],env=env)
 
 def atomic(path, data):
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -11352,6 +11447,7 @@ def assess(samples):
     return findings
 
 def diagnose(seconds, root=Path('/'), sleeper=time.sleep, sampler=snapshot):
+    log_positions=pipeline_log_positions()
     samples=[]
     for index in range(seconds//2+1):
         sample=sampler(root);sample['elapsed_seconds']=index*2
@@ -11367,6 +11463,7 @@ def diagnose(seconds, root=Path('/'), sleeper=time.sleep, sampler=snapshot):
         samples.append(sample)
         if index<seconds//2:sleeper(2)
     report={'schema':1,'kernel':os.uname().release,'architecture':os.uname().machine,'seconds':seconds,'samples':samples,'findings':assess(samples)}
+    report['pipeline']=recent_pipeline(positions=log_positions)
     code,display=command(['xrandr','--current'])
     report['active_display_modes']=[line.strip() for line in display.splitlines() if '*' in line and re.search(r'\d+\.\d+\*',line)] if code==0 else 'Unavailable'
     code,gl=command(['glxinfo','-B'])
@@ -11380,20 +11477,31 @@ def diagnose(seconds, root=Path('/'), sleeper=time.sleep, sampler=snapshot):
     code,wifi=command(['nmcli','-t','-f','IN-USE,FREQ,CHAN,SIGNAL,SECURITY','device','wifi','list','--rescan','no'])
     report['active_wifi_radio']=[line for line in wifi.splitlines() if line.startswith('*:')][:8] if code==0 else 'Unavailable'
     report['services']={service:command(['systemctl','is-active',service])[1].strip()[:64] for service in ('thermald.service','power-profiles-daemon.service','tuned.service')}
+    code,versions=command(['rpm','-q','--qf','%{NAME} %{VERSION}-%{RELEASE}.%{ARCH}\n',*DRIVER_PACKAGES])
+    report['driver_packages']={}
+    for line in versions.splitlines():
+        parts=line.split()
+        if len(parts)==2 and parts[0] in DRIVER_PACKAGES and re.fullmatch(r'[A-Za-z0-9._+~^-]{1,128}',parts[1]):
+            report['driver_packages'][parts[0]]=parts[1]
+    report['driver_packages_unavailable']=[name for name in DRIVER_PACKAGES if name not in report['driver_packages']]
+    report['graphics_scope']='glxinfo identifies its own GLX context; the client renderer is identified separately by filtered log evidence.'
     return report
 
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('mode',choices=[*PROFILES,'restore','status','diagnose','menu'])
+    parser.add_argument('mode',choices=[*PROFILES,'restore','status','diagnose','launch-diagnostic','menu'])
     parser.add_argument('--seconds',type=int,default=30,help='Even number from 2 to 120; sample while a stream is running')
     args=parser.parse_args()
     if os.geteuid()==0:parser.error('Run as moonlight, without sudo; presets belong to that user')
     if args.mode=='menu':
-        choices={'1':'status','2':'balanced','3':'latency','4':'opengl-test','5':'vulkan-test','6':'auto-renderer','7':'restore','8':'diagnose'}
-        print('Eclipse streaming tuning\nBalanced/latency presets save 1080p60 HEVC hardware decode at 20 Mbps and disable both performance overlays; previous settings can be restored.\nLowest latency may tear. Renderer tests change only the renderer preference.\nClose Eclipse before changing saved settings; diagnostics run during a stream.\n1) Status  2) Balanced  3) Lowest latency  4) OpenGL test\n5) Vulkan test  6) Auto renderer  7) Restore  8) 30-second diagnostic  0) Exit')
+        choices={'1':'status','2':'balanced','3':'latency','4':'opengl-test','5':'vulkan-test','6':'auto-renderer','7':'restore','8':'diagnose','9':'launch-diagnostic'}
+        print('Eclipse streaming tuning\nBalanced/latency presets save 1080p60 HEVC hardware decode at 20 Mbps and disable both performance overlays; previous settings can be restored.\nLowest latency may tear. Renderer tests change only the renderer preference.\nClose Eclipse before changing saved settings; diagnostics run during a stream.\n1) Status  2) Balanced  3) Lowest latency  4) OpenGL test\n5) Vulkan test  6) Auto renderer  7) Restore  8) 30-second diagnostic  9) Launch Eclipse with pipeline counters  0) Exit')
         choice=input('Choose: ').strip()
         if choice not in choices:return
         args.mode=choices[choice]
+    if args.mode=='launch-diagnostic':
+        print('Temporary per-second pipeline counters enabled for this Eclipse session. Saved settings stay unchanged. Run diagnose from another tty during streaming.',flush=True)
+        raise SystemExit(launch_diagnostic())
     config=Path.home()/'.config/Vibemis Project/Vibemis.conf'
     folder=Path.home()/'.local/state/eclipseos/streaming'
     folder.mkdir(parents=True,exist_ok=True,mode=0o700)
