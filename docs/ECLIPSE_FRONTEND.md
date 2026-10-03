@@ -1,6 +1,6 @@
-# 🌘 Eclipse — Moonlight-OS frontend
+# 🌘 Eclipse — EclipseOS frontend
 
-Eclipse is the Moonlight-OS customization of pinned Vibemis 0.5.0. The public name, app/window icon, welcome screen, installed desktop entry, Steam artwork and visible client text use Eclipse. The internal executable, Qt settings namespace, desktop ID and source pins remain compatible, preserving existing pairing, preferences, shortcuts and launcher recovery. About retains upstream credit and licenses.
+Eclipse is the EclipseOS customization of pinned Vibemis 0.5.0. The public name, app/window icon, welcome screen, installed desktop entry, Steam artwork and visible client text use Eclipse. The internal executable, Qt settings namespace, desktop ID and source pins remain compatible, preserving existing pairing, preferences, shortcuts and launcher recovery. About retains upstream credit and licenses.
 
 ## Control center
 
