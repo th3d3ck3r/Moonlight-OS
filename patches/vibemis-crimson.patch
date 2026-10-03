@@ -490,10 +490,10 @@ index 0000000..d9c5d54
 +}
 diff --git a/app/gui/EclipseHardwareMonitor.qml b/app/gui/EclipseHardwareMonitor.qml
 new file mode 100644
-index 0000000..be341a0
+index 0000000..1787d01
 --- /dev/null
 +++ b/app/gui/EclipseHardwareMonitor.qml
-@@ -0,0 +1,76 @@
+@@ -0,0 +1,77 @@
 +import QtQuick 2.9
 +import QtQuick.Controls 2.5
 +import QtQuick.Layouts 1.3
@@ -545,6 +545,7 @@ index 0000000..be341a0
 +                c.stroke() }
 +        }
 +        Connections { target: LocalHardware; function onChanged() { graph.requestPaint() } }
++        Connections { target: VbTokens; function onAccentChanged() { graph.requestPaint() } }
 +    }
 +    CheckBox { font.family:VbTokens.fontBody; font.pixelSize:VbTokens.typeBody; text: qsTr("Show local hardware overlay during streaming"); checked: LocalHardware.overlay; onToggled: LocalHardware.overlay=checked }
 +    CheckBox { font.family:VbTokens.fontBody; font.pixelSize:VbTokens.typeBody; text: qsTr("Detailed local overlay"); checked: LocalHardware.detailed; onToggled: LocalHardware.detailed=checked }
@@ -659,6 +660,44 @@ index 0000000..5d2bbc9
 +        onAccepted:SystemControls.answer("yes");onRejected:SystemControls.answer("no");contentItem:Label{wrapMode:Text.Wrap;text:SystemControls.prompt;color:VbTokens.text} }
 +    Connections { target:SystemControls;function onChanged(){if(system.active&&SystemControls.prompt.length>0&&!connections.opened)confirmation.open();if(!SystemControls.busy)confirmation.close()} }
 +}
+diff --git a/app/gui/NavigableDialog.qml b/app/gui/NavigableDialog.qml
+index 4384d5b..c06ddf3 100644
+--- a/app/gui/NavigableDialog.qml
++++ b/app/gui/NavigableDialog.qml
+@@ -1,7 +1,33 @@
+ import QtQuick 2.0
+ import QtQuick.Controls 2.5
++import QtQuick.Controls.Material 2.2
++import Vibemis.Redesign 1.0
+ 
+ Dialog {
++    id: dialog
++    font.family: VbTokens.fontBody
++    font.pixelSize: VbTokens.typeBody
++    Material.background: VbTokens.bgElev
++    Material.foreground: VbTokens.text
++    Material.accent: VbTokens.accent
++    background: Rectangle { color:VbTokens.bgElev; radius:VbTokens.radiusDialog; border.color:VbTokens.stroke }
++    header: Label {
++        visible: dialog.title.length > 0
++        text: dialog.title; textFormat: Text.PlainText; color:VbTokens.text
++        font.family:VbTokens.fontBody; font.pixelSize:VbTokens.typeBody; font.bold:true
++        padding:VbTokens.space4; elide:Text.ElideRight
++    }
++    footer: DialogButtonBox {
++        background: Item {}
++        visible: dialog.standardButtons !== Dialog.NoButton
++        standardButtons: dialog.standardButtons
++        implicitHeight: visible ? Math.max(44,VbTokens.typeLabel+20)+2*VbTokens.space3 : 0
++        spacing: VbTokens.space2
++        padding: VbTokens.space3
++        delegate: EclipseActionButton {}
++        onAccepted: dialog.accept()
++        onRejected: dialog.reject()
++    }
+     modal: true
+     anchors.centerIn: Overlay.overlay
+ 
 diff --git a/app/gui/PcView.qml b/app/gui/PcView.qml
 index f0e739a..f4d012b 100644
 --- a/app/gui/PcView.qml
@@ -929,10 +968,10 @@ index 494e35b..90ba3c6 100644
                  Button {
 diff --git a/app/gui/SystemConnectionsDialog.qml b/app/gui/SystemConnectionsDialog.qml
 new file mode 100644
-index 0000000..f11d124
+index 0000000..96cc099
 --- /dev/null
 +++ b/app/gui/SystemConnectionsDialog.qml
-@@ -0,0 +1,110 @@
+@@ -0,0 +1,115 @@
 +import QtQuick 2.9
 +import QtQuick.Controls 2.5
 +import QtQuick.Layouts 1.3
@@ -957,14 +996,14 @@ index 0000000..f11d124
 +        spacing: VbTokens.space3
 +        RowLayout {
 +            Layout.fillWidth: true
-+            Label { Layout.fillWidth: true; wrapMode: Text.Wrap; textFormat: Text.PlainText; text: SystemControls.status; color: VbTokens.textDim }
++            Label { font.family:VbTokens.fontBody; font.pixelSize:VbTokens.typeBody; Layout.fillWidth: true; wrapMode: Text.Wrap; textFormat: Text.PlainText; text: SystemControls.status; color: VbTokens.textDim }
 +            BusyIndicator { running: SystemControls.busy; visible: running; implicitWidth: 32; implicitHeight: 32 }
 +            EclipseActionButton { id: scanButton; text: qsTr("Scan"); enabled: !SystemControls.busy; onClicked: { panel.selected = ({}); SystemControls.request(panel.kind + "-scan") } }
 +        }
 +        EclipseActionButton { text: qsTr("Cancel operation"); visible: SystemControls.busy; onClicked: { SystemControls.close(); panel.selected=({}); reopen.restart() } }
 +        Timer { id: reopen; interval: 600; onTriggered: if(panel.opened) SystemControls.open(panel.kind) }
 +        Timer { interval:5000; repeat:true; running:panel.opened && panel.kind==="bt" && !SystemControls.busy && !credential.opened; onTriggered:SystemControls.request("bt-list") }
-+        Label {
++        Label { font.family:VbTokens.fontBody; font.pixelSize:VbTokens.typeBody;
 +            Layout.fillWidth: true; wrapMode: Text.Wrap; color: VbTokens.textDim
 +            text: panel.kind === "wifi" ? qsTr("Select a network, then Connect. Advanced or hidden networks are available in the diagnostic shell.") : qsTr("Put your controller or headphones in pairing mode, then Scan. Devices appear during scanning. Saved devices are listed without scanning.")
 +        }
@@ -975,6 +1014,8 @@ index 0000000..f11d124
 +            ScrollBar.vertical: ScrollBar {}
 +            delegate: ItemDelegate {
 +                width: devices.width
++                implicitHeight: Math.max(44,contentItem.implicitHeight+24)
++                background: Rectangle { color:parent.highlighted || parent.hovered ? VbTokens.bgElev2 : VbTokens.bgElev; radius:VbTokens.radiusControl; border.color:parent.activeFocus?VbTokens.accent:VbTokens.stroke }
 +                enabled: !SystemControls.busy
 +                highlighted: panel.selected.id === modelData.id
 +                activeFocusOnTab: true
@@ -982,7 +1023,7 @@ index 0000000..f11d124
 +                Keys.onEnterPressed: if (enabled) clicked()
 +                Keys.onDownPressed: { if (index + 1 < devices.count) { devices.incrementCurrentIndex(); if (devices.currentItem) devices.currentItem.forceActiveFocus(Qt.TabFocus) } else if (connectButton.enabled) connectButton.forceActiveFocus(Qt.TabFocus); else scanButton.forceActiveFocus(Qt.TabFocus) }
 +                Keys.onUpPressed: { if (index > 0) { devices.decrementCurrentIndex(); if (devices.currentItem) devices.currentItem.forceActiveFocus(Qt.TabFocus) } else scanButton.forceActiveFocus(Qt.TabFocus) }
-+                contentItem: Label {
++                contentItem: Label { font.family:VbTokens.fontBody; font.pixelSize:VbTokens.typeBody;
 +                    textFormat: Text.PlainText; elide: Text.ElideRight; color: VbTokens.text
 +                    text: modelData.name + " · " + modelData.detail + (modelData.connected ? " · " + qsTr("Connected") : "")
 +                }
@@ -1019,6 +1060,7 @@ index 0000000..f11d124
 +    }
 +    NavigableDialog {
 +        id: credential
++        objectName: "connectionCredential"
 +        title: qsTr("Connection authentication")
 +        width: Math.min(480, panel.width)
 +        closePolicy: Popup.NoAutoClose
@@ -1028,19 +1070,21 @@ index 0000000..f11d124
 +        onAccepted: { SystemControls.answer(secret.text); secret.text = "" }
 +        onRejected: { secret.text = ""; SystemControls.close(); reopen.restart() }
 +        contentItem: ColumnLayout {
-+            Label { Layout.fillWidth: true; textFormat: Text.PlainText; wrapMode: Text.Wrap; text: SystemControls.prompt; color: VbTokens.text }
-+            TextField { id: secret; Layout.fillWidth: true; echoMode: TextInput.Password; maximumLength: 4096; selectByMouse: true; onAccepted: credential.accept() }
-+            Label { Layout.fillWidth: true; wrapMode: Text.Wrap; text: qsTr("Enter the requested password or PIN. For a yes/no confirmation, type yes or no."); color: VbTokens.textDim }
++            Label { font.family:VbTokens.fontBody; font.pixelSize:VbTokens.typeBody; Layout.fillWidth: true; textFormat: Text.PlainText; wrapMode: Text.Wrap; text: SystemControls.prompt; color: VbTokens.text }
++            TextField { id: secret; font.family:VbTokens.fontBody; font.pixelSize:VbTokens.typeBody; Layout.fillWidth: true; echoMode: TextInput.Password; maximumLength: 4096; selectByMouse: true; onAccepted: credential.accept() }
++            Label { font.family:VbTokens.fontBody; font.pixelSize:VbTokens.typeBody; Layout.fillWidth: true; wrapMode: Text.Wrap; text: qsTr("Enter the requested password or PIN. For a yes/no confirmation, type yes or no."); color: VbTokens.textDim }
 +        }
 +    }
 +    NavigableDialog {
 +        id: forget
++        implicitHeight: contentItem.contentHeight + header.implicitHeight + footer.implicitHeight + topPadding + bottomPadding
++        objectName: "connectionForget"
 +        title: qsTr("Forget Bluetooth device?")
 +        width: Math.min(480, panel.width)
 +        standardButtons: Dialog.Yes | Dialog.No
 +        Material.background: VbTokens.bgElev
 +        onAccepted: SystemControls.request("bt-forget", panel.selected.id, true)
-+        contentItem: Label { textFormat: Text.PlainText; wrapMode: Text.Wrap; text: qsTr("Remove the saved pairing for %1? You will need to pair it again.").arg(panel.selected.name || ""); color: VbTokens.text }
++        contentItem: Label { font.family:VbTokens.fontBody; font.pixelSize:VbTokens.typeBody; textFormat: Text.PlainText; wrapMode: Text.Wrap; text: qsTr("Remove the saved pairing for %1? You will need to pair it again.").arg(panel.selected.name || ""); color: VbTokens.text }
 +    }
 +}
 diff --git a/app/gui/Theme.qml b/app/gui/Theme.qml
@@ -2404,10 +2448,10 @@ index 0000000..996e5ac
 +QtObject { property int uiAccentIndex: 4; property bool uiShowHints: true; property int width: 1920; property int height: 1080; property int fps: 60; property int bitrateKbps: 20000; function save() {} }
 diff --git a/app/moonlightos/tests/test-crimson.cpp b/app/moonlightos/tests/test-crimson.cpp
 new file mode 100644
-index 0000000..2310c73
+index 0000000..96c5fef
 --- /dev/null
 +++ b/app/moonlightos/tests/test-crimson.cpp
-@@ -0,0 +1,355 @@
+@@ -0,0 +1,371 @@
 +#include <QtTest>
 +#include <QTemporaryDir>
 +#include <QQmlEngine>
@@ -2717,6 +2761,22 @@ index 0000000..2310c73
 +            }
 +            QVERIFY(QMetaObject::invokeMethod(connections, "close")); QTest::qWait(300);
 +        }
++        auto clickDialogButton=[](QObject* dialog,const QString& text) {
++            auto footer=dialog->property("footer").value<QObject*>(); if(!footer) return false;
++            for(auto child:footer->findChildren<QObject*>()) if(child->property("text").toString()==text && child->metaObject()->indexOfSignal("clicked()")>=0) return QMetaObject::invokeMethod(child,"clicked");
++            return false;
++        };
++        QVERIFY(QMetaObject::invokeMethod(connections,"open")); QTest::qWait(300);
++        for(const QString& name:{"connectionCredential","connectionForget"}) {
++            auto dialog=root->findChild<QObject*>(name); QVERIFY(dialog);
++            QVERIFY(QMetaObject::invokeMethod(dialog,"open")); QTest::qWait(300);
++            QVERIFY(dialog->property("visible").toBool());
++            QString destination=qEnvironmentVariable("CRIMSON_SCREENSHOTS");
++            if(!destination.isEmpty()) QVERIFY(qobject_cast<QQuickWindow*>(root.data())->grabWindow().save(destination+"/"+name+".png"));
++            QVERIFY(clickDialogButton(dialog,name=="connectionCredential"?"Cancel":"No"));
++            QTest::qWait(400); QVERIFY2(!dialog->property("visible").toBool(),qPrintable(name));
++        }
++        QVERIFY(QMetaObject::invokeMethod(connections,"close")); QTest::qWait(200);
 +        QQmlComponent actionComponent(&engine,QUrl::fromLocalFile(source+"/app/gui/EclipseActionButton.qml"));
 +        QScopedPointer<QObject> action(actionComponent.create()); QVERIFY2(action,qPrintable(actionComponent.errorString()));
 +        auto actionItem = qobject_cast<QQuickItem*>(action.data()); QVERIFY(actionItem);

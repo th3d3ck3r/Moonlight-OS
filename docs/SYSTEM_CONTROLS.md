@@ -1,6 +1,6 @@
 # EclipseOS System Controls and local overlays
 
-The Eclipse Settings page includes a System Controls tab, using the same dark surfaces, rounded controls, text scaling and sixteen accents as the existing interface.
+The Eclipse Settings page includes a System Controls tab, using the same dark surfaces, rounded controls and dialog headers/footers, text scaling and sixteen accents as the existing interface.
 
 ## Connections
 

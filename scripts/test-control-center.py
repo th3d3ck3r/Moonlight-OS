@@ -95,6 +95,12 @@ class CenterTest(unittest.TestCase):
             command.assert_not_called()
             m.execute({'action':'center-pointer-speed','id':'12:-0.25'},state)
             command.assert_called_once_with(['xinput','set-prop','12','libinput Accel Speed','-0.25'])
+    def test_idle_enables_blanking_and_dpms(self):
+        with patch.object(m,'snapshot',return_value={}),patch.object(m,'command') as command:
+            m.execute(dict(action='center-idle',id='300'),{})
+            self.assertEqual([c.args[0] for c in command.call_args_list],[['xset','s','blank'],['xset','s','300'],['xset','+dpms'],['xset','dpms','0','0','300']])
+            command.reset_mock();m.execute(dict(action='center-idle',id='0'),{})
+            self.assertEqual([c.args[0] for c in command.call_args_list],[['xset','s','off'],['xset','-dpms']])
     def test_radio_frontend_and_idle_allowlists(self):
         with patch.object(m,'command') as command:
             for action,value in [('center-wifi-radio','enable;reboot'),('center-frontend','--help'),('center-idle','-1'),('center-airpods','unknown')]:

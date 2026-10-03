@@ -1,6 +1,6 @@
 # Current System Controls verification
 
-Local source checks pass: generated payload parity, installer shell syntax, six bulk BlueZ fixtures, sixteen control-center fixtures, six connection fixtures and the real PTY Bluetooth/frontend audit. Sixteen focused Qt tests pass, including all sixteen exact UI/overlay accent colors, rounded overlay alpha, live scan progress, missing sensors, CPU/network resets and duplicate DRM descriptor handling. Panels were rendered at 100%, 110% and 125% text size and inspected at 1024×640.
+Local source checks pass: generated payload parity, installer shell syntax, six bulk BlueZ fixtures, seventeen control-center fixtures, six connection fixtures and the real PTY Bluetooth/frontend audit. Sixteen focused Qt tests pass, including all sixteen exact UI/overlay accent colors, rounded overlay alpha, live scan progress, missing sensors, CPU/network resets and duplicate DRM descriptor handling. Cancel and No dialog actions are exercised through the themed footer; dialog sizing warnings were corrected. Panels were rendered at 100%, 110% and 125% text size and inspected at 1024×640.
 
 Full Fedora compilation, installed-image inspection and OVMF checks for this update are pending. No new image has been claimed ready. See [System Controls](SYSTEM_CONTROLS.md) for behavior and physical acceptance limits.
 

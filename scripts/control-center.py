@@ -173,7 +173,10 @@ def execute(request, state, answer=None):
     elif action == 'center-idle':
         if value not in ('0','300','600','1800'):
             raise ValueError('Choose a supported idle timeout.')
-        command(['xset','s',value]); command(['xset','dpms','0','0',value])
+        if value=='0':
+            command(['xset','s','off']); command(['xset','-dpms'])
+        else:
+            command(['xset','s','blank']); command(['xset','s',value]); command(['xset','+dpms']); command(['xset','dpms','0','0',value])
     elif action in ('center-pointer-speed','center-pointer-natural','center-pointer-tap'):
         identity, separator, setting = value.partition(':')
         pointer=next((p for p in state.get('pointers',[]) if p['id']==identity),None)
