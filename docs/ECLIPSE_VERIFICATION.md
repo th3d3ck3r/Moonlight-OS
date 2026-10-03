@@ -34,11 +34,11 @@ The full Fedora job compiles the pinned frontends, checks FFmpeg/VA-API/EGL feat
 
 ## Pass 3 — installed image
 
-The candidate inspector must verify GPT/ESP/boot/XFS layout, removable EFI boot path, exact kernel/initramfs/modules, selected Plymouth theme and initramfs assets, all clients/helpers, desktop/icon/launcher branding, exact helper and patch bytes, source pins, enabled services, Intel nonfree iHD, SBC/AAC plugins, input/network/audio policies and recovery tools. Icon PNG headers and all three installed dimensions are checked. Image size must remain within the conservative 16 GB drive target.
+The candidate inspector passed checks for GPT/ESP/boot/XFS layout, removable EFI boot path, exact kernel/initramfs/modules, selected Plymouth theme and initramfs assets, all clients/helpers, desktop/icon/launcher branding, exact helper and patch bytes, source pins, enabled services, Intel nonfree iHD, SBC/AAC plugins, input/network/audio policies and recovery tools. Icon PNG headers and all three installed dimensions passed. Image size is within the conservative 16 GB drive target.
 
 ## Pass 4 — UEFI boot and artifact
 
-The candidate must boot through OVMF and emit `MOONLIGHT_OS_BOOT_OK`. Validation uses a disposable qcow2 overlay; the release image is not modified. Compression and upload follow successful inspection and boot. Deliver one `.img.xz` plus its basename-compatible SHA-256 file. Keep existing published regular/experimental links intact.
+The candidate booted through OVMF and satisfied the required `MOONLIGHT_OS_BOOT_OK`. Validation uses a disposable qcow2 overlay; the release image is not modified. Compression and upload completed after successful inspection and boot. The artifact contains one `.img.xz` plus its basename-compatible SHA-256 file. Existing published regular/experimental links remain intact.
 
 ## Physical acceptance still required
 
