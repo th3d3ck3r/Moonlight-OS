@@ -64,8 +64,33 @@ class TuningTest(unittest.TestCase):
         self.assertEqual(t.settings_parse(config.read_text())['fps'],'59')
     def test_settings_editor_no_general_section_and_duplicates(self):
         result=t.settings_edit('[eclipse]\naccent=7\n',{'fps':'60'})
-        self.assertEqual(t.settings_parse(result),{'fps':'60'})
+        self.assertEqual(t.settings_parse(result),{'fps':'60','eclipse/accent':'7'})
         with self.assertRaises(ValueError):t.settings_parse('[General]\nfps=30\nfps=60\n')
+    def test_comparison_presets_disable_both_overlays_and_restore_local_overlay(self):
+        _,config,state=self.fixture()
+        config.write_text(config.read_text()+'localOverlay=true\nbackgroundPath=KEEP_BACKGROUND\n')
+        with patch.object(t,'idle'):
+            t.tune(config,state,'balanced')
+            settings=t.settings_parse(config.read_text())
+            self.assertEqual(settings['showperfoverlay'],'false')
+            self.assertEqual(settings['eclipse/localOverlay'],'false')
+            self.assertEqual(settings['eclipse/backgroundPath'],'KEEP_BACKGROUND')
+            t.tune(config,state,'restore')
+        self.assertEqual(t.settings_parse(config.read_text())['eclipse/localOverlay'],'true')
+        self.assertNotIn('showperfoverlay',t.settings_parse(config.read_text()))
+    def test_renderer_comparison_preserves_stream_settings_and_local_overlay(self):
+        _,config,state=self.fixture()
+        config.write_text(config.read_text()+'localOverlay=true\n')
+        with patch.object(t,'idle'):t.tune(config,state,'vulkan-test')
+        settings=t.settings_parse(config.read_text())
+        self.assertEqual(settings['fps'],'59')
+        self.assertEqual(settings['eclipse/localOverlay'],'true')
+        self.assertEqual(settings['rendererbackend'],'1')
+        self.assertNotIn('showperfoverlay',settings)
+    def test_group_editor_without_trailing_newline_and_duplicate_group(self):
+        result=t.settings_edit('[General]\nfps=60\n[eclipse]\naccent=7',{'eclipse/localOverlay':'false'})
+        self.assertIn('accent=7\nlocalOverlay=false\n',result)
+        with self.assertRaises(ValueError):t.settings_parse('[eclipse]\nlocalOverlay=true\nlocalOverlay=false\n')
     def test_hardware_snapshot_and_throttle_delta(self):
         root,_,_=self.fixture()
         for relative,value in {'sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq':'2300000',

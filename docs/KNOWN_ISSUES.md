@@ -24,3 +24,5 @@ These limitations apply to [Crimson Glass build `6f1ce48`](CRIMSON_GLASS_VERIFIC
 | Build downloads | GitHub Actions artifacts expire. Preserve the documented fallbacks and verify the included SHA-256 before flashing. |
 
 Physical acceptance should cover Bluetooth scan/pair/reconnect across reboot, controller input without unexpected shutdown, audio/media keys, AirPods modes, brightness, display rollback, trackpad settings, all sixteen accents and text sizes, both overlays, sustained hardware-decoded streaming, recovery console and confirmed power actions. OVMF boot does not prove Mac-specific hardware support.
+
+Prepared EGL synchronization status checks and comparison presets are source-only. V-sync driver rejection is now visible; both local and stream overlays are disabled by balanced/latency presets and restorable. Native compile and Mac comparisons remain pending; reported swap interval zero can also mean unavailable.

@@ -11,8 +11,8 @@ import tempfile
 import time
 
 PROFILES = {
-    'balanced': {'width':'1920','height':'1080','fps':'60','bitrate':'20000','videocfg':'2','videodec':'1','yuv444':'false','hdr':'false','enablevrr':'false','framepacing':'false','vsync':'true','showperfoverlay':'false'},
-    'latency': {'width':'1920','height':'1080','fps':'60','bitrate':'20000','videocfg':'2','videodec':'1','yuv444':'false','hdr':'false','enablevrr':'false','framepacing':'false','vsync':'false','showperfoverlay':'false'},
+    'balanced': {'width':'1920','height':'1080','fps':'60','bitrate':'20000','videocfg':'2','videodec':'1','yuv444':'false','hdr':'false','enablevrr':'false','framepacing':'false','vsync':'true','showperfoverlay':'false','eclipse/localOverlay':'false'},
+    'latency': {'width':'1920','height':'1080','fps':'60','bitrate':'20000','videocfg':'2','videodec':'1','yuv444':'false','hdr':'false','enablevrr':'false','framepacing':'false','vsync':'false','showperfoverlay':'false','eclipse/localOverlay':'false'},
     'vulkan-test': {'rendererbackend':'1'},
     'opengl-test': {'rendererbackend':'2'},
     'auto-renderer': {'rendererbackend':'0'},
@@ -36,37 +36,49 @@ def read(path):
     except OSError:return None
 
 def settings_parse(text):
-    general=False;result={}
+    section=None;result={}
     for line in text.splitlines():
-        if line.strip().startswith('['):general=line.strip()=='[General]'
-        elif general and '=' in line and not line.lstrip().startswith(('#',';')):
+        header=re.fullmatch(r'\[([^\]]+)\]',line.strip())
+        if header:section=header[1]
+        elif section and '=' in line and not line.lstrip().startswith(('#',';')):
             key,value=line.split('=',1);key=key.strip()
-            if key in result:raise ValueError('Duplicate General setting; use Eclipse settings to resolve it')
-            result[key]=value.strip()
+            qualified=key if section=='General' else section+'/'+key
+            if qualified in result:raise ValueError('Duplicate setting; use Eclipse settings to resolve it')
+            result[qualified]=value.strip()
     return result
 
 def settings_edit(text, changes):
-    lines=text.splitlines(keepends=True);output=[];general=False;seen=set();has_general=False
+    # QSettings writes eclipse/localOverlay as localOverlay in [eclipse].
+    # Edit only owned keys; preserve raw host, theme and background sections.
+    by_section={}
+    for key,value in changes.items():
+        section,name=key.split('/',1) if '/' in key else ('General',key)
+        by_section.setdefault(section,{})[name]=value
+    output=[];section=None;seen={};headers=set()
+    def append(line):
+        if output and not output[-1].endswith('\n'):output[-1]+='\n'
+        output.append(line)
     def finish():
-        for key,value in changes.items():
-            if key not in seen and value is not None:
-                if output and not output[-1].endswith('\n'):output[-1]+='\n'
-                output.append(key+'='+value+'\n');seen.add(key)
-    for line in lines:
-        if line.strip().startswith('['):
-            if general:finish()
-            general=line.strip()=='[General]';has_general |= general
-        if general and '=' in line and not line.lstrip().startswith(('#',';')):
+        for key,value in by_section.get(section,{}).items():
+            if key not in seen.setdefault(section,set()) and value is not None:
+                append(key+'='+value+'\n');seen[section].add(key)
+    for line in text.splitlines(keepends=True):
+        header=re.fullmatch(r'\[([^\]]+)\]',line.strip())
+        if header:
+            finish();section=header[1];headers.add(section)
+        if section in by_section and '=' in line and not line.lstrip().startswith(('#',';')):
             key=line.split('=',1)[0].strip()
-            if key in changes:
-                seen.add(key)
-                if changes[key] is not None:output.append(key+'='+changes[key]+'\n')
+            if key in by_section[section]:
+                seen.setdefault(section,set()).add(key)
+                if by_section[section][key] is not None:append(key+'='+by_section[section][key]+'\n')
                 continue
         output.append(line)
-    if general:finish()
-    if not has_general:
-        prefix=['[General]\n']+[k+'='+v+'\n' for k,v in changes.items() if v is not None]
-        output=prefix+output
+    finish()
+    for missing,values in by_section.items():
+        if missing not in headers and any(v is not None for v in values.values()):
+            append('['+missing+']\n')
+            for key,value in values.items():
+                if value is not None:append(key+'='+value+'\n')
     return ''.join(output)
 
 def idle():
@@ -224,7 +236,7 @@ def main():
     if os.geteuid()==0:parser.error('Run as moonlight, without sudo; presets belong to that user')
     if args.mode=='menu':
         choices={'1':'status','2':'balanced','3':'latency','4':'opengl-test','5':'vulkan-test','6':'auto-renderer','7':'restore','8':'diagnose'}
-        print('Eclipse streaming tuning\nPresets save 1080p60 HEVC hardware decode at 20 Mbps; previous settings can be restored.\nLowest latency may tear. Renderer tests change only the renderer preference.\nClose Eclipse before changing saved settings; diagnostics run during a stream.\n1) Status  2) Balanced  3) Lowest latency  4) OpenGL test\n5) Vulkan test  6) Auto renderer  7) Restore  8) 30-second diagnostic  0) Exit')
+        print('Eclipse streaming tuning\nBalanced/latency presets save 1080p60 HEVC hardware decode at 20 Mbps and disable both performance overlays; previous settings can be restored.\nLowest latency may tear. Renderer tests change only the renderer preference.\nClose Eclipse before changing saved settings; diagnostics run during a stream.\n1) Status  2) Balanced  3) Lowest latency  4) OpenGL test\n5) Vulkan test  6) Auto renderer  7) Restore  8) 30-second diagnostic  0) Exit')
         choice=input('Choose: ').strip()
         if choice not in choices:return
         args.mode=choices[choice]

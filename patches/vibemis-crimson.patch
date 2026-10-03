@@ -7565,10 +7565,18 @@ index 32618d8..04b5d17 100644
          renderRect.x = 0;
          renderRect.y = 0;
 diff --git a/app/streaming/video/ffmpeg-renderers/eglvid.cpp b/app/streaming/video/ffmpeg-renderers/eglvid.cpp
-index 9587a35..20680d8 100644
+index 9587a35..820c7d6 100644
 --- a/app/streaming/video/ffmpeg-renderers/eglvid.cpp
 +++ b/app/streaming/video/ffmpeg-renderers/eglvid.cpp
-@@ -234,10 +234,10 @@ void EGLRenderer::renderOverlay(Overlay::OverlayType type, int viewportWidth, in
+@@ -71,6 +71,7 @@ EGLRenderer::EGLRenderer(IFFmpegRenderer *backendRenderer)
+         m_Backend(backendRenderer),
+         m_VAO(0),
+         m_BlockingSwapBuffers(false),
++        m_PresentationModeName("uninitialized"),
+         m_LastRenderSync(EGL_NO_SYNC),
+         m_LastFrame(av_frame_alloc()),
+         m_glEGLImageTargetTexture2DOES(nullptr),
+@@ -234,10 +235,10 @@ void EGLRenderer::renderOverlay(Overlay::OverlayType type, int viewportWidth, in
              overlayRect.x = 0;
              overlayRect.y = 0;
          }
@@ -7581,6 +7589,72 @@ index 9587a35..20680d8 100644
              bool right = (anchor == 1 || anchor == 3);  // TR or BR
              bool bottom = (anchor == 2 || anchor == 3); // BL or BR
              overlayRect.x = right ? (viewportWidth - newSurface->w) : 0;
+@@ -618,7 +619,11 @@ bool EGLRenderer::initialize(PDECODER_PARAMETERS params)
+             && info.subsystem != SDL_SYSWM_WAYLAND
+ #endif
+             ) {
+-        SDL_GL_SetSwapInterval(1);
++        const int swapResult = SDL_GL_SetSwapInterval(1);
++        if (swapResult != 0) {
++            EGL_LOG(Warn, "V-sync request failed: %s", SDL_GetError());
++        }
++        m_PresentationModeName = swapResult == 0 ? "swap-vsync" : "swap-failed";
+ 
+ #if SDL_VERSION_ATLEAST(2, 0, 15) && defined(SDL_VIDEO_DRIVER_KMSDRM)
+         // The SDL KMSDRM backend already enforces double buffering (due to
+@@ -628,12 +633,30 @@ bool EGLRenderer::initialize(PDECODER_PARAMETERS params)
+         if (info.subsystem != SDL_SYSWM_KMSDRM)
+ #endif
+         {
+-            m_BlockingSwapBuffers = true;
++            // A rejected request must not enable the extra fence/glFinish wait.
++            // Preserve the established synchronization path when it succeeds.
++            m_BlockingSwapBuffers = swapResult == 0;
+         }
+     } else {
+-        SDL_GL_SetSwapInterval(0);
++        const int swapResult = SDL_GL_SetSwapInterval(0);
++        if (swapResult != 0) {
++            EGL_LOG(Warn, "Immediate swap request failed: %s", SDL_GetError());
++        }
++        m_PresentationModeName = swapResult == 0 ? "swap-immediate" : "swap-failed";
++#ifdef SDL_VIDEO_DRIVER_WAYLAND
++        if (swapResult == 0 && info.subsystem == SDL_SYSWM_WAYLAND) {
++            // Interval zero on Wayland is still compositor-controlled.
++            m_PresentationModeName = "compositor";
++        }
++#endif
+     }
+ 
++    // SDL may report zero when the interval cannot be determined. Log this
++    // observation separately; do not treat it as proof of physical tearing.
++    EGL_LOG(Info, "Presentation: %s; reported swap interval: %d; fence wait: %s",
++            m_PresentationModeName, SDL_GL_GetSwapInterval(),
++            m_BlockingSwapBuffers ? "enabled" : "disabled");
++
+     glGenTextures(EGL_MAX_PLANES, m_Textures);
+     for (size_t i = 0; i < EGL_MAX_PLANES; ++i) {
+         glBindTexture(GL_TEXTURE_EXTERNAL_OES, m_Textures[i]);
+diff --git a/app/streaming/video/ffmpeg-renderers/eglvid.h b/app/streaming/video/ffmpeg-renderers/eglvid.h
+index 63a0e91..c379e36 100644
+--- a/app/streaming/video/ffmpeg-renderers/eglvid.h
++++ b/app/streaming/video/ffmpeg-renderers/eglvid.h
+@@ -11,6 +11,7 @@ public:
+     EGLRenderer(IFFmpegRenderer *backendRenderer);
+     virtual ~EGLRenderer() override;
+     virtual bool initialize(PDECODER_PARAMETERS params) override;
++    virtual const char* getPresentationModeName() override { return m_PresentationModeName; }
+     virtual bool prepareDecoderContext(AVCodecContext* context, AVDictionary** options) override;
+     virtual void cleanupRenderContext() override;
+     virtual void waitToRender() override;
+@@ -45,6 +46,7 @@ private:
+     IFFmpegRenderer *m_Backend;
+     unsigned int m_VAO;
+     bool m_BlockingSwapBuffers;
++    const char* m_PresentationModeName;
+     EGLSync m_LastRenderSync;
+     AVFrame* m_LastFrame;
+     PFNGLEGLIMAGETARGETTEXTURE2DOESPROC m_glEGLImageTargetTexture2DOES;
 diff --git a/app/streaming/video/ffmpeg-renderers/plvk.cpp b/app/streaming/video/ffmpeg-renderers/plvk.cpp
 index bc16ff2..bac185b 100644
 --- a/app/streaming/video/ffmpeg-renderers/plvk.cpp

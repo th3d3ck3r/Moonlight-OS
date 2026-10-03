@@ -7,7 +7,7 @@
 
 ## Connection fixes and streaming software — prepared source, 2026-10-03
 
-- [Physical findings, software fixes, presets and remaining gates](docs/STREAMING_SOFTWARE.md). 90 Python tests and source/runtime checks pass. Bluetooth D-Bus types, graphical Wi-Fi PTY activation, terminal automatic-band recovery and an overlay/render mutex dependency are addressed in source. A separate actual presentation-renderer overlay line is prepared.
+- [Physical findings, software fixes, presets and remaining gates](docs/STREAMING_SOFTWARE.md). 93 Python tests and source/runtime checks pass. Bluetooth D-Bus types, graphical Wi-Fi PTY activation, terminal automatic-band recovery and an overlay/render mutex dependency are addressed in source. A separate actual presentation-renderer overlay line is prepared.
 - No build or installation was started. The new native changes still need frontend/Qt/decoder checks and a sustained Mac pacing comparison; do not claim the 4.72% drop issue is resolved. Published downloads remain the older source below.
 
 ## EclipseOS Crimson Glass — 2026-10-03
@@ -140,3 +140,5 @@ The separate terminal-interface prompt remains planning only. Crimson Apollo is 
 ### Crimson Apollo source integration — 2026-10-02
 
 The offline Kickstart payload installs the theme/plugin, selects it and regenerates the exact pinned kernel initramfs after DKMS. Serial diagnostics are retained; a bounded Plymouth quit precedes the tty1 network setup/X11 session. The future image inspector requires the theme and plugin in the initramfs. Native Plymouth 24.004.60 script/image/font/sprite execution passes at 320×200 through 2560×1600, including an offset viewport, two orbits, masked passwords, question/message ordering and a display-change callback. The local engine is the Ubuntu-packaged upstream version; the added audit job exercises the Fedora package independently. These checks are **not a daemon/KMS, OVMF or Mac boot validation**. The current experimental image has since passed installed-payload inspection and OVMF; physical splash/hardware tests remain pending. See `docs/BOOT_ANIMATION.md`.
+
+Source-only follow-up: balanced/latency comparisons disable both stream and local overlays while preserving/restoring theme/background settings. EGL now checks swap-interval requests, reports synchronization status and avoids its additional synchronization wait after a rejected V-sync request. 93 Python tests and source audits pass; this native EGL change remains uncompiled and physical pacing acceptance pending.
