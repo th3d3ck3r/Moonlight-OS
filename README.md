@@ -25,7 +25,7 @@ Includes the **black/crimson animated Apollo moon boot screen**, a remembered se
 
 ## 🛠️ Frontend source work — not a new download
 
-Wi-Fi and Bluetooth selectors are being validated for the next image: scan, connect/pair, disconnect, and confirmed Bluetooth forget. Customized Vibemis uses Moonlight-OS release guidance and disables upstream standalone replacement. [Feature brainstorm and control-center plan](docs/VIBEMIS_FEATURE_PLAN.md) includes lightweight audio, brightness, host, profile and recovery ideas; those ideas are not implemented by this change. No OS image build or download-link change has been started.
+Wi-Fi and Bluetooth selectors are implemented in source for the next image: scan, connect/pair, disconnect, and confirmed Bluetooth forget. All seven source audits passed, including the native frontend compile and selector tests. Customized Vibemis uses Moonlight-OS release guidance and disables upstream standalone replacement. [Feature brainstorm and control-center plan](docs/VIBEMIS_FEATURE_PLAN.md) includes lightweight audio, brightness, host, profile and recovery ideas; those ideas are not implemented by this change. No OS image build or download-link change has been started.
 
 ## 🖤🔴 New experimental — Vibemis Crimson
 
