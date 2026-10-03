@@ -2,16 +2,16 @@
 
 Local source checks pass: generated payload parity, installer shell syntax, six bulk BlueZ fixtures, seventeen control-center fixtures, six connection fixtures and the real PTY Bluetooth/frontend audit. Sixteen focused Qt tests pass, including all sixteen exact UI/overlay accent colors, rounded overlay alpha, live scan progress, missing sensors, CPU/network resets and duplicate DRM descriptor handling. Cancel and No dialog actions are exercised through the themed footer; dialog sizing warnings were corrected. Panels were rendered at 100%, 110% and 125% text size and inspected at 1024×640.
 
-Full Fedora compilation, installed-image inspection and OVMF checks for this update are pending. No new image has been claimed ready. See [System Controls](SYSTEM_CONTROLS.md) for behavior and physical acceptance limits.
+[Final runtime-source audit](https://github.com/th3d3ck3r/Moonlight-OS/actions/runs/37105302223) and [all seven exact build-source audits](https://github.com/th3d3ck3r/Moonlight-OS/actions/runs/37105853155) passed. [Image build](https://github.com/th3d3ck3r/Moonlight-OS/actions/runs/37105853178) from `4755e352876e48b73521ec28dec9015e514bded2` passed installed-image inspection at 07:40:20 UTC and strict OVMF at 07:40:30 UTC, before compression and upload. The inspector compares all three controls/Bluetooth helpers and the embedded frontend patch byte for byte, verifies Python D-Bus/PTY imports, OS branding and installed recovery tools. Forty-five other installer payloads remain unchanged from the EclipseOS rename baseline. The existing overlay-placement and decoder-statistics suites passed 7 and 28 tests respectively. See [System Controls](SYSTEM_CONTROLS.md) for behavior and physical acceptance limits.
 
 ---
 
-# Eclipse verification record
+# Historical first Eclipse verification record
 
 Runtime source: `0653e04e3312f81b33cb80f879e1badba6aae3b6`.
 [Final-source audit](https://github.com/th3d3ck3r/Moonlight-OS/actions/runs/37095082840): all seven jobs passed.
 Candidate build source: `3625507be0a9ca08996ef9a188326c69e7b040fb` (only the controlled build marker changed).
-[Candidate build](https://github.com/th3d3ck3r/Moonlight-OS/actions/runs/37095761480): running; installed-image and boot results are not yet claimed.
+[Candidate build](https://github.com/th3d3ck3r/Moonlight-OS/actions/runs/37095761480): completed successfully; installed-image inspection and strict OVMF boot passed.
 
 This record distinguishes source/fixture evidence, installed-image evidence, generic UEFI boot evidence and physical Mac results. A green fixture test does not establish that every physical device works.
 

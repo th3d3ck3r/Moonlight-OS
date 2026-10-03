@@ -1,6 +1,6 @@
 # Test plan — MacBookPro14,1
 
-Regular release: [Apollo/frontends/Bluetooth](https://github.com/th3d3ck3r/Moonlight-OS/releases/tag/v0.1-experimental.20261002), with user-confirmed Mac boot, animation and Bluetooth pairing. New experimental candidate: [Vibemis Crimson](releases/v0.2-experimental.20261002.md); build 37022392821 and all seven exact-source audits passed, including inspection and OVMF. Its physical checks below remain required. See [host-stats setup](VIBEMIS_CRIMSON.md).
+Latest candidate: [EclipseOS System Controls image](https://github.com/th3d3ck3r/Moonlight-OS/actions/runs/37105853178/artifacts/11268692925), source `4755e352876e48b73521ec28dec9015e514bded2`. All seven exact-source audits, installed-image inspection and strict OVMF passed. [Controls and local overlays](SYSTEM_CONTROLS.md) · [Known issues](KNOWN_ISSUES.md). Earlier regular and experimental builds remain README fallbacks. Physical checks below remain required.
 
 ## Gate 0: automated image/UEFI preflight
 
@@ -108,3 +108,12 @@ Record network latency, decode time, render time, dropped frames, and visible fr
 ## Success criterion
 
 Linux is the preferred permanent client only if it matches the low input latency observed under Windows on this MacBook while eliminating or materially reducing the periodic stutter.
+
+## System Controls and local monitor acceptance
+
+- Scan real nearby Bluetooth devices in the graphical picker; verify live results, cancellation, radio-off/missing-adapter messages and saved-device refresh.
+- Pair and reconnect each controller/headphone across reboot; verify input/service readiness and check whether the previous controller power-off symptom remains.
+- Exercise each supported radio, sound, brightness, display, pointer, idle, frontend and power control. Let an unconfirmed display mode time out and verify rollback. Verify tty2 recovery.
+- Review all sixteen accents and 100%/110%/125% text sizes in every panel, dropdown, authentication and confirmation dialog; check focus, Enter/Escape and spacing at native resolution.
+- Compare local metrics with kernel/diagnostic tools; missing sensors must remain Unavailable. Verify rates after the second sample and preferences across reboot.
+- Toggle stream/local overlays independently, try all corners, opacity, detail and fields, and verify sustained hardware-decoded streaming and readability at low resolutions.

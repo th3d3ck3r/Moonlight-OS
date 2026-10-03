@@ -1,6 +1,13 @@
 # Build status
 
-## Eclipse test candidate — 2026-10-03
+## EclipseOS System Controls candidate — 2026-10-03
+
+- [Complete EclipseOS image ZIP](https://github.com/th3d3ck3r/Moonlight-OS/actions/runs/37105853178/artifacts/11268692925) · [Known issues](docs/KNOWN_ISSUES.md) · [Controls and overlays](docs/SYSTEM_CONTROLS.md).
+- Exact build source `4755e352876e48b73521ec28dec9015e514bded2`: [all seven audits](https://github.com/th3d3ck3r/Moonlight-OS/actions/runs/37105853155) passed. [Build 37105853178](https://github.com/th3d3ck3r/Moonlight-OS/actions/runs/37105853178) succeeded; installed-image inspection passed at 07:40:20 UTC and strict OVMF at 07:40:30 UTC, before compression/upload.
+- Artifact **11268692925**, **3.89 GiB**, expires October 17, 2026. ZIP SHA-256 `57aa929d1777a6aeac7da6f5c2ffc7fdddbfe41a647128030513d4cff83c4c35`. Includes `eclipseos-mbp14-1.img.xz` and its separate basename-compatible checksum. Raw image **13,147,045,888 bytes / 12.24 GiB**; **16 GB drive minimum**.
+- Shared BlueZ/live discovery, System Controls, local hardware monitor, rounded native overlays and sixteen matching accents included. Sixteen focused Qt tests, seventeen control-center fixtures, connection/discovery tests and native frontend compile/startup checks pass. Physical Bluetooth controller power, sensor availability and sustained streaming still need confirmation.
+
+## Previous Eclipse test candidate — 2026-10-03
 
 - [Complete image ZIP](https://github.com/th3d3ck3r/Moonlight-OS/actions/runs/37095761480/artifacts/11264873899) · [Verification record](docs/ECLIPSE_VERIFICATION.md).
 - Exact build source `3625507be0a9ca08996ef9a188326c69e7b040fb`: [all seven audits](https://github.com/th3d3ck3r/Moonlight-OS/actions/runs/37095761462) passed. [Build 37095761480](https://github.com/th3d3ck3r/Moonlight-OS/actions/runs/37095761480) succeeded; installed-image inspection passed at 04:44:33 UTC and strict OVMF at 04:44:46 UTC, before compression and upload.

@@ -7,21 +7,27 @@
 
 **EclipseOS** (formerly Moonlight-OS) is a controller-friendly USB appliance for the **2017 13-inch non-Touch-Bar MacBook Pro — MacBookPro14,1**, connecting to **Vibepollo / Sunshine-compatible hosts**.
 
-**[⬇️ Latest build — Eclipse](https://github.com/th3d3ck3r/Moonlight-OS/actions/runs/37095761480/artifacts/11264873899) · [🌙 Previous regular release](https://github.com/th3d3ck3r/Moonlight-OS/releases/tag/v0.1-experimental.20261002) · [🖤🔴 Previous experimental](https://github.com/th3d3ck3r/Moonlight-OS/releases/tag/v0.2-experimental.20261002) · [⬇️ Previous repair download](https://github.com/th3d3ck3r/Moonlight-OS/actions/runs/36972953272/artifacts/11213197745) · [🚀 Setup](#quick-start) · [✨ Features](#features) · [🩺 Troubleshooting](#troubleshooting) · [🌑 Animation](#crimson-apollo-animation-preview) · [🧭 Roadmap](#independent-feature-plans) · [🧪 Test plan](docs/TEST_PLAN.md)**
+**[⬇️ Latest build — EclipseOS](https://github.com/th3d3ck3r/Moonlight-OS/actions/runs/37105853178/artifacts/11268692925) · [🌙 Previous regular release](https://github.com/th3d3ck3r/Moonlight-OS/releases/tag/v0.1-experimental.20261002) · [🖤🔴 Previous experimental](https://github.com/th3d3ck3r/Moonlight-OS/releases/tag/v0.2-experimental.20261002) · [⬇️ Previous repair download](https://github.com/th3d3ck3r/Moonlight-OS/actions/runs/36972953272/artifacts/11213197745) · [🚀 Setup](#quick-start) · [✨ Features](#features) · [🩺 Troubleshooting](#troubleshooting) · [🌑 Animation](#crimson-apollo-animation-preview) · [🧭 Roadmap](#independent-feature-plans) · [🧪 Test plan](docs/TEST_PLAN.md)**
 
 </div>
 
 ---
 
-## 🌘 Latest build — Eclipse
+## 🌘 Latest build — EclipseOS
 
-The customized frontend is now **Eclipse**: black/crimson glass-inspired surfaces, matching outline controls, a control center, saved stream profiles, accessibility options, a new app icon and minimal eclipse boot animation. About shows installed versions and **Made by Th3D3ck3r**. [Eclipse features and test instructions](docs/ECLIPSE_FRONTEND.md) · [Full feature roadmap](docs/VIBEMIS_FEATURE_PLAN.md).
+**EclipseOS** now includes a **System Controls tab**, a **local Mac hardware monitor**, and **rounded streaming/local-hardware overlays** with the selected accent. Bluetooth uses shared BlueZ enumeration and live scan results, followed by trust, service and controller-input readiness checks. Rounded dialogs, button spacing and text were reviewed at all three text sizes; all sixteen UI/native-overlay accents match. The EclipseOS boot animation, Eclipse frontend and **Made by Th3D3ck3r** branding are included. [New controls and overlays](docs/SYSTEM_CONTROLS.md) · [Known issues](docs/KNOWN_ISSUES.md) · [Eclipse features](docs/ECLIPSE_FRONTEND.md).
 
-**[⬇️ Download latest build — Eclipse ZIP](https://github.com/th3d3ck3r/Moonlight-OS/actions/runs/37095761480/artifacts/11264873899) · [✅ Build and verification](docs/ECLIPSE_VERIFICATION.md)**
+**[⬇️ Download latest build — EclipseOS ZIP](https://github.com/th3d3ck3r/Moonlight-OS/actions/runs/37105853178/artifacts/11268692925) · [✅ Build and verification](docs/ECLIPSE_VERIFICATION.md)**
 
-Built October 3 from `3625507be0a9ca08996ef9a188326c69e7b040fb`. All seven audits on that exact commit, installed-image inspection and strict OVMF UEFI boot passed. The ZIP is **3.86 GiB** and contains `moonlight-os-mbp14-1.img.xz` plus its SHA-256 file; the extracted image is **12.24 GiB**, requiring a **16 GB or larger drive**. The artifact expires October 17; GitHub may require sign-in. Select **Eclipse** in the frontend chooser to use the customized interface. Physical Mac and streaming acceptance checks remain pending. Existing releases and downloads remain available; broader optional roadmap features remain separately identified.
+Built October 3 from `4755e352876e48b73521ec28dec9015e514bded2`. All seven exact-source audits, installed-image inspection and strict OVMF UEFI boot passed. The ZIP is **3.89 GiB** and contains `eclipseos-mbp14-1.img.xz` plus its SHA-256 file; the extracted image is **12.24 GiB**, requiring a **16 GB or larger drive**. The artifact expires October 17, 2026; GitHub may require sign-in. Select **Eclipse** in the frontend chooser. Physical Mac acceptance remains required, especially controller power-off/reconnect behavior, sensors and sustained streaming. Previous downloads remain available below.
 
 ## 📚 Previous builds / fallbacks
+
+## 🌘 Previous Eclipse candidate — October 3
+
+**[⬇️ Previous Eclipse ZIP](https://github.com/th3d3ck3r/Moonlight-OS/actions/runs/37095761480/artifacts/11264873899) · [📖 Historical verification](docs/ECLIPSE_VERIFICATION.md)**
+
+The earlier Eclipse image includes the control center, profiles and appearance options. It predates the EclipseOS metadata rename and the new System Controls/BlueZ/local-monitor update. All seven audits, installed-image inspection and OVMF passed for `3625507be0a9ca08996ef9a188326c69e7b040fb`. ZIP **3.86 GiB**, raw **12.24 GiB**, artifact expires October 17. The Bluetooth scan/pairing defects reported during testing apply to this older image.
 
 ## 🌙 Previous regular release — Apollo, Bluetooth & five frontends
 
@@ -75,7 +81,8 @@ The Eclipse download passed image inspection and OVMF. The physical results abov
 
 | Feature | Included configuration |
 | --- | --- |
-| 🌘 Eclipse frontend | Latest build: black/crimson interface, control center, Wi-Fi/Bluetooth selectors, saved profiles, appearance options and host panels |
+| 🌘 Eclipse frontend | Themed control center, System Controls tab, live connection selectors, saved profiles, appearance and host panels |
+| 📊 Local Mac monitor | CPU/RAM, exposed sensors, process video-engine activity, network, battery and root-storage readings; optional themed streaming overlay |
 | 🎛️ Control center | Launcher audio volume/mute/output selection, screen/keyboard brightness, confirmed restart/shutdown; unavailable hardware controls are disabled |
 | 💾 Stream profiles | Saved global/per-host resolution, FPS and bitrate; desktop/low-bandwidth presets; explicit apply before streaming |
 | ♿ Appearance | Sixteen accents, 100%/110%/125% text sizes, higher contrast and reduced motion |
@@ -109,16 +116,16 @@ CocoOS is a Moonlight-Qt fork whose interface is still evolving. After repeated 
 
 ### 1. Download and verify 🔍
 
-[Download the latest Eclipse ZIP](https://github.com/th3d3ck3r/Moonlight-OS/actions/runs/37095761480/artifacts/11264873899), then unzip it. It contains the compressed image and checksum. Previous regular and experimental downloads remain above as fallbacks. GitHub may require you to sign in.
+[Download the latest EclipseOS ZIP](https://github.com/th3d3ck3r/Moonlight-OS/actions/runs/37105853178/artifacts/11268692925), then unzip it. It contains the compressed image and checksum. Previous regular and experimental downloads remain above as fallbacks. GitHub may require you to sign in.
 
 Run the checksum command in the directory containing both downloaded files:
 
 ```bash
 # Linux
-sha256sum -c moonlight-os-mbp14-1.img.xz.sha256
+sha256sum -c eclipseos-mbp14-1.img.xz.sha256
 
 # macOS
-shasum -a 256 -c moonlight-os-mbp14-1.img.xz.sha256
+shasum -a 256 -c eclipseos-mbp14-1.img.xz.sha256
 ```
 
 **Continue only if verification reports OK.**
@@ -130,7 +137,7 @@ shasum -a 256 -c moonlight-os-mbp14-1.img.xz.sha256
 **Linux** — inspect disks with `lsblk`, unmount the USB's mounted partitions, then:
 
 ```bash
-xzcat moonlight-os-mbp14-1.img.xz | sudo dd of=/dev/sdX bs=16M status=progress conv=fsync
+xzcat eclipseos-mbp14-1.img.xz | sudo dd of=/dev/sdX bs=16M status=progress conv=fsync
 ```
 
 **macOS** — these commands require `xzcat` to be installed:
@@ -138,7 +145,7 @@ xzcat moonlight-os-mbp14-1.img.xz | sudo dd of=/dev/sdX bs=16M status=progress c
 ```bash
 diskutil list
 diskutil unmountDisk /dev/diskN
-xzcat moonlight-os-mbp14-1.img.xz | sudo dd of=/dev/rdiskN bs=16m
+xzcat eclipseos-mbp14-1.img.xz | sudo dd of=/dev/rdiskN bs=16m
 diskutil eject /dev/diskN
 ```
 
@@ -202,9 +209,12 @@ Run only the command for the frontend you want. End the stream, then `sudo reboo
 
 ## 🩺 Known limitations & troubleshooting
 
+[Full known-issues list and physical acceptance checks](docs/KNOWN_ISSUES.md). Unsupported sensors display **Unavailable**; pointer/idle controls currently apply to the current X11 session. The controller shutdown symptom still requires physical retesting.
+
 | Symptom / limitation | What to check or do |
 | --- | --- |
 | Eclipse host stats unavailable | Configure a read-only Vibepollo stats token and verify the HTTPS certificate; GameStream pairing alone is insufficient. Unsupported sensors show N/A. |
+| Bluetooth pairing saved but controller sleeps | Wake the controller and use Reconnect. The new backend verifies services/input readiness, but controller power management requires physical confirmation. |
 | Bluetooth missing after switching from macOS | BCM4350C0 may retain macOS' UART baud rate. Shut down, perform the standard SMC reset for this MacBook once, and retry. |
 | Wi-Fi missing or unstable | Open tty2 settings and run `sudo moonlight-os-verify`. BCM4350 firmware/driver behavior still needs physical validation; compare a supported Ethernet adapter if available. |
 | Black screen, slow decode, or stutter | Compare upstream Moonlight with CocoOS. Start at 1080p60/H.264; inspect VA-API and the performance overlay. Run the verifier and observe video-engine activity with `intel_gpu_top`. |
@@ -276,6 +286,8 @@ The development image stays **under 14,000 MiB raw** while retaining Git, GCC, D
 - [Build status](BUILD_STATUS.md)
 - [Eclipse frontend features and limits](docs/ECLIPSE_FRONTEND.md)
 - [Eclipse verification record](docs/ECLIPSE_VERIFICATION.md)
+- [System Controls and local overlays](docs/SYSTEM_CONTROLS.md)
+- [Known issues and physical acceptance](docs/KNOWN_ISSUES.md)
 - [Hardware and streaming test plan](docs/TEST_PLAN.md)
 - [Planned host stats overlay and dashboard button](docs/HOST_OVERLAY_PLAN.md) — follow-up after physical boot validation
 - [Liquid Glass–inspired GUI plan](docs/LIQUID_GLASS_GUI_PLAN.md) — cohesive client and appliance settings redesign
@@ -338,7 +350,7 @@ The helper installs the same media-key service as new images, clears the older O
 
 [▶️ Open / save the animated GIF](https://raw.githubusercontent.com/th3d3ck3r/Moonlight-OS/main/assets/boot/crimson-apollo/preview.gif) · [🖼️ Still preview](assets/boot/crimson-apollo/poster.png)
 
-The current downloadable image uses a minimal crimson eclipse, a glowing orbiting light and **ECLIPSE / MOONLIGHT-OS** text. The source preview above now shows EclipseOS branding for the next build. It was built before the EclipseOS project rename; its filenames, commands and installed metadata retain the compatible Moonlight-OS names. The GIF is an animated artwork preview, not a recording of the Mac boot. Installed theme checks and OVMF passed; the physical splash/handoff test remains pending. Older regular and experimental images retain Crimson Apollo. See [activation, recovery and validation](docs/BOOT_ANIMATION.md).
+The current downloadable image uses a minimal crimson eclipse, a glowing orbiting light and **ECLIPSE / ECLIPSEOS** text. The downloaded files and installed OS metadata use EclipseOS branding. Internal command/path identifiers retain compatibility; the repository name is unchanged. The GIF is an animated artwork preview, not a recording of the Mac boot. Installed theme checks and OVMF passed; the physical splash/handoff test remains pending. Older regular and experimental images retain Crimson Apollo. See [activation, recovery and validation](docs/BOOT_ANIMATION.md).
 
 <a id="independent-feature-plans"></a>
 
@@ -349,7 +361,7 @@ The current downloadable image uses a minimal crimson eclipse, a glowing orbitin
 | 🖤🔴 Crimson Console | Planned terminal settings interface; not implemented | [CODEX_CLI_INTERFACE_PROMPT.md](CODEX_CLI_INTERFACE_PROMPT.md) |
 | 🌑 Eclipse / Crimson Apollo | Eclipse animation ships in the latest candidate; older releases retain Apollo; native theme/installed-image/OVMF checks pass | [CODEX_BOOT_ANIMATION_PROMPT.md](CODEX_BOOT_ANIMATION_PROMPT.md) |
 | 💎 Crimson Glass | Eclipse includes the themed control center and matching icons; broader GUI roadmap remains separate | [GUI plan](docs/LIQUID_GLASS_GUI_PLAN.md) |
-| 📊 Host overlay / dashboard | Launcher host-stat panels are included; the in-stream hardware overlay remains planned | [Host plan](docs/HOST_OVERLAY_PLAN.md) |
+| 📊 Host overlay / dashboard | Launcher host-stat panels and the local Mac streaming overlay are included; a remote-host hardware overlay remains separate planned work | [Host plan](docs/HOST_OVERLAY_PLAN.md) |
 
 Each project stays separate. The terminal and animation prompts explicitly prohibit starting an image build without a later build request. The previous repair activates neither feature. Older regular and experimental images include Crimson Apollo; the latest candidate includes Eclipse. Crimson Console remains planning only.
 
