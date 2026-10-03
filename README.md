@@ -1,11 +1,11 @@
 <div align="center">
 
-# 🌙 Moonlight-OS
+# 🌘 EclipseOS
 ### Your MacBook. A dedicated streaming console. 🎮
 
-**Fedora 44 · Eclipse frontend · Five frontend choices · Intel x86_64 · Native UEFI**
+**Fedora 44 · EclipseOS · Eclipse frontend · Five frontend choices · Intel x86_64 · Native UEFI**
 
-A controller-friendly USB appliance for the **2017 13-inch non-Touch-Bar MacBook Pro — MacBookPro14,1**, connecting to **Vibepollo / Sunshine-compatible hosts**.
+**EclipseOS** (formerly Moonlight-OS) is a controller-friendly USB appliance for the **2017 13-inch non-Touch-Bar MacBook Pro — MacBookPro14,1**, connecting to **Vibepollo / Sunshine-compatible hosts**.
 
 **[⬇️ Latest build — Eclipse](https://github.com/th3d3ck3r/Moonlight-OS/actions/runs/37095761480/artifacts/11264873899) · [🌙 Previous regular release](https://github.com/th3d3ck3r/Moonlight-OS/releases/tag/v0.1-experimental.20261002) · [🖤🔴 Previous experimental](https://github.com/th3d3ck3r/Moonlight-OS/releases/tag/v0.2-experimental.20261002) · [⬇️ Previous repair download](https://github.com/th3d3ck3r/Moonlight-OS/actions/runs/36972953272/artifacts/11213197745) · [🚀 Setup](#quick-start) · [✨ Features](#features) · [🩺 Troubleshooting](#troubleshooting) · [🌑 Animation](#crimson-apollo-animation-preview) · [🧭 Roadmap](#independent-feature-plans) · [🧪 Test plan](docs/TEST_PLAN.md)**
 
@@ -58,7 +58,7 @@ Full-app black/crimson palette, sixteen accent colors and three matching top-bar
 
 | Area | Current evidence |
 | --- | --- |
-| 💾 USB boot + streaming | The user booted Moonlight-OS on MacBookPro14,1 and streamed the Windows host desktop |
+| 💾 USB boot + streaming | The user booted EclipseOS on MacBookPro14,1 and streamed the Windows host desktop |
 | 🔆 Screen brightness | Physical shortcut keys confirmed working |
 | ⌨️ Keyboard brightness | Physical shortcut keys confirmed working |
 | 🔊 Volume | Physical shortcut keys confirmed working; hardware mixer adjustment fixed quiet speakers |
@@ -80,7 +80,7 @@ The Eclipse download passed image inspection and OVMF. The physical results abov
 | 💾 Stream profiles | Saved global/per-host resolution, FPS and bitrate; desktop/low-bandwidth presets; explicit apply before streaming |
 | ♿ Appearance | Sixteen accents, 100%/110%/125% text sizes, higher contrast and reduced motion |
 | 🩺 Support report | On-demand redacted report with user-only permissions; excludes credentials, addresses and device names |
-| 🔄 Custom-client updates | Upstream standalone replacement disabled; update through matching Moonlight-OS images |
+| 🔄 Custom-client updates | Upstream standalone replacement disabled; update through matching EclipseOS images |
 | 🎮 Frontend choices | Latest build: **Eclipse, Artemis, Pegasus, Moonlight, CocoOS**; older builds call Eclipse's predecessor Vibemis |
 | 🌑 Boot animation | Latest build: minimal **Eclipse** and orbiting light; older releases: **Crimson Apollo**; Escape for details |
 | 🛜 Bluetooth pairing | Eclipse selector plus guided CLI recovery: scan/pair/reconnect/disconnect/confirmed forget, with live confirmation prompts |
@@ -247,7 +247,7 @@ Both development branches start with the same current source. **The generic bran
 
 ### GitHub Actions
 
-Open **Actions → Build Moonlight-OS image → Run workflow**, select `main`, and run it. Manual builds install from scratch and do not depend on temporary recovery artifacts. A successful run uploads the compressed image and checksum.
+Open **Actions → Build EclipseOS image → Run workflow**, select `main`, and run it. Manual builds install from scratch and do not depend on temporary recovery artifacts. A successful run uploads the compressed image and checksum.
 
 ### Fedora 44 x86_64 host
 
@@ -269,7 +269,7 @@ The `.img.xz` archive extracts to `moonlight-os-mbp14-1.img`; it uses the same r
 
 The development image stays **under 14,000 MiB raw** while retaining Git, GCC, DKMS, kernel headers, source trees, and diagnostic tools. A smaller appliance image is a future goal.
 
-**Fedora installer workaround:** Fedora 44 base media includes an older `igt-gpu-tools 2.2` build with a stale libproc2 dependency. Moonlight-OS installs current IGT from Fedora updates during post-install, preserving GPU telemetry without blocking Anaconda.
+**Fedora installer workaround:** Fedora 44 base media includes an older `igt-gpu-tools 2.2` build with a stale libproc2 dependency. EclipseOS installs current IGT from Fedora updates during post-install, preserving GPU telemetry without blocking Anaconda.
 
 ## 📚 Project notes
 
@@ -286,7 +286,7 @@ The development image stays **under 14,000 MiB raw** while retaining Git, GCC, D
 
 ## ⚖️ License
 
-Moonlight-OS build scripts are **GPL-3.0**. Included third-party software retains its upstream license, including Moonlight-Qt/CocoOS (GPL-3.0). See [docs/THIRD_PARTY.md](docs/THIRD_PARTY.md).
+EclipseOS build scripts are **GPL-3.0**. Included third-party software retains its upstream license, including Moonlight-Qt/CocoOS (GPL-3.0). See [docs/THIRD_PARTY.md](docs/THIRD_PARTY.md).
 
 ## ⌨️ Mac keyboard shortcuts and confirmed repairs
 
@@ -324,7 +324,7 @@ The full Intel driver replaces Fedora's codec-restricted driver in the package m
 Run these from the diagnostic shell (a new repository folder is required only once):
 
 ```bash
-git clone https://github.com/th3d3ck3r/Moonlight-OS
+git clone https://github.com/th3d3ck3r/EclipseOS
 bash Moonlight-OS/scripts/install-media-keys.sh
 ```
 
@@ -338,7 +338,7 @@ The helper installs the same media-key service as new images, clears the older O
 
 [▶️ Open / save the animated GIF](https://raw.githubusercontent.com/th3d3ck3r/Moonlight-OS/main/assets/boot/crimson-apollo/preview.gif) · [🖼️ Still preview](assets/boot/crimson-apollo/poster.png)
 
-The latest Eclipse build uses a minimal crimson eclipse, a glowing orbiting light and **ECLIPSE / MOONLIGHT-OS** text. The GIF is an animated artwork preview, not a recording of the Mac boot. Installed theme checks and OVMF passed; the physical splash/handoff test remains pending. Older regular and experimental images retain Crimson Apollo. See [activation, recovery and validation](docs/BOOT_ANIMATION.md).
+The current downloadable image uses a minimal crimson eclipse, a glowing orbiting light and **ECLIPSE / MOONLIGHT-OS** text. It was built before the EclipseOS project rename; its filenames, commands and installed metadata retain the compatible Moonlight-OS names. The GIF is an animated artwork preview, not a recording of the Mac boot. Installed theme checks and OVMF passed; the physical splash/handoff test remains pending. Older regular and experimental images retain Crimson Apollo. See [activation, recovery and validation](docs/BOOT_ANIMATION.md).
 
 <a id="independent-feature-plans"></a>
 
