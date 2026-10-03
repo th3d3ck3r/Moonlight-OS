@@ -26,3 +26,11 @@ cd "$TASK/build"
 qmake6 "$SRC/app/moonlightos/tests/test-crimson.pro"
 make -j2
 QT_QUICK_BACKEND=software LIBGL_ALWAYS_SOFTWARE=1 xvfb-run -a ./test-crimson
+
+# Compile/run the exact patched overlay identity and buffer-budget contracts.
+# Keep this inside the required native audit, rather than relying on an older binary.
+mkdir "$TASK/decoderstatus"
+cd "$TASK/decoderstatus"
+qmake6 "$SRC/tests/overlay/decoderstatus.pro"
+make -j2
+./tst_decoderstatus

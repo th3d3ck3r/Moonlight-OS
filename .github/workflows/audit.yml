@@ -37,6 +37,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Required real helper protocol regressions
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y python3-dbus python3-pexpect
+          /usr/bin/python3 scripts/test-bluez-wire.py --require-dbus
+          /usr/bin/python3 scripts/test-wifi-connect.py --require-pty
       - name: Shell and repository validation
         run: |
           bash ./scripts/validate.sh

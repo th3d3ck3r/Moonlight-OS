@@ -1,9 +1,7 @@
-2026-10-03: Completed Crimson Glass source, graphs, wallpaper and fixed scrolling headers.
-Reviewed runtime source 615e06f5408709268594187d496b3852c6c59677.
-All seven reviewed-source audits: https://github.com/th3d3ck3r/Moonlight-OS/actions/runs/37131400594
-Nineteen Qt tests include stable wallpaper sources and fixed-header pixel comparisons across all layouts; old-header negative control fails as expected.
-Require seven successful audits on this exact image commit before installation.
-Require installed complete-patch/source inspection and strict OVMF MOONLIGHT_OS_BOOT_OK before compression/upload.
-Publish eclipseos-crimson-glass-mbp14-1.img.xz plus matching SHA-256; preserve System Controls comparison and older fallbacks.
-Includes actual corrected-source CI previews. Supersedes intermediate 78b6754 image run.
-Physical Mac controller reconnect, sensors, AirPods and sustained-streaming acceptance remain pending.
+2026-10-03: Build all prepared EclipseOS updater and streaming software changes.
+Prepared checkpoint 64ec8f6dc04e1aef898460082cb2ca5e662d5cd6; preserve prior Crimson Glass and System Controls downloads.
+Include signed frontend/helper updater with offline rollback, Wi-Fi/BlueZ protocol fixes, complete Crimson Glass UI/graphs/background, overlay lock improvement, EGL synchronization checks, reversible presets and private pipeline/driver diagnostics.
+Kernel/base pins remain fixed. No production signing key or update feed is provisioned by this build.
+Require all seven successful exact-source audits, including native full frontend compile/startup and Qt/decoder-status tests, before installation.
+Require complete installed-payload inspection and strict OVMF MOONLIGHT_OS_BOOT_OK before compression/upload.
+Physical Mac frame-pacing gain, Wi-Fi/Bluetooth acceptance and real update/reboot recovery remain pending.

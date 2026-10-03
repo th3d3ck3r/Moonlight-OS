@@ -1,3 +1,7 @@
+## All-changes build authorized — October 3, 2026
+
+The user authorized a new image containing every prepared updater and streaming change from `64ec8f6dc04e1aef898460082cb2ca5e662d5cd6`. The build trigger requires seven exact-source audits, now including required real D-Bus/PTY tests and the patched decoder-status native tests. Image installation, read-only payload inspection and strict OVMF boot remain gates; no new image is verified at this checkpoint. Existing downloads are preserved. The owner signing key/feed remain unprovisioned; the updater ships closed until enrollment. Physical pacing/connection/update recovery acceptance remains pending.
+
 # Build status
 
 ## Fixed-base updater — prepared source only, 2026-10-03
