@@ -7,23 +7,25 @@
 
 **EclipseOS** (formerly Moonlight-OS) is a controller-friendly USB appliance for the **2017 13-inch non-Touch-Bar MacBook Pro — MacBookPro14,1**, connecting to **Vibepollo / Sunshine-compatible hosts**.
 
-**[⬇️ Latest build — EclipseOS](https://github.com/th3d3ck3r/Moonlight-OS/actions/runs/37105853178/artifacts/11268692925) · [🌙 Previous regular release](https://github.com/th3d3ck3r/Moonlight-OS/releases/tag/v0.1-experimental.20261002) · [🖤🔴 Previous experimental](https://github.com/th3d3ck3r/Moonlight-OS/releases/tag/v0.2-experimental.20261002) · [⬇️ Previous repair download](https://github.com/th3d3ck3r/Moonlight-OS/actions/runs/36972953272/artifacts/11213197745) · [🚀 Setup](#quick-start) · [✨ Features](#features) · [🩺 Troubleshooting](#troubleshooting) · [🌑 Animation](#crimson-apollo-animation-preview) · [🧭 Roadmap](#independent-feature-plans) · [🧪 Test plan](docs/TEST_PLAN.md)**
+**[⬇️ Latest build — EclipseOS](https://github.com/th3d3ck3r/Moonlight-OS/actions/runs/37132195854/artifacts/11277957881) · [🌙 Previous regular release](https://github.com/th3d3ck3r/Moonlight-OS/releases/tag/v0.1-experimental.20261002) · [🖤🔴 Previous experimental](https://github.com/th3d3ck3r/Moonlight-OS/releases/tag/v0.2-experimental.20261002) · [⬇️ Previous repair download](https://github.com/th3d3ck3r/Moonlight-OS/actions/runs/36972953272/artifacts/11213197745) · [🚀 Setup](#quick-start) · [✨ Features](#features) · [🩺 Troubleshooting](#troubleshooting) · [🌑 Animation](#crimson-apollo-animation-preview) · [🧭 Roadmap](#independent-feature-plans) · [🧪 Test plan](docs/TEST_PLAN.md)**
 
 </div>
 
 ---
 
-## 💎 Crimson Glass — implementation candidate
+## 💎 Crimson Glass — latest build
 
 Crimson Glass continues the saved Eclipse checkpoint with a responsive library, smoky rounded panels, consistent dialogs/menus/settings, sixteen accents, scaled text, reduced motion and high contrast. Small native overlay graphs show measured FPS/network latency and local CPU/RAM; unavailable sensors remain gaps. The selectable background is copied into app data, with dimming and reset controls.
 
-**Build status:** local source/fixture verification and all seven source audits passed; the new image build is being verified. Final exact-source audits, installed-image inspection and OVMF must pass before a Crimson Glass download is announced. The System Controls comparison image below remains available. [Implementation and actual previews](docs/CRIMSON_GLASS.md) · [Verification](docs/CRIMSON_GLASS_VERIFICATION.md) · [Known issues](docs/KNOWN_ISSUES.md).
+**[⬇️ Download Crimson Glass ZIP](https://github.com/th3d3ck3r/Moonlight-OS/actions/runs/37132195854/artifacts/11277957881)** · [Actual UI previews](docs/CRIMSON_GLASS.md) · [Four-pass verification](docs/CRIMSON_GLASS_VERIFICATION.md) · [Known issues](docs/KNOWN_ISSUES.md).
+
+Built October 3 from `6f1ce48caa3085cae4b625e7c4ac580f4a6fec48`. All seven exact-source audits, installed-image inspection and strict OVMF UEFI boot passed before compression/upload. The ZIP is **3.82 GiB** and contains `eclipseos-crimson-glass-mbp14-1.img.xz` plus its basename-compatible SHA-256 file. The extracted image is **12.24 GiB**; use a **16 GB or larger drive**. Artifact expiry: **2026-10-17T16:08:06Z**; GitHub may require sign-in. Select **Eclipse** in the frontend chooser. Physical Mac/controller/AirPods/sustained-streaming acceptance remains pending. The previous comparison image and older fallbacks remain available below.
 
 ## 🌘 System Controls comparison build — EclipseOS
 
 **EclipseOS** now includes a **System Controls tab**, a **local Mac hardware monitor**, and **rounded streaming/local-hardware overlays** with the selected accent. Bluetooth uses shared BlueZ enumeration and live scan results, followed by trust, service and controller-input readiness checks. Rounded dialogs, button spacing and text were reviewed at all three text sizes; all sixteen UI/native-overlay accents match. The EclipseOS boot animation, Eclipse frontend and **Made by Th3D3ck3r** branding are included. [New controls and overlays](docs/SYSTEM_CONTROLS.md) · [Known issues](docs/KNOWN_ISSUES.md) · [Eclipse features](docs/ECLIPSE_FRONTEND.md).
 
-**[⬇️ Download latest build — EclipseOS ZIP](https://github.com/th3d3ck3r/Moonlight-OS/actions/runs/37105853178/artifacts/11268692925) · [✅ Build and verification](docs/ECLIPSE_VERIFICATION.md)**
+**[⬇️ Download previous System Controls comparison ZIP](https://github.com/th3d3ck3r/Moonlight-OS/actions/runs/37105853178/artifacts/11268692925) · [✅ Build and verification](docs/ECLIPSE_VERIFICATION.md)**
 
 Built October 3 from `4755e352876e48b73521ec28dec9015e514bded2`. All seven exact-source audits, installed-image inspection and strict OVMF UEFI boot passed. The ZIP is **3.89 GiB** and contains `eclipseos-mbp14-1.img.xz` plus its SHA-256 file; the extracted image is **12.24 GiB**, requiring a **16 GB or larger drive**. The artifact expires October 17, 2026; GitHub may require sign-in. Select **Eclipse** in the frontend chooser. Physical Mac acceptance remains required, especially controller power-off/reconnect behavior, sensors and sustained streaming. Previous downloads remain available below.
 
@@ -122,16 +124,16 @@ CocoOS is a Moonlight-Qt fork whose interface is still evolving. After repeated 
 
 ### 1. Download and verify 🔍
 
-[Download the latest EclipseOS ZIP](https://github.com/th3d3ck3r/Moonlight-OS/actions/runs/37105853178/artifacts/11268692925), then unzip it. It contains the compressed image and checksum. Previous regular and experimental downloads remain above as fallbacks. GitHub may require you to sign in.
+[Download the latest EclipseOS ZIP](https://github.com/th3d3ck3r/Moonlight-OS/actions/runs/37132195854/artifacts/11277957881), then unzip it. It contains the compressed image and checksum. Previous regular and experimental downloads remain above as fallbacks. GitHub may require you to sign in.
 
 Run the checksum command in the directory containing both downloaded files:
 
 ```bash
 # Linux
-sha256sum -c eclipseos-mbp14-1.img.xz.sha256
+sha256sum -c eclipseos-crimson-glass-mbp14-1.img.xz.sha256
 
 # macOS
-shasum -a 256 -c eclipseos-mbp14-1.img.xz.sha256
+shasum -a 256 -c eclipseos-crimson-glass-mbp14-1.img.xz.sha256
 ```
 
 **Continue only if verification reports OK.**
@@ -143,7 +145,7 @@ shasum -a 256 -c eclipseos-mbp14-1.img.xz.sha256
 **Linux** — inspect disks with `lsblk`, unmount the USB's mounted partitions, then:
 
 ```bash
-xzcat eclipseos-mbp14-1.img.xz | sudo dd of=/dev/sdX bs=16M status=progress conv=fsync
+xzcat eclipseos-crimson-glass-mbp14-1.img.xz | sudo dd of=/dev/sdX bs=16M status=progress conv=fsync
 ```
 
 **macOS** — these commands require `xzcat` to be installed:
@@ -151,7 +153,7 @@ xzcat eclipseos-mbp14-1.img.xz | sudo dd of=/dev/sdX bs=16M status=progress conv
 ```bash
 diskutil list
 diskutil unmountDisk /dev/diskN
-xzcat eclipseos-mbp14-1.img.xz | sudo dd of=/dev/rdiskN bs=16m
+xzcat eclipseos-crimson-glass-mbp14-1.img.xz | sudo dd of=/dev/rdiskN bs=16m
 diskutil eject /dev/diskN
 ```
 
@@ -263,7 +265,7 @@ Both development branches start with the same current source. **The generic bran
 
 ### GitHub Actions
 
-Open **Actions → Build EclipseOS image → Run workflow**, select `main`, and run it. Manual builds install from scratch and do not depend on temporary recovery artifacts. A successful run uploads the compressed image and checksum.
+Open **Actions → Build EclipseOS image → Run workflow**, select `main`, and run it. Manual builds install from scratch and do not depend on temporary recovery artifacts. A successful run uploads `eclipseos-crimson-glass-mbp14-1.img.xz` and its matching checksum only after all seven audits pass on that exact source, installed-image inspection and strict OVMF boot.
 
 ### Fedora 44 x86_64 host
 
@@ -281,7 +283,7 @@ out/moonlight-os-mbp14-1.img.xz
 out/moonlight-os-mbp14-1.img.xz.sha256
 ```
 
-The `.img.xz` archive extracts to `moonlight-os-mbp14-1.img`; it uses the same raw disk format and the same image-inspection/OVMF gates. Existing `.raw` recovery artifacts remain supported.
+The local script's `.img.xz` archive extracts to `moonlight-os-mbp14-1.img`. CI renames its verified download to `eclipseos-crimson-glass-mbp14-1.img.xz` and regenerates the matching checksum. Both use the same raw disk format and image-inspection/OVMF gates. Existing `.raw` recovery artifacts remain supported.
 
 The development image stays **under 14,000 MiB raw** while retaining Git, GCC, DKMS, kernel headers, source trees, and diagnostic tools. A smaller appliance image is a future goal.
 

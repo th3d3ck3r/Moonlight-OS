@@ -1,6 +1,6 @@
 # Known issues and physical acceptance
 
-These limitations apply to Crimson Glass and the preserved System Controls comparison build. The automated checks establish source, fixture and generic boot behavior; they cannot establish every physical Mac peripheral feature.
+These limitations apply to [Crimson Glass build `6f1ce48`](CRIMSON_GLASS_VERIFICATION.md) and the preserved System Controls comparison build. The automated checks establish source, fixture and generic boot behavior; they cannot establish every physical Mac peripheral feature.
 
 | Area | Current limitation / next check |
 | --- | --- |

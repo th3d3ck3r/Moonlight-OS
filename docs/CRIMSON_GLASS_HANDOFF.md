@@ -1,4 +1,4 @@
-> This checkpoint has been resumed. Crimson Glass implementation and source audits are complete; image verification is in progress. See [current implementation](CRIMSON_GLASS.md) and [current verification](CRIMSON_GLASS_VERIFICATION.md). The original paused state below is archived context, not the current production status.
+> This checkpoint has been completed and superseded by [Crimson Glass implementation](CRIMSON_GLASS.md), [four-pass verification](CRIMSON_GLASS_VERIFICATION.md) and [verified automated image build](https://github.com/th3d3ck3r/Moonlight-OS/actions/runs/37132195854) from `6f1ce48caa3085cae4b625e7c4ac580f4a6fec48`. Actual previews and downloads are in the README. Physical acceptance remains pending. The original paused state below is archived context, not current production status.
 
 # Crimson Glass — paused WIP handoff, October 3, 2026
 

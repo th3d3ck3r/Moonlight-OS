@@ -1,6 +1,14 @@
 # Build status
 
-## EclipseOS System Controls candidate — 2026-10-03
+## EclipseOS Crimson Glass — 2026-10-03
+
+- [Complete Crimson Glass ZIP](https://github.com/th3d3ck3r/Moonlight-OS/actions/runs/37132195854/artifacts/11277957881) · [Actual previews](docs/CRIMSON_GLASS.md) · [Four-pass verification](docs/CRIMSON_GLASS_VERIFICATION.md) · [Known issues](docs/KNOWN_ISSUES.md).
+- Exact image source `6f1ce48caa3085cae4b625e7c4ac580f4a6fec48`: [all seven audits](https://github.com/th3d3ck3r/Moonlight-OS/actions/runs/37132195948) passed before installation. [Build 37132195854](https://github.com/th3d3ck3r/Moonlight-OS/actions/runs/37132195854) succeeded; installed inspection passed at 15:45:23 UTC and strict OVMF at 15:45:34 UTC before compression/upload.
+- Artifact **11277957881**, **4,106,276,925 bytes / 3.82 GiB**, expiry **2026-10-17T16:08:06Z**. ZIP SHA-256 `e43b1f2f388547cd685fb2077b84edfe801b9dd8c1d582b12e371eab051378ca`. Includes `eclipseos-crimson-glass-mbp14-1.img.xz` and its matching checksum; compressed-image SHA-256 `2f898cd62936c086618011b32ea569c799cfa598f308b23073a705865aa53720`. Raw **13,147,045,888 bytes / 12.24 GiB**; **16 GB drive minimum**.
+- Responsive Crimson Glass theme, 60-sample native overlay graphs, saved selectable background, stable wallpaper refresh and fixed scrolling headers. Nineteen Qt tests, seven overlay-placement and twenty-eight decoder-status tests passed; layout/palette, Python/PTY, native compile/startup and payload checks passed. Physical Mac/controller/sensor/AirPods/sustained-streaming acceptance remains pending.
+- [Preserved System Controls comparison](https://github.com/th3d3ck3r/Moonlight-OS/actions/runs/37105853178/artifacts/11268692925) and older fallback links below remain intact. Final source differs from the checkpoint; unfinished WIP was not treated as verified.
+
+## Preserved EclipseOS System Controls comparison — 2026-10-03
 
 - [Complete EclipseOS image ZIP](https://github.com/th3d3ck3r/Moonlight-OS/actions/runs/37105853178/artifacts/11268692925) · [Known issues](docs/KNOWN_ISSUES.md) · [Controls and overlays](docs/SYSTEM_CONTROLS.md).
 - Exact build source `4755e352876e48b73521ec28dec9015e514bded2`: [all seven audits](https://github.com/th3d3ck3r/Moonlight-OS/actions/runs/37105853155) passed. [Build 37105853178](https://github.com/th3d3ck3r/Moonlight-OS/actions/runs/37105853178) succeeded; installed-image inspection passed at 07:40:20 UTC and strict OVMF at 07:40:30 UTC, before compression/upload.

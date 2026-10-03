@@ -1,4 +1,12 @@
-# Current System Controls verification
+# Current Crimson Glass verification
+
+The complete theme, overlay graphs and saved background continue the WIP checkpoint. [All seven exact image-source audits](https://github.com/th3d3ck3r/Moonlight-OS/actions/runs/37132195948) passed for `6f1ce48caa3085cae4b625e7c4ac580f4a6fec48`. [Image build](https://github.com/th3d3ck3r/Moonlight-OS/actions/runs/37132195854) passed installed complete-patch/source inspection at 15:45:23 UTC and strict OVMF at 15:45:34 UTC, before compression/upload. Nineteen Qt tests include stable wallpaper sources and pixel checks for fixed headers across every layout/text scale. Native frontend compile/startup, Python/PTY fixtures, overlay-placement (7) and decoder-status (28) checks passed.
+
+[Four-pass evidence and checksums](CRIMSON_GLASS_VERIFICATION.md) · [Actual previews](CRIMSON_GLASS.md) · [Known issues](KNOWN_ISSUES.md) · [Crimson Glass download](https://github.com/th3d3ck3r/Moonlight-OS/actions/runs/37132195854/artifacts/11277957881). Generic UEFI boot is verified; physical Mac/peripheral and sustained-streaming acceptance remains pending. The records below describe preserved comparison builds.
+
+---
+
+# Preserved System Controls comparison verification
 
 Local source checks pass: generated payload parity, installer shell syntax, six bulk BlueZ fixtures, seventeen control-center fixtures, six connection fixtures and the real PTY Bluetooth/frontend audit. Sixteen focused Qt tests pass, including all sixteen exact UI/overlay accent colors, rounded overlay alpha, live scan progress, missing sensors, CPU/network resets and duplicate DRM descriptor handling. Cancel and No dialog actions are exercised through the themed footer; dialog sizing warnings were corrected. Panels were rendered at 100%, 110% and 125% text size and inspected at 1024×640.
 
