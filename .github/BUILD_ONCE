@@ -1,5 +1,5 @@
-2026-10-02: fresh experimental Vibemis Crimson image with sixteen accents and network/battery/Vibepollo host hardware panels.
-Runtime source 0e0e81ecb9727c5ff47885972bcee5209a64a436 passed all seven audit jobs: https://github.com/th3d3ck3r/Moonlight-OS/actions/runs/37020857820
-This revision only corrects the screenshot test harness palette and transition settling; final seven audits also run on this exact build commit.
-Require installed-payload inspection and strict OVMF MOONLIGHT_OS_BOOT_OK before artifact upload.
-Keep the user-tested Apollo/frontends/Bluetooth image as the regular release; publish this image as a separate experimental prerelease after validation.
+2026-10-03: fresh Eclipse candidate image.
+Runtime source 0653e04e3312f81b33cb80f879e1badba6aae3b6 passed all seven audits: https://github.com/th3d3ck3r/Moonlight-OS/actions/runs/37095082840
+Twelve Qt tests and final-source panel previews passed; icon resources, packaging, audio output, brightness floor and private diagnostics were reviewed.
+Require exact installed-payload inspection and strict OVMF MOONLIGHT_OS_BOOT_OK before image upload.
+Output one Rufus-ready .img.xz plus SHA-256. Preserve existing regular and experimental download links; physical Mac acceptance remains required.
