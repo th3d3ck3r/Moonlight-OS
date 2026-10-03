@@ -23,11 +23,13 @@ Includes the **black/crimson animated Apollo moon boot screen**, a remembered se
 
 **One complete download; no split files.** The current release links to the original Actions ZIP (about **3.62 GiB**), containing the compressed image and checksum. GitHub may require sign-in; the artifact expires October 16. No image is attached as a release asset because it exceeds GitHub's per-file limit. Do not flash GitHub's automatic source-code ZIP.
 
-## 🌘 Eclipse — next candidate source
+## 🌘 Eclipse — validated test candidate
 
 The customized frontend is now **Eclipse**: black/crimson glass-inspired surfaces, matching outline controls, a control center, saved stream profiles, accessibility options, a new app icon and minimal eclipse boot animation. About shows installed versions and **Made by Th3D3ck3r**. [Eclipse features and test instructions](docs/ECLIPSE_FRONTEND.md) · [Full feature roadmap](docs/VIBEMIS_FEATURE_PLAN.md).
 
-This is candidate source work; existing release/download links remain unchanged. A candidate build is authorized after source/theme validation and must pass installed-payload inspection and strict OVMF before it is offered for physical testing. Broader optional roadmap features remain separately identified.
+**[📦 Download Eclipse image ZIP](https://github.com/th3d3ck3r/Moonlight-OS/actions/runs/37095761480/artifacts/11264873899) · [✅ Build and verification](docs/ECLIPSE_VERIFICATION.md)**
+
+Built October 3 from `3625507be0a9ca08996ef9a188326c69e7b040fb`. All seven audits on that exact commit, installed-image inspection and strict OVMF UEFI boot passed. The ZIP is **3.86 GiB** and contains `moonlight-os-mbp14-1.img.xz` plus its SHA-256 file; the extracted image is **12.24 GiB**, requiring a **16 GB or larger drive**. The artifact expires October 17; GitHub may require sign-in. Select **Eclipse** in the frontend chooser to use the customized interface. Physical Mac and streaming acceptance checks remain pending. Existing releases and downloads remain available; broader optional roadmap features remain separately identified.
 
 ## 🖤🔴 New experimental — Vibemis Crimson
 
