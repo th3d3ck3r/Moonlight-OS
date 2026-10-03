@@ -326,7 +326,7 @@ index 0000000..ae15e08
 +}
 diff --git a/app/gui/CrimsonGlassBackdrop.qml b/app/gui/CrimsonGlassBackdrop.qml
 new file mode 100644
-index 0000000..824f26e
+index 0000000..6dc3fff
 --- /dev/null
 +++ b/app/gui/CrimsonGlassBackdrop.qml
 @@ -0,0 +1,21 @@
@@ -337,9 +337,9 @@ index 0000000..824f26e
 +    color: VbTokens.bgWindow
 +    clip: true
 +    Image {
-+        id: wallpaper;anchors.fill:parent;source:EclipseProfiles.background;fillMode:Image.PreserveAspectCrop
++        id: wallpaper;objectName:"crimsonWallpaper";anchors.fill:parent;source:EclipseProfiles.background;fillMode:Image.PreserveAspectCrop
 +        asynchronous:true;cache:false;sourceSize.width:2560;sourceSize.height:2560
-+        Connections { target:EclipseProfiles;function onAppearanceChanged(){var url=EclipseProfiles.background;wallpaper.source="";wallpaper.source=url} }
++        Connections { target:EclipseProfiles;function onBackgroundChanged(){var url=EclipseProfiles.background;wallpaper.source="";wallpaper.source=url} }
 +    }
 +    Rectangle { anchors.fill:parent;color:VbTokens.bgWindow;opacity:Math.max(EclipseProfiles.highContrast?0.8:0,EclipseProfiles.backgroundDim/100) }
 +    Rectangle {
@@ -2873,7 +2873,7 @@ index 0000000..2dac0d1
 +};
 diff --git a/app/moonlightos/eclipseprofiles.cpp b/app/moonlightos/eclipseprofiles.cpp
 new file mode 100644
-index 0000000..fe60fad
+index 0000000..51d8e3d
 --- /dev/null
 +++ b/app/moonlightos/eclipseprofiles.cpp
 @@ -0,0 +1,80 @@
@@ -2954,15 +2954,15 @@ index 0000000..fe60fad
 +    QString path=folder+"/crimson-glass-background.png";
 +    QSaveFile output(path);if(!output.open(QIODevice::WriteOnly)||!image.save(&output,"PNG")||!output.commit()) return false;
 +    QSettings settings;settings.setValue("eclipse/backgroundPath",path);settings.sync();
-+    emit appearanceChanged();return settings.status()==QSettings::NoError;
++    emit backgroundChanged();emit appearanceChanged();return settings.status()==QSettings::NoError;
 +}
-+void EclipseProfiles::resetBackground() { QSettings().remove("eclipse/backgroundPath");emit appearanceChanged(); }
++void EclipseProfiles::resetBackground() { QSettings().remove("eclipse/backgroundPath");emit backgroundChanged();emit appearanceChanged(); }
 diff --git a/app/moonlightos/eclipseprofiles.h b/app/moonlightos/eclipseprofiles.h
 new file mode 100644
-index 0000000..91b9675
+index 0000000..674fb90
 --- /dev/null
 +++ b/app/moonlightos/eclipseprofiles.h
-@@ -0,0 +1,38 @@
+@@ -0,0 +1,39 @@
 +#pragma once
 +#include <QObject>
 +#include <QVariantMap>
@@ -2974,7 +2974,7 @@ index 0000000..91b9675
 +    Q_PROPERTY(int textScale READ textScale WRITE setTextScale NOTIFY appearanceChanged)
 +    Q_PROPERTY(bool reducedMotion READ reducedMotion WRITE setReducedMotion NOTIFY appearanceChanged)
 +    Q_PROPERTY(bool highContrast READ highContrast WRITE setHighContrast NOTIFY appearanceChanged)
-+    Q_PROPERTY(QUrl background READ background NOTIFY appearanceChanged)
++    Q_PROPERTY(QUrl background READ background NOTIFY backgroundChanged)
 +    Q_PROPERTY(int backgroundDim READ backgroundDim WRITE setBackgroundDim NOTIFY appearanceChanged)
 +public:
 +    explicit EclipseProfiles(QObject* parent = nullptr) : QObject(parent) {}
@@ -2998,6 +2998,7 @@ index 0000000..91b9675
 +    static bool valid(const QVariantMap& values);
 +signals:
 +    void appearanceChanged();
++    void backgroundChanged();
 +private:
 +    static QString key(QString host, QString name);
 +};
@@ -3507,10 +3508,10 @@ index 0000000..18e9deb
 +};
 diff --git a/app/moonlightos/tests/Harness.qml b/app/moonlightos/tests/Harness.qml
 new file mode 100644
-index 0000000..211e693
+index 0000000..b719763
 --- /dev/null
 +++ b/app/moonlightos/tests/Harness.qml
-@@ -0,0 +1,63 @@
+@@ -0,0 +1,64 @@
 +import QtQuick 2.9
 +import QtQuick.Controls 2.5
 +import QtQuick.Controls.Material 2.2
@@ -3530,6 +3531,7 @@ index 0000000..211e693
 +    function chooseAccessibility(contrast,motion) { EclipseProfiles.highContrast=contrast;EclipseProfiles.reducedMotion=motion }
 +    function chooseWallpaper(url) { return EclipseProfiles.chooseBackground(url) }
 +    function resetWallpaper() { EclipseProfiles.resetBackground() }
++    function chooseDimming(value) { EclipseProfiles.backgroundDim=value }
 +    CrimsonGlassBackdrop {anchors.fill:parent}
 +    Button {id:settingsButton;visible:false}
 +    Button {id:eclipseCenterButton;visible:false}
@@ -3608,10 +3610,10 @@ index 0000000..0c3f964
 +}
 diff --git a/app/moonlightos/tests/test-crimson.cpp b/app/moonlightos/tests/test-crimson.cpp
 new file mode 100644
-index 0000000..e0ce45e
+index 0000000..876387b
 --- /dev/null
 +++ b/app/moonlightos/tests/test-crimson.cpp
-@@ -0,0 +1,479 @@
+@@ -0,0 +1,491 @@
 +#include <QtTest>
 +#include <QTemporaryDir>
 +#include <QQmlEngine>
@@ -3631,6 +3633,7 @@ index 0000000..e0ce45e
 +#include <QStandardPaths>
 +#include <QDir>
 +#include <QFileInfo>
++#include <QMetaProperty>
 +#include "../crimsonstatus.h"
 +#include "../systemcontrols.h"
 +#include "../eclipseprofiles.h"
@@ -4037,6 +4040,17 @@ index 0000000..e0ce45e
 +        QVariant selected;QVERIFY(QMetaObject::invokeMethod(root.data(),"chooseWallpaper",Q_RETURN_ARG(QVariant,selected),Q_ARG(QVariant,QUrl::fromLocalFile(wallpaperPath))));QVERIFY(selected.toBool());
 +        QTest::qWait(250);
 +        if(!out.isEmpty())QVERIFY(window->grabWindow().save(out+"/crimson-glass-selected-background.png"));
++        const auto wallpapers=root->findChildren<QObject*>("crimsonWallpaper");QVERIFY(!wallpapers.isEmpty());
++        QList<std::shared_ptr<QSignalSpy>> imageChanges;
++        for(auto wallpaper:wallpapers) {
++            auto property=wallpaper->metaObject()->property(wallpaper->metaObject()->indexOfProperty("source"));
++            auto spy=std::make_shared<QSignalSpy>(wallpaper,property.notifySignal());QVERIFY(spy->isValid());imageChanges.append(spy);
++        }
++        QVERIFY(QMetaObject::invokeMethod(root.data(),"chooseDimming",Q_ARG(QVariant,45)));
++        QVERIFY(QMetaObject::invokeMethod(root.data(),"chooseScale",Q_ARG(QVariant,110)));QTest::qWait(100);
++        for(const auto& spy:imageChanges)QCOMPARE(spy->count(),0); // dimming/type changes must not reload the image
++        QVERIFY(QMetaObject::invokeMethod(root.data(),"chooseDimming",Q_ARG(QVariant,65)));
++        QVERIFY(QMetaObject::invokeMethod(root.data(),"chooseScale",Q_ARG(QVariant,125)));
 +        QVERIFY(QMetaObject::invokeMethod(root.data(),"resetWallpaper"));
 +        QVERIFY(QMetaObject::invokeMethod(root.data(),"hideProductionView"));
 +        auto quickMenu=root->findChild<QObject*>("quickMenuLoader");QVERIFY(quickMenu);quickMenu->setProperty("active",true);QTest::qWait(150);
