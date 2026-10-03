@@ -32,6 +32,7 @@ TARGETS = {
     'system-controls': ('/usr/local/libexec/moonlight-os/system-controls.py', 0o755, None),
     'control-center': ('/usr/local/libexec/moonlight-os/control-center.py', 0o755, None),
     'bluetooth-menu': ('/usr/local/bin/moonlight-bluetooth', 0o755, None),
+    'streaming-tune': ('/usr/local/bin/eclipseos-streaming', 0o755, None),
     'wifi-menu': ('/usr/local/bin/moonlight-wifi', 0o755, None),
     'wifi-config': ('/etc/NetworkManager/conf.d/99-moonlight-wifi.conf', 0o644, 'NetworkManager.service'),
     'bluetooth-config': ('/etc/bluetooth/main.conf', 0o644, 'bluetooth.service'),
@@ -291,7 +292,7 @@ class Updater:
                 pass
 
     def validate_payload(self, name, data, staged):
-        if name in ('system-controls', 'control-center', 'bluetooth-menu'):
+        if name in ('system-controls', 'control-center', 'bluetooth-menu', 'streaming-tune'):
             compile(data, name, 'exec')
         elif name == 'wifi-menu':
             self.runner(['/usr/bin/bash', '-n', str(staged)])

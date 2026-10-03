@@ -8,6 +8,8 @@ from pathlib import Path
 root = Path(__file__).resolve().parents[1]
 ks = root / 'config/moonlight-os.ks'
 pairs = {
+    'STREAMING_TUNE': 'scripts/streaming-tune.py',
+    'WIFIMENU': 'scripts/wifi-menu.sh',
     'ECLIPSE_UPDATER': 'scripts/eclipseos-update.py',
     'ECLIPSE_UPDATE_MENU': 'scripts/update-menu.sh',
     'ECLIPSE_UPDATE_BASE': 'updates/base.json',

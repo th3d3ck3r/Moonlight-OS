@@ -71,9 +71,14 @@ def wifi_rows(text):
     result, seen = [], set()
     for line in text.splitlines():
         row = fields(line)
-        if len(row) != 6:
+        if len(row) not in (6, 7):
             continue
-        active, name, address, strength, security, device = row
+        active, name, address, strength, security, device = row[:6]
+        frequency = row[6] if len(row) == 7 else ''
+        band = ''
+        if frequency.isdecimal():
+            mhz = int(frequency)
+            band = '2.4 GHz' if 2400 <= mhz < 2500 else '5 GHz' if 4900 <= mhz < 5900 else '6 GHz' if 5900 <= mhz < 7126 else ''
         if not re.fullmatch(r'(?:[0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}', address):
             continue
         if not re.fullmatch(r'[A-Za-z0-9_][A-Za-z0-9_.:-]{0,31}', device):
@@ -83,7 +88,7 @@ def wifi_rows(text):
             continue
         seen.add(identity)
         result.append(dict(id=identity, name=name, address=address.upper(), device=device,
-                           detail=f'{strength}% · {security or "Open"}', connected=active == '*'))
+                           detail=f'{strength}% · {security or "Open"}' + (' · ' + band if band else ''), connected=active == '*'))
         if len(result) == 64:
             break
     return result
@@ -104,7 +109,7 @@ class Controls:
     def wifi_list(self, scan=False):
         self.mode = "wifi"
         self.items = wifi_rows(run(['nmcli', '-t', '--escape', 'yes', '-f',
-                                   'IN-USE,SSID,BSSID,SIGNAL,SECURITY,DEVICE', 'device', 'wifi', 'list',
+                                   'IN-USE,SSID,BSSID,SIGNAL,SECURITY,DEVICE,FREQ', 'device', 'wifi', 'list',
                                    '--rescan', 'yes' if scan else 'no']))
         return self.items
 
@@ -113,19 +118,28 @@ class Controls:
 
     def wifi_connect(self, item):
         env = dict(os.environ, LC_ALL='C', LANG='C')
-        self.wifi_child = pexpect.spawn('nmcli', ['--ask', 'device', 'wifi', 'connect',
+        self.wifi_child = pexpect.spawn('/usr/bin/sudo', ['-n', '/usr/bin/nmcli', '--ask', '--wait', '40', 'device', 'wifi', 'connect',
                                        item['address'], 'ifname', item['device']], env=env,
                                        encoding='utf-8', codec_errors='replace', echo=False, timeout=40)
         child = self.wifi_child
         try:
+            prompts = 0
             deadline = time.monotonic() + 90
             while time.monotonic() < deadline:
-                event = child.expect([r'Password[^\r\n]*:', r'successfully activated', pexpect.EOF, pexpect.TIMEOUT], timeout=40)
+                event = child.expect([r'(?i)password[^\r\n]*:', r'successfully activated', r'(?i)error:[^\r\n]*', pexpect.EOF, pexpect.TIMEOUT], timeout=min(40, max(1, deadline-time.monotonic())))
                 if event == 0:
+                    prompts += 1
+                    if prompts > 3:
+                        raise RuntimeError('Wi-Fi authentication failed. Recheck the saved network/password in tty2.')
                     child.sendline(answer('Wi-Fi password for ' + item['name']))
                 elif event == 1:
                     child.expect(pexpect.EOF, timeout=5)
+                    child.close()
+                    if child.exitstatus != 0:
+                        raise RuntimeError('Wi-Fi activation did not complete successfully.')
                     return
+                elif event == 2:
+                    raise RuntimeError('Wi-Fi activation failed. Check the saved band setting, password and adapter in tty2; no network was deliberately disconnected first.')
                 else:
                     raise RuntimeError('Wi-Fi connection failed. Check the password or use tty2 for advanced/enterprise networks.')
             raise RuntimeError('Wi-Fi connection timed out.')

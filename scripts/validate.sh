@@ -265,3 +265,10 @@ python3 "$ROOT/scripts/test-bluez.py"
 python3 "$ROOT/scripts/test-source-audits.py"
 
 python3 "$ROOT/scripts/test-updater.py"
+
+python3 "$ROOT/scripts/test-wifi-menu.py"
+python3 "$ROOT/scripts/test-bluez-wire.py"
+
+python3 "$ROOT/scripts/test-streaming-tune.py"
+
+python3 "$ROOT/scripts/test-wifi-connect.py"

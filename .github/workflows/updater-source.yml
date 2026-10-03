@@ -8,6 +8,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Install D-Bus test bindings (no frontend compilation)
+        run: sudo apt-get update && sudo apt-get install -y python3-dbus python3-pexpect
+      - name: Required real D-Bus serialization regression
+        run: /usr/bin/python3 scripts/test-bluez-wire.py --require-dbus
+      - name: Required real Wi-Fi PTY regression
+        run: /usr/bin/python3 scripts/test-wifi-connect.py --require-pty
       - name: Source validation and disposable updater fixtures
         run: bash scripts/validate.sh
       - name: Runtime helper fixtures

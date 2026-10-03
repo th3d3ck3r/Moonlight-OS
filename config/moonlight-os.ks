@@ -336,59 +336,93 @@ chmod 0755 /usr/local/bin/airpods-pair
 
 cat > /usr/local/bin/moonlight-wifi <<'WIFIMENU'
 #!/usr/bin/env bash
+# Saved profile changes never intentionally take down the working connection.
 set -u
-while true; do
-  clear
-  printf '\033[40m\033[31m'
-  active=$(nmcli -t -f NAME,TYPE connection show --active 2>/dev/null | awk -F: '$2=="802-11-wireless"{print $1; exit}')
-  cat <<EOF
-WI-FI
-=====
-
-Active: ${active:-none}
+export LC_ALL=C
+active_uuid() {
+  nmcli -t --escape no -f UUID,TYPE connection show --active 2>/dev/null |
+    awk -F: '$2=="802-11-wireless" {print $1; exit}'
+}
+profile_name() {
+  nmcli -g connection.id connection show uuid "$1" 2>/dev/null | tr -d '\000-\037\177'
+}
+select_profile() {
+  local active selected index
+  active=$(active_uuid)
+  if [[ -n $active ]]; then
+    SELECTED_UUID=$active
+  else
+    mapfile -t profiles < <(nmcli -t --escape no -f UUID,TYPE connection show 2>/dev/null |
+      awk -F: '$2=="802-11-wireless" {print $1}')
+    if (( ${#profiles[@]} == 0 )); then
+      echo 'No saved Wi-Fi profile. Use Connect / change Wi-Fi first.'
+      return 1
+    fi
+    echo 'No active Wi-Fi. Choose a saved profile:'
+    for index in "${!profiles[@]}"; do
+      printf '  %d) %s\n' "$((index+1))" "$(profile_name "${profiles[index]}")"
+    done
+    read -r -p 'Profile number (Enter cancels): ' selected || return 1
+    [[ $selected =~ ^[0-9]{1,3}$ ]] || return 1
+    index=$((10#$selected-1))
+    (( index >= 0 && index < ${#profiles[@]} )) || return 1
+    SELECTED_UUID=${profiles[index]}
+  fi
+  [[ $SELECTED_UUID =~ ^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$ ]]
+}
+set_band() {
+  local band=$1 description=$2
+  select_profile || return 1
+  if sudo -n nmcli --wait 10 connection modify uuid "$SELECTED_UUID" \
+      802-11-wireless.band "$band" 802-11-wireless.bssid ''; then
+    printf '%s saved for %s.\n' "$description" "$(profile_name "$SELECTED_UUID")"
+    echo 'The current connection was left running. Applies on the next reconnect.'
+    echo 'Use option 5 to reconnect now; it will ask for credentials if needed.'
+  else
+    echo 'Could not save the preference. No disconnect was requested.'
+    return 1
+  fi
+}
+main() {
+  local active choice reply
+  while true; do
+    clear
+    printf '\033[40m\033[31m'
+    active=$(active_uuid)
+    printf 'WI-FI\n=====\n\nActive: %s\n' "${active:+$(profile_name "$active")}"
+    cat <<'MENU'
 
   1) Connect / change Wi-Fi
-  2) Prefer 5 GHz on active Wi-Fi (recommended for Moonlight + Bluetooth)
-  3) Automatic Wi-Fi band
+  2) 5 GHz ONLY (no 2.4 GHz fallback; optional)
+  3) Automatic band / AP selection (recommended for combined 2.4/5 GHz)
   4) Show Wi-Fi status
+  5) Reconnect saved Wi-Fi (asks for missing credentials)
   0) Back
-
-EOF
-  printf 'Choose: '
-  read -r choice
-  case "$choice" in
-    1) nmtui-connect ;;
-    2)
-      active=$(nmcli -t -f NAME,TYPE connection show --active | awk -F: '$2=="802-11-wireless"{print $1; exit}')
-      if [[ -n "$active" ]]; then
-        sudo nmcli connection modify "$active" 802-11-wireless.band a
-        sudo nmcli connection down "$active" || true
-        sudo nmcli connection up "$active" || true
-        echo "5 GHz preferred for $active."
-      else
-        echo "Connect to Wi-Fi first."
-      fi
-      read -r -p "Press Enter..." _
-      ;;
-    3)
-      active=$(nmcli -t -f NAME,TYPE connection show --active | awk -F: '$2=="802-11-wireless"{print $1; exit}')
-      if [[ -n "$active" ]]; then
-        sudo nmcli connection modify "$active" 802-11-wireless.band ""
-        echo "Automatic band selection restored."
-      else
-        echo "No active Wi-Fi connection."
-      fi
-      read -r -p "Press Enter..." _
-      ;;
-    4)
-      nmcli device wifi list
-      echo
-      iw dev 2>/dev/null || true
-      read -r -p "Press Enter..." _
-      ;;
-    0) exit 0 ;;
-  esac
-done
+MENU
+    read -r -p 'Choose: ' choice || return 0
+    case "$choice" in
+      1) nmtui-connect ;;
+      2)
+        read -r -p 'Restrict this profile to 5 GHz on its next reconnect? Type yes: ' reply
+        [[ $reply == yes ]] && set_band a '5 GHz only'
+        read -r -p 'Press Enter...' _ ;;
+      3) set_band '' 'Automatic band / AP selection'; read -r -p 'Press Enter...' _ ;;
+      4) nmcli device wifi list; echo; iw dev 2>/dev/null || true; read -r -p 'Press Enter...' _ ;;
+      5)
+        if select_profile; then
+          echo 'Reconnecting may briefly interrupt the network. Credentials are not put in command arguments.'
+          if sudo -n nmcli --ask --wait 40 connection up uuid "$SELECTED_UUID"; then
+            echo 'Wi-Fi connection activated.'
+          else
+            echo 'Reconnect failed or was cancelled. Use option 3 for automatic band selection, then option 1 to connect.'
+          fi
+        fi
+        read -r -p 'Press Enter...' _ ;;
+      0) return 0 ;;
+    esac
+  done
+}
+if [[ ${BASH_SOURCE[0]} == "$0" ]]; then main; fi
 WIFIMENU
 chmod 0755 /usr/local/bin/moonlight-wifi
 
@@ -703,9 +737,14 @@ def wifi_rows(text):
     result, seen = [], set()
     for line in text.splitlines():
         row = fields(line)
-        if len(row) != 6:
+        if len(row) not in (6, 7):
             continue
-        active, name, address, strength, security, device = row
+        active, name, address, strength, security, device = row[:6]
+        frequency = row[6] if len(row) == 7 else ''
+        band = ''
+        if frequency.isdecimal():
+            mhz = int(frequency)
+            band = '2.4 GHz' if 2400 <= mhz < 2500 else '5 GHz' if 4900 <= mhz < 5900 else '6 GHz' if 5900 <= mhz < 7126 else ''
         if not re.fullmatch(r'(?:[0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}', address):
             continue
         if not re.fullmatch(r'[A-Za-z0-9_][A-Za-z0-9_.:-]{0,31}', device):
@@ -715,7 +754,7 @@ def wifi_rows(text):
             continue
         seen.add(identity)
         result.append(dict(id=identity, name=name, address=address.upper(), device=device,
-                           detail=f'{strength}% · {security or "Open"}', connected=active == '*'))
+                           detail=f'{strength}% · {security or "Open"}' + (' · ' + band if band else ''), connected=active == '*'))
         if len(result) == 64:
             break
     return result
@@ -736,7 +775,7 @@ class Controls:
     def wifi_list(self, scan=False):
         self.mode = "wifi"
         self.items = wifi_rows(run(['nmcli', '-t', '--escape', 'yes', '-f',
-                                   'IN-USE,SSID,BSSID,SIGNAL,SECURITY,DEVICE', 'device', 'wifi', 'list',
+                                   'IN-USE,SSID,BSSID,SIGNAL,SECURITY,DEVICE,FREQ', 'device', 'wifi', 'list',
                                    '--rescan', 'yes' if scan else 'no']))
         return self.items
 
@@ -745,19 +784,28 @@ class Controls:
 
     def wifi_connect(self, item):
         env = dict(os.environ, LC_ALL='C', LANG='C')
-        self.wifi_child = pexpect.spawn('nmcli', ['--ask', 'device', 'wifi', 'connect',
+        self.wifi_child = pexpect.spawn('/usr/bin/sudo', ['-n', '/usr/bin/nmcli', '--ask', '--wait', '40', 'device', 'wifi', 'connect',
                                        item['address'], 'ifname', item['device']], env=env,
                                        encoding='utf-8', codec_errors='replace', echo=False, timeout=40)
         child = self.wifi_child
         try:
+            prompts = 0
             deadline = time.monotonic() + 90
             while time.monotonic() < deadline:
-                event = child.expect([r'Password[^\r\n]*:', r'successfully activated', pexpect.EOF, pexpect.TIMEOUT], timeout=40)
+                event = child.expect([r'(?i)password[^\r\n]*:', r'successfully activated', r'(?i)error:[^\r\n]*', pexpect.EOF, pexpect.TIMEOUT], timeout=min(40, max(1, deadline-time.monotonic())))
                 if event == 0:
+                    prompts += 1
+                    if prompts > 3:
+                        raise RuntimeError('Wi-Fi authentication failed. Recheck the saved network/password in tty2.')
                     child.sendline(answer('Wi-Fi password for ' + item['name']))
                 elif event == 1:
                     child.expect(pexpect.EOF, timeout=5)
+                    child.close()
+                    if child.exitstatus != 0:
+                        raise RuntimeError('Wi-Fi activation did not complete successfully.')
                     return
+                elif event == 2:
+                    raise RuntimeError('Wi-Fi activation failed. Check the saved band setting, password and adapter in tty2; no network was deliberately disconnected first.')
                 else:
                     raise RuntimeError('Wi-Fi connection failed. Check the password or use tty2 for advanced/enterprise networks.')
             raise RuntimeError('Wi-Fi connection timed out.')
@@ -950,10 +998,12 @@ class BlueZ:
         if not adapters:
             raise RuntimeError('No Bluetooth adapter found. Check Adapter status in the recovery console.')
         self.adapter = next((path for path, p in adapters if p.get('Powered')), adapters[0][0])
+        # introspect=False means dbus-python cannot infer Properties.Set's ssv.
+        # Explicitly wrap the Boolean in a variant, otherwise it sends ssb.
         props = self.interface(self.adapter, 'org.freedesktop.DBus.Properties')
         try:
             for key in ('Powered', 'Pairable'):
-                props.Set('org.bluez.Adapter1', key, self.dbus.Boolean(True), timeout=5)
+                props.Set('org.bluez.Adapter1', key, self.dbus.Boolean(True, variant_level=1), timeout=5)
         except self.dbus.DBusException as error:
             raise RuntimeError('Bluetooth radio unavailable: '+error.get_dbus_name()) from None
 
@@ -988,10 +1038,10 @@ class BlueZ:
         try:
             if action == 'forget':
                 adapter = str(self.objects()[path]['org.bluez.Device1']['Adapter'])
-                self.interface(adapter, 'org.bluez.Adapter1').RemoveDevice(path, timeout=5)
+                self.interface(adapter, 'org.bluez.Adapter1').RemoveDevice(self.dbus.ObjectPath(path), timeout=5)
             else:
                 if action == 'connect':
-                    self.interface(path, 'org.freedesktop.DBus.Properties').Set('org.bluez.Device1', 'Trusted', self.dbus.Boolean(True), timeout=5)
+                    self.interface(path, 'org.freedesktop.DBus.Properties').Set('org.bluez.Device1', 'Trusted', self.dbus.Boolean(True, variant_level=1), timeout=5)
                 if action != 'connect' or not self.device(address)[1].get('Connected'):
                     getattr(self.interface(path, 'org.bluez.Device1'), 'Connect' if action == 'connect' else 'Disconnect')(timeout=20 if action == 'connect' else 5)
         except self.dbus.DBusException as error:
@@ -1210,6 +1260,7 @@ EclipseOS SETTINGS
   9) Select any frontend
   a) Audio mixer (save on exit)
   u) EclipseOS updates (enrollment required)
+  s) Streaming tuning / renderer diagnostics
 
   AirPods mode: ${mode:-unknown}
 
@@ -1229,6 +1280,7 @@ EOF
     8) sudo moonlight-os-client moonlight; read -r -p "Press Enter..." _ ;;
     9) moonlight-frontend-select; read -r -p "Press Enter..." _ ;;
     a) moonlight-audio ;;
+    s) eclipseos-streaming menu; read -r -p "Press Enter..." _ ;;
     u) eclipseos-updates; read -r -p "Press Enter..." _ ;;
     0) exit 0 ;;
   esac
@@ -1931,7 +1983,7 @@ PEGASUS_URL=https://github.com/mmatyas/pegasus-frontend/releases/download/contin
 PEGASUS_SHA256=85842b658796a67aeaefd2eeef8d3ee1999c675661bf443fa34e999e394bc550
 
 # Reviewed EclipseOS Vibemis theme/status patch.
-VIBEMIS_PATCH_SHA256=c7b47a846f7c449b225a811d2a89fc3e98c5f4a0fe40945a27560456bf16cbbf
+VIBEMIS_PATCH_SHA256=3996a95cb132b302c74007585abf090f171f41841a81b1a8067009814ac5d238
 FRONTENDS_LOCK
 base64 -d > /usr/local/share/moonlight-os/vibemis-crimson.patch <<'VIBEMIS_PATCH_B64'
 ZGlmZiAtLWdpdCBhL2FwcC9hcHAucHJvIGIvYXBwL2FwcC5wcm8KaW5kZXggYzE4ODZhNC4uYzg2
@@ -10072,286 +10124,359 @@ YXRlKE92ZXJsYXk6Ok92ZXJsYXlMb2NhbEhhcmR3YXJlLCBRU2V0dGluZ3MoKS52YWx1ZSgiZWNs
 aXBzZS9sb2NhbE92ZXJsYXkiLGZhbHNlKS50b0Jvb2woKSk7DQogDQogICAgIC8vIFZpYmVtaXM6
 IG9wdC1pbiBvbi1zY3JlZW4gdG91Y2ggY29udHJvbHMgb3ZlcmxheSDigJQNCiAgICAgLy8gdGhy
 ZWUgaWNvbi1vbmx5IGJ1dHRvbnMgKE1FTlUgb3BlbnMgdGhlIFF1aWNrIE1lbnUsIEtCRCByZXF1
-ZXN0cyB0aGUgU3RlYW1PUw0KZGlmZiAtLWdpdCBhL2FwcC9zdHJlYW1pbmcvdmlkZW8vZmZtcGVn
-LXJlbmRlcmVycy9kM2QxMXZhLmNwcCBiL2FwcC9zdHJlYW1pbmcvdmlkZW8vZmZtcGVnLXJlbmRl
-cmVycy9kM2QxMXZhLmNwcAppbmRleCAzODhlMzA3Li5mODUzMjM5IDEwMDY0NAotLS0gYS9hcHAv
-c3RyZWFtaW5nL3ZpZGVvL2ZmbXBlZy1yZW5kZXJlcnMvZDNkMTF2YS5jcHAKKysrIGIvYXBwL3N0
-cmVhbWluZy92aWRlby9mZm1wZWctcmVuZGVyZXJzL2QzZDExdmEuY3BwCkBAIC05NjQsNyArOTY0
-LDcgQEAgdm9pZCBEM0QxMVZBUmVuZGVyZXI6Om5vdGlmeU92ZXJsYXlVcGRhdGVkKE92ZXJsYXk6
-Ok92ZXJsYXlUeXBlIHR5cGUpCiAgICAgICAgIHJlbmRlclJlY3QueCA9IDA7CiAgICAgICAgIHJl
-bmRlclJlY3QueSA9IDA7CiAgICAgfQotICAgIGVsc2UgaWYgKHR5cGUgPT0gT3ZlcmxheTo6T3Zl
-cmxheURlYnVnKSB7CisgICAgZWxzZSBpZiAodHlwZSA9PSBPdmVybGF5OjpPdmVybGF5RGVidWcg
-fHwgdHlwZSA9PSBPdmVybGF5OjpPdmVybGF5TG9jYWxIYXJkd2FyZSkgewogICAgICAgICAvLyBU
-b3AgbGVmdAogICAgICAgICByZW5kZXJSZWN0LnggPSAwOwogICAgICAgICByZW5kZXJSZWN0Lnkg
-PSBtX0Rpc3BsYXlIZWlnaHQgLSBuZXdTdXJmYWNlLT5oOwpkaWZmIC0tZ2l0IGEvYXBwL3N0cmVh
-bWluZy92aWRlby9mZm1wZWctcmVuZGVyZXJzL2R4dmEyLmNwcCBiL2FwcC9zdHJlYW1pbmcvdmlk
-ZW8vZmZtcGVnLXJlbmRlcmVycy9keHZhMi5jcHAKaW5kZXggMzI2MThkOC4uMDRiNWQxNyAxMDA2
-NDQKLS0tIGEvYXBwL3N0cmVhbWluZy92aWRlby9mZm1wZWctcmVuZGVyZXJzL2R4dmEyLmNwcAor
-KysgYi9hcHAvc3RyZWFtaW5nL3ZpZGVvL2ZmbXBlZy1yZW5kZXJlcnMvZHh2YTIuY3BwCkBAIC04
-NjIsNyArODYyLDcgQEAgdm9pZCBEWFZBMlJlbmRlcmVyOjpub3RpZnlPdmVybGF5VXBkYXRlZChP
-dmVybGF5OjpPdmVybGF5VHlwZSB0eXBlKQogICAgICAgICByZW5kZXJSZWN0LnggPSAwOwogICAg
-ICAgICByZW5kZXJSZWN0LnkgPSBtX0Rpc3BsYXlIZWlnaHQgLSBuZXdTdXJmYWNlLT5oOwogICAg
-IH0KLSAgICBlbHNlIGlmICh0eXBlID09IE92ZXJsYXk6Ok92ZXJsYXlEZWJ1ZykgeworICAgIGVs
-c2UgaWYgKHR5cGUgPT0gT3ZlcmxheTo6T3ZlcmxheURlYnVnIHx8IHR5cGUgPT0gT3ZlcmxheTo6
-T3ZlcmxheUxvY2FsSGFyZHdhcmUpIHsKICAgICAgICAgLy8gVG9wIGxlZnQKICAgICAgICAgcmVu
-ZGVyUmVjdC54ID0gMDsKICAgICAgICAgcmVuZGVyUmVjdC55ID0gMDsKZGlmZiAtLWdpdCBhL2Fw
-cC9zdHJlYW1pbmcvdmlkZW8vZmZtcGVnLXJlbmRlcmVycy9lZ2x2aWQuY3BwIGIvYXBwL3N0cmVh
-bWluZy92aWRlby9mZm1wZWctcmVuZGVyZXJzL2VnbHZpZC5jcHAKaW5kZXggOTU4N2EzNS4uMjA2
-ODBkOCAxMDA2NDQKLS0tIGEvYXBwL3N0cmVhbWluZy92aWRlby9mZm1wZWctcmVuZGVyZXJzL2Vn
-bHZpZC5jcHAKKysrIGIvYXBwL3N0cmVhbWluZy92aWRlby9mZm1wZWctcmVuZGVyZXJzL2VnbHZp
-ZC5jcHAKQEAgLTIzNCwxMCArMjM0LDEwIEBAIHZvaWQgRUdMUmVuZGVyZXI6OnJlbmRlck92ZXJs
-YXkoT3ZlcmxheTo6T3ZlcmxheVR5cGUgdHlwZSwgaW50IHZpZXdwb3J0V2lkdGgsIGluCiAgICAg
-ICAgICAgICBvdmVybGF5UmVjdC54ID0gMDsKICAgICAgICAgICAgIG92ZXJsYXlSZWN0LnkgPSAw
-OwogICAgICAgICB9Ci0gICAgICAgIGVsc2UgaWYgKHR5cGUgPT0gT3ZlcmxheTo6T3ZlcmxheURl
-YnVnKSB7CisgICAgICAgIGVsc2UgaWYgKHR5cGUgPT0gT3ZlcmxheTo6T3ZlcmxheURlYnVnIHx8
-IHR5cGUgPT0gT3ZlcmxheTo6T3ZlcmxheUxvY2FsSGFyZHdhcmUpIHsKICAgICAgICAgICAgIC8v
-IFZpYmVtaXM6IHVzZXItY29uZmlndXJhYmxlIGNvcm5lci4gTkI6IE9wZW5HTCBvcmlnaW4gaXMg
-bG93ZXItbGVmdCwKICAgICAgICAgICAgIC8vIHNvICJ0b3AiIGlzIHRoZSBoaWdoLVkgZWRnZSBo
-ZXJlLgotICAgICAgICAgICAgaW50IGFuY2hvciA9IFNlc3Npb246OmdldCgpLT5nZXRPdmVybGF5
-TWFuYWdlcigpLmdldERlYnVnT3ZlcmxheUFuY2hvcigpOworICAgICAgICAgICAgaW50IGFuY2hv
-ciA9IFNlc3Npb246OmdldCgpLT5nZXRPdmVybGF5TWFuYWdlcigpLmdldE92ZXJsYXlBbmNob3Io
-dHlwZSk7CiAgICAgICAgICAgICBib29sIHJpZ2h0ID0gKGFuY2hvciA9PSAxIHx8IGFuY2hvciA9
-PSAzKTsgIC8vIFRSIG9yIEJSCiAgICAgICAgICAgICBib29sIGJvdHRvbSA9IChhbmNob3IgPT0g
-MiB8fCBhbmNob3IgPT0gMyk7IC8vIEJMIG9yIEJSCiAgICAgICAgICAgICBvdmVybGF5UmVjdC54
-ID0gcmlnaHQgPyAodmlld3BvcnRXaWR0aCAtIG5ld1N1cmZhY2UtPncpIDogMDsKZGlmZiAtLWdp
-dCBhL2FwcC9zdHJlYW1pbmcvdmlkZW8vZmZtcGVnLXJlbmRlcmVycy9wbHZrLmNwcCBiL2FwcC9z
-dHJlYW1pbmcvdmlkZW8vZmZtcGVnLXJlbmRlcmVycy9wbHZrLmNwcAppbmRleCBiYzE2ZmYyLi5i
-YWMxODViIDEwMDY0NAotLS0gYS9hcHAvc3RyZWFtaW5nL3ZpZGVvL2ZmbXBlZy1yZW5kZXJlcnMv
-cGx2ay5jcHAKKysrIGIvYXBwL3N0cmVhbWluZy92aWRlby9mZm1wZWctcmVuZGVyZXJzL3Bsdmsu
-Y3BwCkBAIC0xMzgyLDEwICsxMzgyLDEwIEBAIHZvaWQgUGxWa1JlbmRlcmVyOjpyZW5kZXJGcmFt
-ZShBVkZyYW1lICpmcmFtZSkKICAgICAgICAgICAgICAgICBvdmVybGF5UGFydHNbaV0uZHN0Lngw
-ID0gMDsNCiAgICAgICAgICAgICAgICAgb3ZlcmxheVBhcnRzW2ldLmRzdC55MCA9IFNETF9tYXgo
-MCwgdGFyZ2V0RnJhbWUuY3JvcC55MSAtIG92ZXJsYXlQYXJ0c1tpXS5zcmMueTEpOw0KICAgICAg
-ICAgICAgIH0NCi0gICAgICAgICAgICBlbHNlIGlmIChpID09IE92ZXJsYXk6Ok92ZXJsYXlEZWJ1
-Zykgew0KLSAgICAgICAgICAgICAgICAvLyBUb3AgbGVmdA0KLSAgICAgICAgICAgICAgICBvdmVy
-bGF5UGFydHNbaV0uZHN0LngwID0gMDsNCi0gICAgICAgICAgICAgICAgb3ZlcmxheVBhcnRzW2ld
-LmRzdC55MCA9IDA7DQorICAgICAgICAgICAgZWxzZSBpZiAoaSA9PSBPdmVybGF5OjpPdmVybGF5
-RGVidWcgfHwgaSA9PSBPdmVybGF5OjpPdmVybGF5TG9jYWxIYXJkd2FyZSkgew0KKyAgICAgICAg
-ICAgICAgICBpbnQgYW5jaG9yPVNlc3Npb246OmdldCgpLT5nZXRPdmVybGF5TWFuYWdlcigpLmdl
-dE92ZXJsYXlBbmNob3Ioc3RhdGljX2Nhc3Q8T3ZlcmxheTo6T3ZlcmxheVR5cGU+KGkpKTsNCisg
-ICAgICAgICAgICAgICAgb3ZlcmxheVBhcnRzW2ldLmRzdC54MD0oYW5jaG9yPT0xIHx8IGFuY2hv
-cj09MykgPyBTRExfbWF4KDAsdGFyZ2V0RnJhbWUuY3JvcC54MS1vdmVybGF5UGFydHNbaV0uc3Jj
-LngxKSA6IDA7DQorICAgICAgICAgICAgICAgIG92ZXJsYXlQYXJ0c1tpXS5kc3QueTA9KGFuY2hv
-cj09MiB8fCBhbmNob3I9PTMpID8gU0RMX21heCgwLHRhcmdldEZyYW1lLmNyb3AueTEtb3Zlcmxh
-eVBhcnRzW2ldLnNyYy55MSkgOiAwOw0KICAgICAgICAgICAgIH0NCiAgICAgICAgICAgICBlbHNl
-IGlmIChpID09IE92ZXJsYXk6Ok92ZXJsYXlUb3VjaEJ1dHRvbk1lbnUgfHwgaSA9PSBPdmVybGF5
-OjpPdmVybGF5VG91Y2hCdXR0b25LYmQgfHwNCiAgICAgICAgICAgICAgICAgICAgICBpID09IE92
-ZXJsYXk6Ok92ZXJsYXlUb3VjaEJ1dHRvblRvdWNoTW9kZSkgew0KZGlmZiAtLWdpdCBhL2FwcC9z
-dHJlYW1pbmcvdmlkZW8vZmZtcGVnLXJlbmRlcmVycy9zZGx2aWQuY3BwIGIvYXBwL3N0cmVhbWlu
-Zy92aWRlby9mZm1wZWctcmVuZGVyZXJzL3NkbHZpZC5jcHAKaW5kZXggNTY3YmYxOS4uZjEzMjVl
-ZCAxMDA2NDQKLS0tIGEvYXBwL3N0cmVhbWluZy92aWRlby9mZm1wZWctcmVuZGVyZXJzL3NkbHZp
-ZC5jcHAKKysrIGIvYXBwL3N0cmVhbWluZy92aWRlby9mZm1wZWctcmVuZGVyZXJzL3NkbHZpZC5j
-cHAKQEAgLTI0MSwxMSArMjQxLDExIEBAIHZvaWQgU2RsUmVuZGVyZXI6OnJlbmRlck92ZXJsYXko
-T3ZlcmxheTo6T3ZlcmxheVR5cGUgdHlwZSkKICAgICAgICAgICAgICAgICBtX092ZXJsYXlSZWN0
-c1t0eXBlXS54ID0gMDsKICAgICAgICAgICAgICAgICBtX092ZXJsYXlSZWN0c1t0eXBlXS55ID0g
-dmlld3BvcnRSZWN0LmggLSBuZXdTdXJmYWNlLT5oOwogICAgICAgICAgICAgfQotICAgICAgICAg
-ICAgZWxzZSBpZiAodHlwZSA9PSBPdmVybGF5OjpPdmVybGF5RGVidWcpIHsKKyAgICAgICAgICAg
-IGVsc2UgaWYgKHR5cGUgPT0gT3ZlcmxheTo6T3ZlcmxheURlYnVnIHx8IHR5cGUgPT0gT3Zlcmxh
-eTo6T3ZlcmxheUxvY2FsSGFyZHdhcmUpIHsKICAgICAgICAgICAgICAgICAvLyBWaWJlbWlzOiB1
-c2VyLWNvbmZpZ3VyYWJsZSBjb3JuZXIgKFNETCBvcmlnaW4gaXMgdXBwZXItbGVmdCkuCiAgICAg
-ICAgICAgICAgICAgU0RMX1JlY3Qgdmlld3BvcnRSZWN0OwogICAgICAgICAgICAgICAgIFNETF9S
-ZW5kZXJHZXRWaWV3cG9ydChtX1JlbmRlcmVyLCAmdmlld3BvcnRSZWN0KTsKLSAgICAgICAgICAg
-ICAgICBpbnQgYW5jaG9yID0gU2Vzc2lvbjo6Z2V0KCktPmdldE92ZXJsYXlNYW5hZ2VyKCkuZ2V0
-RGVidWdPdmVybGF5QW5jaG9yKCk7CisgICAgICAgICAgICAgICAgaW50IGFuY2hvciA9IFNlc3Np
-b246OmdldCgpLT5nZXRPdmVybGF5TWFuYWdlcigpLmdldE92ZXJsYXlBbmNob3IodHlwZSk7CiAg
-ICAgICAgICAgICAgICAgYm9vbCByaWdodCA9IChhbmNob3IgPT0gMSB8fCBhbmNob3IgPT0gMyk7
-ICAvLyBUUiBvciBCUgogICAgICAgICAgICAgICAgIGJvb2wgYm90dG9tID0gKGFuY2hvciA9PSAy
-IHx8IGFuY2hvciA9PSAzKTsgLy8gQkwgb3IgQlIKICAgICAgICAgICAgICAgICBtX092ZXJsYXlS
-ZWN0c1t0eXBlXS54ID0gcmlnaHQgPyAodmlld3BvcnRSZWN0LncgLSBuZXdTdXJmYWNlLT53KSA6
-IDA7CmRpZmYgLS1naXQgYS9hcHAvc3RyZWFtaW5nL3ZpZGVvL2ZmbXBlZy1yZW5kZXJlcnMvdmFh
-cGkuY3BwIGIvYXBwL3N0cmVhbWluZy92aWRlby9mZm1wZWctcmVuZGVyZXJzL3ZhYXBpLmNwcApp
-bmRleCBhYjY1ZTBiLi4yODQzZmQ2IDEwMDY0NAotLS0gYS9hcHAvc3RyZWFtaW5nL3ZpZGVvL2Zm
-bXBlZy1yZW5kZXJlcnMvdmFhcGkuY3BwCisrKyBiL2FwcC9zdHJlYW1pbmcvdmlkZW8vZmZtcGVn
-LXJlbmRlcmVycy92YWFwaS5jcHAKQEAgLTc0MSw5ICs3NDEsOSBAQCB2b2lkIFZBQVBJUmVuZGVy
-ZXI6Om5vdGlmeU92ZXJsYXlVcGRhdGVkKE92ZXJsYXk6Ok92ZXJsYXlUeXBlIHR5cGUpCiAgICAg
-ICAgICAgICBvdmVybGF5UmVjdC54ID0gMDsKICAgICAgICAgICAgIG92ZXJsYXlSZWN0LnkgPSAt
-bmV3U3VyZmFjZS0+aDsKICAgICAgICAgfQotICAgICAgICBlbHNlIGlmICh0eXBlID09IE92ZXJs
-YXk6Ok92ZXJsYXlEZWJ1ZykgeworICAgICAgICBlbHNlIGlmICh0eXBlID09IE92ZXJsYXk6Ok92
-ZXJsYXlEZWJ1ZyB8fCB0eXBlID09IE92ZXJsYXk6Ok92ZXJsYXlMb2NhbEhhcmR3YXJlKSB7CiAg
-ICAgICAgICAgICAvLyBWaWJlbWlzOiB1c2VyLWNvbmZpZ3VyYWJsZSBjb3JuZXIgKHVwcGVyLWxl
-ZnQgb3JpZ2luKS4KLSAgICAgICAgICAgIGludCBhbmNob3IgPSBTZXNzaW9uOjpnZXQoKS0+Z2V0
-T3ZlcmxheU1hbmFnZXIoKS5nZXREZWJ1Z092ZXJsYXlBbmNob3IoKTsKKyAgICAgICAgICAgIGlu
-dCBhbmNob3IgPSBTZXNzaW9uOjpnZXQoKS0+Z2V0T3ZlcmxheU1hbmFnZXIoKS5nZXRPdmVybGF5
-QW5jaG9yKHR5cGUpOwogICAgICAgICAgICAgYm9vbCByaWdodCA9IChhbmNob3IgPT0gMSB8fCBh
-bmNob3IgPT0gMyk7ICAvLyBUUiBvciBCUgogICAgICAgICAgICAgYm9vbCBib3R0b20gPSAoYW5j
-aG9yID09IDIgfHwgYW5jaG9yID09IDMpOyAvLyBCTCBvciBCUgogICAgICAgICAgICAgb3Zlcmxh
-eVJlY3QueCA9IHJpZ2h0ID8gKG1fRGlzcGxheVdpZHRoIC0gbmV3U3VyZmFjZS0+dykgOiAwOwpk
-aWZmIC0tZ2l0IGEvYXBwL3N0cmVhbWluZy92aWRlby9mZm1wZWctcmVuZGVyZXJzL3ZkcGF1LmNw
-cCBiL2FwcC9zdHJlYW1pbmcvdmlkZW8vZmZtcGVnLXJlbmRlcmVycy92ZHBhdS5jcHAKaW5kZXgg
-MmY5ZTBjMy4uOTA2YWNjYyAxMDA2NDQKLS0tIGEvYXBwL3N0cmVhbWluZy92aWRlby9mZm1wZWct
-cmVuZGVyZXJzL3ZkcGF1LmNwcAorKysgYi9hcHAvc3RyZWFtaW5nL3ZpZGVvL2ZmbXBlZy1yZW5k
-ZXJlcnMvdmRwYXUuY3BwCkBAIC00MzYsOSArNDM2LDkgQEAgdm9pZCBWRFBBVVJlbmRlcmVyOjpu
-b3RpZnlPdmVybGF5VXBkYXRlZChPdmVybGF5OjpPdmVybGF5VHlwZSB0eXBlKQogICAgICAgICAg
-ICAgb3ZlcmxheVJlY3QueDAgPSAwOwogICAgICAgICAgICAgb3ZlcmxheVJlY3QueTAgPSBtX0Rp
-c3BsYXlIZWlnaHQgLSBuZXdTdXJmYWNlLT5oOwogICAgICAgICB9Ci0gICAgICAgIGVsc2UgaWYg
-KHR5cGUgPT0gT3ZlcmxheTo6T3ZlcmxheURlYnVnKSB7CisgICAgICAgIGVsc2UgaWYgKHR5cGUg
-PT0gT3ZlcmxheTo6T3ZlcmxheURlYnVnIHx8IHR5cGUgPT0gT3ZlcmxheTo6T3ZlcmxheUxvY2Fs
-SGFyZHdhcmUpIHsKICAgICAgICAgICAgIC8vIFZpYmVtaXM6IHVzZXItY29uZmlndXJhYmxlIGNv
-cm5lciAodXBwZXItbGVmdCBvcmlnaW4pLgotICAgICAgICAgICAgaW50IGFuY2hvciA9IFNlc3Np
-b246OmdldCgpLT5nZXRPdmVybGF5TWFuYWdlcigpLmdldERlYnVnT3ZlcmxheUFuY2hvcigpOwor
-ICAgICAgICAgICAgaW50IGFuY2hvciA9IFNlc3Npb246OmdldCgpLT5nZXRPdmVybGF5TWFuYWdl
-cigpLmdldE92ZXJsYXlBbmNob3IodHlwZSk7CiAgICAgICAgICAgICBib29sIHJpZ2h0ID0gKGFu
-Y2hvciA9PSAxIHx8IGFuY2hvciA9PSAzKTsgIC8vIFRSIG9yIEJSCiAgICAgICAgICAgICBib29s
-IGJvdHRvbSA9IChhbmNob3IgPT0gMiB8fCBhbmNob3IgPT0gMyk7IC8vIEJMIG9yIEJSCiAgICAg
-ICAgICAgICBvdmVybGF5UmVjdC54MCA9IHJpZ2h0ID8gKG1fRGlzcGxheVdpZHRoIC0gbmV3U3Vy
-ZmFjZS0+dykgOiAwOwpkaWZmIC0tZ2l0IGEvYXBwL3N0cmVhbWluZy92aWRlby9mZm1wZWctcmVu
-ZGVyZXJzL3Z0X2F2c2FtcGxlbGF5ZXIubW0gYi9hcHAvc3RyZWFtaW5nL3ZpZGVvL2ZmbXBlZy1y
-ZW5kZXJlcnMvdnRfYXZzYW1wbGVsYXllci5tbQppbmRleCBiZDU1MjgxLi4xM2Q4OGM2IDEwMDY0
-NAotLS0gYS9hcHAvc3RyZWFtaW5nL3ZpZGVvL2ZmbXBlZy1yZW5kZXJlcnMvdnRfYXZzYW1wbGVs
-YXllci5tbQorKysgYi9hcHAvc3RyZWFtaW5nL3ZpZGVvL2ZmbXBlZy1yZW5kZXJlcnMvdnRfYXZz
-YW1wbGVsYXllci5tbQpAQCAtNDk2LDYgKzQ5Niw3IEBAIHB1YmxpYzoKICAgICAgICAgICAgIFtt
-X092ZXJsYXlUZXh0RmllbGRzW3R5cGVdIHNldFNlbGVjdGFibGU6Tk9dOwogCiAgICAgICAgICAg
-ICBzd2l0Y2ggKHR5cGUpIHsKKyAgICAgICAgICAgIGNhc2UgT3ZlcmxheTo6T3ZlcmxheUxvY2Fs
-SGFyZHdhcmU6CiAgICAgICAgICAgICBjYXNlIE92ZXJsYXk6Ok92ZXJsYXlEZWJ1ZzoKICAgICAg
-ICAgICAgICAgICBbbV9PdmVybGF5VGV4dEZpZWxkc1t0eXBlXSBzZXRBbGlnbm1lbnQ6TlNUZXh0
-QWxpZ25tZW50TGVmdF07CiAgICAgICAgICAgICAgICAgYnJlYWs7CmRpZmYgLS1naXQgYS9hcHAv
-c3RyZWFtaW5nL3ZpZGVvL2ZmbXBlZy1yZW5kZXJlcnMvdnRfbWV0YWwubW0gYi9hcHAvc3RyZWFt
-aW5nL3ZpZGVvL2ZmbXBlZy1yZW5kZXJlcnMvdnRfbWV0YWwubW0KaW5kZXggNzliMTY1ZC4uMzM0
-ZWVmZiAxMDA2NDQKLS0tIGEvYXBwL3N0cmVhbWluZy92aWRlby9mZm1wZWctcmVuZGVyZXJzL3Z0
-X21ldGFsLm1tCisrKyBiL2FwcC9zdHJlYW1pbmcvdmlkZW8vZmZtcGVnLXJlbmRlcmVycy92dF9t
-ZXRhbC5tbQpAQCAtNjAwLDcgKzYwMCw3IEBAIHB1YmxpYzoKICAgICAgICAgICAgICAgICAgICAg
-cmVuZGVyUmVjdC54ID0gMDsKICAgICAgICAgICAgICAgICAgICAgcmVuZGVyUmVjdC55ID0gMDsK
-ICAgICAgICAgICAgICAgICB9Ci0gICAgICAgICAgICAgICAgZWxzZSBpZiAoaSA9PSBPdmVybGF5
-OjpPdmVybGF5RGVidWcpIHsKKyAgICAgICAgICAgICAgICBlbHNlIGlmIChpID09IE92ZXJsYXk6
-Ok92ZXJsYXlEZWJ1ZyB8fCBpID09IE92ZXJsYXk6Ok92ZXJsYXlMb2NhbEhhcmR3YXJlKSB7CiAg
-ICAgICAgICAgICAgICAgICAgIC8vIFRvcCBsZWZ0CiAgICAgICAgICAgICAgICAgICAgIHJlbmRl
-clJlY3QueCA9IDA7CiAgICAgICAgICAgICAgICAgICAgIHJlbmRlclJlY3QueSA9IG1fTGFzdERy
-YXdhYmxlSGVpZ2h0IC0gb3ZlcmxheVRleHR1cmUuaGVpZ2h0OwpkaWZmIC0tZ2l0IGEvYXBwL3N0
-cmVhbWluZy92aWRlby9mZm1wZWcuY3BwIGIvYXBwL3N0cmVhbWluZy92aWRlby9mZm1wZWcuY3Bw
-CmluZGV4IDJhYzFhNmUuLjRhNmUwYzAgMTAwNjQ0Ci0tLSBhL2FwcC9zdHJlYW1pbmcvdmlkZW8v
-ZmZtcGVnLmNwcAorKysgYi9hcHAvc3RyZWFtaW5nL3ZpZGVvL2ZmbXBlZy5jcHAKQEAgLTEsNSAr
-MSw2IEBACiAjaW5jbHVkZSA8TGltZWxpZ2h0Lmg+CiAjaW5jbHVkZSAiZmZtcGVnLmgiCisjaW5j
-bHVkZSAibW9vbmxpZ2h0b3MvbG9jYWxoYXJkd2FyZS5oIgogI2luY2x1ZGUgInN0cmVhbWluZy9z
-ZXNzaW9uLmgiCiAjaW5jbHVkZSAiYmFja2VuZC9zeXN0ZW1wcm9wZXJ0aWVzLmgiCiAjaW5jbHVk
-ZSAic2V0dGluZ3Mvc3RyZWFtaW5ncHJlZmVyZW5jZXMuaCIKQEAgLTI0NDAsNiArMjQ0MSwxMSBA
-QCBpbnQgRkZtcGVnVmlkZW9EZWNvZGVyOjpzdWJtaXREZWNvZGVVbml0KFBERUNPREVfVU5JVCBk
-dSkKICAgICAgICAgICAgIFNlc3Npb246OmdldCgpLT5nZXRPdmVybGF5TWFuYWdlcigpLnNldE92
-ZXJsYXlUZXh0VXBkYXRlZChPdmVybGF5OjpPdmVybGF5RGVidWcpOwogICAgICAgICB9CiAKKyAg
-ICAgICAgaWYoU2Vzc2lvbjo6Z2V0KCktPmdldE92ZXJsYXlNYW5hZ2VyKCkuaXNPdmVybGF5RW5h
-YmxlZChPdmVybGF5OjpPdmVybGF5TG9jYWxIYXJkd2FyZSkpIHsKKyAgICAgICAgICAgIFFCeXRl
-QXJyYXkgdGV4dD1Mb2NhbEhhcmR3YXJlOjpvdmVybGF5VGV4dCgpLnRvVXRmOCgpOworICAgICAg
-ICAgICAgU2Vzc2lvbjo6Z2V0KCktPmdldE92ZXJsYXlNYW5hZ2VyKCkudXBkYXRlT3ZlcmxheVRl
-eHQoT3ZlcmxheTo6T3ZlcmxheUxvY2FsSGFyZHdhcmUsdGV4dC5jb25zdERhdGEoKSk7CisgICAg
-ICAgIH0KKwogICAgICAgICAvLyBBY2N1bXVsYXRlIHRoZXNlIHZhbHVlcyBpbnRvIHRoZSBnbG9i
-YWwgc3RhdHMKICAgICAgICAgYWRkVmlkZW9TdGF0cyhtX0FjdGl2ZVduZFZpZGVvU3RhdHMsIG1f
-R2xvYmFsVmlkZW9TdGF0cyk7CiAKZGlmZiAtLWdpdCBhL2FwcC9zdHJlYW1pbmcvdmlkZW8vb3Zl
-cmxheW1hbmFnZXIuY3BwIGIvYXBwL3N0cmVhbWluZy92aWRlby9vdmVybGF5bWFuYWdlci5jcHAK
-aW5kZXggOTJlNmM2ZC4uNDgzZmZkYiAxMDA2NDQKLS0tIGEvYXBwL3N0cmVhbWluZy92aWRlby9v
-dmVybGF5bWFuYWdlci5jcHAKKysrIGIvYXBwL3N0cmVhbWluZy92aWRlby9vdmVybGF5bWFuYWdl
-ci5jcHAKQEAgLTEsNiArMSwxMiBAQAogI2luY2x1ZGUgIm92ZXJsYXltYW5hZ2VyLmgiCiAjaW5j
-bHVkZSAicGF0aC5oIgogI2luY2x1ZGUgInNldHRpbmdzL3N0cmVhbWluZ3ByZWZlcmVuY2VzLmgi
-CisjaW5jbHVkZSAibW9vbmxpZ2h0b3MvbG9jYWxoYXJkd2FyZS5oIgorI2luY2x1ZGUgIm1vb25s
-aWdodG9zL292ZXJsYXlzdHlsZS5oIgorI2luY2x1ZGUgPFFTZXR0aW5ncz4KKyNpbmNsdWRlIDxR
-SW1hZ2U+CisjaW5jbHVkZSA8UVBhaW50ZXI+CisjaW5jbHVkZSA8UUNvbG9yPgogCiB1c2luZyBu
-YW1lc3BhY2UgT3ZlcmxheTsKIApAQCAtOSw2ICsxNSwxMyBAQCBpbnQgT3ZlcmxheU1hbmFnZXI6
-OmdldERlYnVnT3ZlcmxheUFuY2hvcigpCiAgICAgcmV0dXJuIHN0YXRpY19jYXN0PGludD4oU3Ry
-ZWFtaW5nUHJlZmVyZW5jZXM6OmdldCgpLT5wZXJmT3ZlcmxheVBvc2l0aW9uKTsKIH0KIAoraW50
-IE92ZXJsYXlNYW5hZ2VyOjpnZXRPdmVybGF5QW5jaG9yKE92ZXJsYXlUeXBlIHR5cGUpIHsKKyAg
-ICBpbnQgc3RyZWFtPWdldERlYnVnT3ZlcmxheUFuY2hvcigpOworICAgIGlmKHR5cGUhPU92ZXJs
-YXlMb2NhbEhhcmR3YXJlKSByZXR1cm4gc3RyZWFtOworICAgIGludCBsb2NhbD1xQm91bmQoMCxR
-U2V0dGluZ3MoKS52YWx1ZSgiZWNsaXBzZS9sb2NhbFBvc2l0aW9uIiwxKS50b0ludCgpLDMpOwor
-ICAgIHJldHVybiBpc092ZXJsYXlFbmFibGVkKE92ZXJsYXlEZWJ1ZykgJiYgbG9jYWw9PXN0cmVh
-bSA/IChsb2NhbCBeIDEpIDogbG9jYWw7Cit9CisKIE92ZXJsYXlNYW5hZ2VyOjpPdmVybGF5TWFu
-YWdlcigpIDoKICAgICBtX1JlbmRlcmVyKG51bGxwdHIpLAogICAgIG1fRm9udERhdGEoUGF0aDo6
-cmVhZERhdGFGaWxlKCJNb2RlU2V2ZW4udHRmIikpCkBAIC0zMiw4ICs0NSwxMCBAQCBPdmVybGF5
-TWFuYWdlcjo6T3ZlcmxheU1hbmFnZXIoKSA6CiAgICAgICAgIGJyZWFrOwogICAgIH0KIAotICAg
-IG1fT3ZlcmxheXNbT3ZlcmxheVR5cGU6Ok92ZXJsYXlEZWJ1Z10uY29sb3IgPSB7MHhEMCwgMHhE
-MCwgMHgwMCwgMHhGRn07CisgICAgbV9PdmVybGF5c1tPdmVybGF5VHlwZTo6T3ZlcmxheURlYnVn
-XS5jb2xvciA9IHsweEVDLCAweEVFLCAweEYxLCAweEZGfTsKICAgICBtX092ZXJsYXlzW092ZXJs
-YXlUeXBlOjpPdmVybGF5RGVidWddLmZvbnRTaXplID0gZGVidWdGb250U2l6ZTsKKyAgICBtX092
-ZXJsYXlzW092ZXJsYXlMb2NhbEhhcmR3YXJlXS5jb2xvciA9IHsweEVDLDB4RUUsMHhGMSwweEZG
-fTsKKyAgICBtX092ZXJsYXlzW092ZXJsYXlMb2NhbEhhcmR3YXJlXS5mb250U2l6ZSA9IGRlYnVn
-Rm9udFNpemU7CiAKICAgICBtX092ZXJsYXlzW092ZXJsYXlUeXBlOjpPdmVybGF5U3RhdHVzVXBk
-YXRlXS5jb2xvciA9IHsweENDLCAweDAwLCAweDAwLCAweEZGfTsKICAgICBtX092ZXJsYXlzW092
-ZXJsYXlUeXBlOjpPdmVybGF5U3RhdHVzVXBkYXRlXS5mb250U2l6ZSA9IDM2OwpAQCAtMTI2LDYg
-KzE0MSwxMCBAQCBTRExfU3VyZmFjZSogT3ZlcmxheU1hbmFnZXI6OmdldFVwZGF0ZWRPdmVybGF5
-U3VyZmFjZShPdmVybGF5VHlwZSB0eXBlKQogCiB2b2lkIE92ZXJsYXlNYW5hZ2VyOjpzZXRPdmVy
-bGF5VGV4dFVwZGF0ZWQoT3ZlcmxheVR5cGUgdHlwZSkKIHsKKyAgICBpZihtX092ZXJsYXlzW3R5
-cGVdLmVuYWJsZWQgJiYgKHR5cGU9PU92ZXJsYXlEZWJ1ZyB8fCB0eXBlPT1PdmVybGF5TG9jYWxI
-YXJkd2FyZSkpIHsKKyAgICAgICAgUU11dGV4TG9ja2VyIGdyYXBoTG9jaygmbV9HcmFwaExvY2sp
-OworICAgICAgICBDcmltc29uR3JhcGhzOjpwdXNoKG1fR3JhcGhIaXN0b3J5W3R5cGVdLENyaW1z
-b25HcmFwaHM6OnZhbHVlcyhRU3RyaW5nOjpmcm9tVXRmOChtX092ZXJsYXlzW3R5cGVdLnRleHQp
-LHR5cGU9PU92ZXJsYXlMb2NhbEhhcmR3YXJlLExvY2FsSGFyZHdhcmU6OnNhbXBsZSgpKSk7Cisg
-ICAgfQogICAgIC8vIE9ubHkgdXBkYXRlIHRoZSBvdmVybGF5IHN0YXRlIGlmIGl0J3MgZW5hYmxl
-ZC4gSWYgaXQncyBub3QgZW5hYmxlZCwKICAgICAvLyB0aGUgcmVuZGVyZXIgaGFzIGFscmVhZHkg
-YmVlbiBub3RpZmllZCBieSBzZXRPdmVybGF5U3RhdGUoKS4KICAgICBpZiAobV9PdmVybGF5c1t0
-eXBlXS5lbmFibGVkKSB7CkBAIC0xNDMsNiArMTYyLDcgQEAgdm9pZCBPdmVybGF5TWFuYWdlcjo6
-c2V0T3ZlcmxheVN0YXRlKE92ZXJsYXlUeXBlIHR5cGUsIGJvb2wgZW5hYmxlZCkKICAgICAgICAg
-aWYgKCFlbmFibGVkKSB7CiAgICAgICAgICAgICAvLyBTZXQgdGhlIHRleHQgdG8gZW1wdHkgc3Ry
-aW5nIG9uIGRpc2FibGUKICAgICAgICAgICAgIG1fT3ZlcmxheXNbdHlwZV0udGV4dFswXSA9IDA7
-CisgICAgICAgICAgICB7IFFNdXRleExvY2tlciBncmFwaExvY2soJm1fR3JhcGhMb2NrKTttX0dy
-YXBoSGlzdG9yeVt0eXBlXS5jbGVhcigpOyB9CiAgICAgICAgIH0KIAogICAgICAgICBub3RpZnlP
-dmVybGF5VXBkYXRlZCh0eXBlKTsKQEAgLTM2OCwxMSArMzg4LDI3IEBAIHZvaWQgT3ZlcmxheU1h
-bmFnZXI6Om5vdGlmeU92ZXJsYXlVcGRhdGVkKE92ZXJsYXlUeXBlIHR5cGUpCiAgICAgfQogCiAg
-ICAgaWYgKG1fT3ZlcmxheXNbdHlwZV0uZW5hYmxlZCkgewotICAgICAgICAvLyBUaGUgX1dyYXBw
-ZWQgdmFyaWFudCBpcyByZXF1aXJlZCBmb3IgbGluZSBicmVha3MgdG8gd29yawotICAgICAgICBT
-RExfU3VyZmFjZSogc3VyZmFjZSA9IFRURl9SZW5kZXJUZXh0X0JsZW5kZWRfV3JhcHBlZChtX092
-ZXJsYXlzW3R5cGVdLmZvbnQsCi0gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg
-ICAgICAgICAgICAgICAgICAgICAgICAgIG1fT3ZlcmxheXNbdHlwZV0udGV4dCwKLSAgICAgICAg
-ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgbV9P
-dmVybGF5c1t0eXBlXS5jb2xvciwKLSAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg
-ICAgICAgICAgICAgICAgICAgICAgICAgICAgMTAyNCk7CisgICAgICAgIFFCeXRlQXJyYXkgdGV4
-dChtX092ZXJsYXlzW3R5cGVdLnRleHQpOworICAgICAgICBjb25zdCBib29sIGNhcmQ9dHlwZT09
-T3ZlcmxheURlYnVnIHx8IHR5cGU9PU92ZXJsYXlMb2NhbEhhcmR3YXJlOworICAgICAgICBjb25z
-dCBib29sIGRldGFpbGVkPVFTZXR0aW5ncygpLnZhbHVlKHR5cGU9PU92ZXJsYXlEZWJ1Zz8iZWNs
-aXBzZS9zdHJlYW1EZXRhaWxlZCI6ImVjbGlwc2UvbG9jYWxEZXRhaWxlZCIsZmFsc2UpLnRvQm9v
-bCgpOworICAgICAgICBpZihjYXJkICYmICFkZXRhaWxlZCkgdGV4dD0odHlwZT09T3ZlcmxheURl
-YnVnPyJFY2xpcHNlT1MgfCBTVFJFQU0iOiJFY2xpcHNlT1MgfCBMT0NBTCIpOworICAgICAgICBl
-bHNlIGlmKHR5cGU9PU92ZXJsYXlEZWJ1ZykgdGV4dC5wcmVwZW5kKCJFY2xpcHNlT1MgfCBTVFJF
-QU1cbiIpOworICAgICAgICBTRExfU3VyZmFjZSogc3VyZmFjZT1UVEZfUmVuZGVyVVRGOF9CbGVu
-ZGVkX1dyYXBwZWQobV9PdmVybGF5c1t0eXBlXS5mb250LHRleHQuY29uc3REYXRhKCksbV9PdmVy
-bGF5c1t0eXBlXS5jb2xvcixjYXJkPzQ4MDoxMDI0KTsKKyAgICAgICAgaWYoY2FyZCAmJiBzdXJm
-YWNlKSB7CisgICAgICAgICAgICBpbnQgZm9udFNpemU9bV9PdmVybGF5c1t0eXBlXS5mb250U2l6
-ZTsKKyAgICAgICAgICAgIGludCBncmFwaEhlaWdodD00Kihmb250U2l6ZSsyMikrMTI7CisgICAg
-ICAgICAgICBpbnQgd2lkdGg9cU1heChzdXJmYWNlLT53KzMyLDQ4MCk7CisgICAgICAgICAgICBR
-SW1hZ2UgaW1hZ2U9RWNsaXBzZU92ZXJsYXlTdHlsZTo6cGFuZWwoUVNpemUod2lkdGgsc3VyZmFj
-ZS0+aCszMitncmFwaEhlaWdodCksU3RyZWFtaW5nUHJlZmVyZW5jZXM6OmdldCgpLT51aUFjY2Vu
-dEluZGV4LFFTZXR0aW5ncygpLnZhbHVlKCJlY2xpcHNlL292ZXJsYXlPcGFjaXR5Iiw4NSkudG9J
-bnQoKSk7CisgICAgICAgICAgICBDcmltc29uR3JhcGhzOjpIaXN0b3J5IGhpc3Rvcnk7CisgICAg
-ICAgICAgICB7IFFNdXRleExvY2tlciBncmFwaExvY2soJm1fR3JhcGhMb2NrKTtoaXN0b3J5PW1f
-R3JhcGhIaXN0b3J5W3R5cGVdOyB9CisgICAgICAgICAgICBpZighaW1hZ2UuaXNOdWxsKCkpIENy
-aW1zb25HcmFwaHM6OnBhaW50KGltYWdlLHN1cmZhY2UtPmgrMjQscU1pbihmb250U2l6ZSwyMCks
-U3RyZWFtaW5nUHJlZmVyZW5jZXM6OmdldCgpLT51aUFjY2VudEluZGV4LGhpc3RvcnksdHlwZT09
-T3ZlcmxheUxvY2FsSGFyZHdhcmUpOworICAgICAgICAgICAgU0RMX1N1cmZhY2UqIHBhbmVsPWlt
-YWdlLmlzTnVsbCgpP251bGxwdHI6U0RMX0NyZWF0ZVJHQlN1cmZhY2VXaXRoRm9ybWF0KDAsaW1h
-Z2Uud2lkdGgoKSxpbWFnZS5oZWlnaHQoKSwzMixTRExfUElYRUxGT1JNQVRfUkdCQTMyKTsKKyAg
-ICAgICAgICAgIGlmKHBhbmVsKSB7CisgICAgICAgICAgICAgICAgZm9yKGludCByb3c9MDtyb3c8
-aW1hZ2UuaGVpZ2h0KCk7Kytyb3cpIG1lbWNweShzdGF0aWNfY2FzdDxjaGFyKj4ocGFuZWwtPnBp
-eGVscykrcm93KnBhbmVsLT5waXRjaCxpbWFnZS5jb25zdFNjYW5MaW5lKHJvdyksaW1hZ2Uud2lk
-dGgoKSo0KTsKKyAgICAgICAgICAgICAgICBTRExfUmVjdCBkZXN0PXsxNiwxNixzdXJmYWNlLT53
-LHN1cmZhY2UtPmh9O1NETF9CbGl0U3VyZmFjZShzdXJmYWNlLG51bGxwdHIscGFuZWwsJmRlc3Qp
-OworICAgICAgICAgICAgICAgIFNETF9GcmVlU3VyZmFjZShzdXJmYWNlKTtzdXJmYWNlPXBhbmVs
-OworICAgICAgICAgICAgfQorICAgICAgICB9CiAKICAgICAgICAgU0RMX0F0b21pY1NldFB0cigo
-dm9pZCoqKSZtX092ZXJsYXlzW3R5cGVdLnN1cmZhY2UsIHN1cmZhY2UpOwogICAgIH0KZGlmZiAt
-LWdpdCBhL2FwcC9zdHJlYW1pbmcvdmlkZW8vb3ZlcmxheW1hbmFnZXIuaCBiL2FwcC9zdHJlYW1p
-bmcvdmlkZW8vb3ZlcmxheW1hbmFnZXIuaAppbmRleCBlMTlmYzBjLi40MTEyYTFkIDEwMDY0NAot
-LS0gYS9hcHAvc3RyZWFtaW5nL3ZpZGVvL292ZXJsYXltYW5hZ2VyLmgKKysrIGIvYXBwL3N0cmVh
-bWluZy92aWRlby9vdmVybGF5bWFuYWdlci5oCkBAIC0yLDYgKzIsNyBAQAogCiAjaW5jbHVkZSA8
-UVN0cmluZz4KICNpbmNsdWRlIDxRTXV0ZXg+CisjaW5jbHVkZSAibW9vbmxpZ2h0b3MvY3JpbXNv
-bmdyYXBocy5oIgogCiAjaW5jbHVkZSAiU0RMX2NvbXBhdC5oIgogI2luY2x1ZGUgPFNETF90dGYu
-aD4KQEAgLTEwLDYgKzExLDcgQEAgbmFtZXNwYWNlIE92ZXJsYXkgewogCiBlbnVtIE92ZXJsYXlU
-eXBlIHsKICAgICBPdmVybGF5RGVidWcsCisgICAgT3ZlcmxheUxvY2FsSGFyZHdhcmUsCiAgICAg
-T3ZlcmxheVN0YXR1c1VwZGF0ZSwKICAgICBPdmVybGF5U2VydmVyQ29tbWFuZHMsCiAgICAgT3Zl
-cmxheVF1aWNrTWVudSwKQEAgLTcwLDYgKzcyLDcgQEAgcHVibGljOgogICAgIC8vIHByZWZlcmVu
-Y2UuIFJldHVybnMgU3RyZWFtaW5nUHJlZmVyZW5jZXM6OlBlcmZPdmVybGF5UG9zaXRpb24gYXMg
-YW4gaW50CiAgICAgLy8gKDA9VEwsIDE9VFIsIDI9QkwsIDM9QlIpLiBSZW5kZXJlcnMgbWFwIHRo
-aXMgdG8gdGhlaXIgb3duIGNvb3JkaW5hdGUgc3BhY2UuCiAgICAgaW50IGdldERlYnVnT3Zlcmxh
-eUFuY2hvcigpOworICAgIGludCBnZXRPdmVybGF5QW5jaG9yKE92ZXJsYXlUeXBlIHR5cGUpOwog
-CiAgICAgdm9pZCBzZXRPdmVybGF5UmVuZGVyZXIoSU92ZXJsYXlSZW5kZXJlciogcmVuZGVyZXIp
-OwogCkBAIC0xMTcsNiArMTIwLDggQEAgcHJpdmF0ZToKICAgICBJT3ZlcmxheVJlbmRlcmVyKiBt
-X1JlbmRlcmVyOwogICAgIFFNdXRleCBtX1JlbmRlcmVyTG9jazsgICAvLyBndWFyZHMgbV9SZW5k
-ZXJlciBzd2FwIHZzIGNyb3NzLXRocmVhZCBub3RpZnkKICAgICBRQnl0ZUFycmF5IG1fRm9udERh
-dGE7CisgICAgUU11dGV4IG1fR3JhcGhMb2NrOworICAgIENyaW1zb25HcmFwaHM6Okhpc3Rvcnkg
-bV9HcmFwaEhpc3RvcnlbT3ZlcmxheU1heF07CiB9OwogCiB9CmRpZmYgLS1naXQgYS9wYWNrYWdp
-bmcvZmxhdHBhay9pby5naXRodWIubmF2eWFzMzIxLlZpYmVtaXMuZGVza3RvcCBiL3BhY2thZ2lu
-Zy9mbGF0cGFrL2lvLmdpdGh1Yi5uYXZ5YXMzMjEuVmliZW1pcy5kZXNrdG9wCmluZGV4IDA0NWFk
-YmUuLmYxMmRhNWQgMTAwNjQ0Ci0tLSBhL3BhY2thZ2luZy9mbGF0cGFrL2lvLmdpdGh1Yi5uYXZ5
-YXMzMjEuVmliZW1pcy5kZXNrdG9wCisrKyBiL3BhY2thZ2luZy9mbGF0cGFrL2lvLmdpdGh1Yi5u
-YXZ5YXMzMjEuVmliZW1pcy5kZXNrdG9wCkBAIC0xLDYgKzEsNiBAQAogW0Rlc2t0b3AgRW50cnld
-CiBUeXBlPUFwcGxpY2F0aW9uCi1OYW1lPVZpYmVtaXMKK05hbWU9RWNsaXBzZQogR2VuZXJpY05h
-bWU9R2FtZSBTdHJlYW1pbmcgQ2xpZW50CiBDb21tZW50PVN0cmVhbSBnYW1lcyBhbmQgYXBwbGlj
-YXRpb25zIGZyb20gYSBTdW5zaGluZSAvIEFwb2xsbyAvIFZpYmVwb2xsbyBob3N0CiBFeGVjPXZp
-YmVtaXMK
+ZXN0cyB0aGUgU3RlYW1PUw0KZGlmZiAtLWdpdCBhL2FwcC9zdHJlYW1pbmcvdmlkZW8vZGVjb2Rl
+cnN0YXR1cy5oIGIvYXBwL3N0cmVhbWluZy92aWRlby9kZWNvZGVyc3RhdHVzLmgKaW5kZXggMTEx
+YjgzYi4uYmRjY2JiZiAxMDA2NDQKLS0tIGEvYXBwL3N0cmVhbWluZy92aWRlby9kZWNvZGVyc3Rh
+dHVzLmgKKysrIGIvYXBwL3N0cmVhbWluZy92aWRlby9kZWNvZGVyc3RhdHVzLmgKQEAgLTE2Myw2
+ICsxNjMsMTQgQEAgaW5saW5lIGludCBmb3JtYXRQYWNpbmdMaW5lKGNoYXIqIG91dHB1dCwgaW50
+IGxlbmd0aCwKICAgICAgICAgICAgICAgICAgICAgKHByZXNlbnRNb2RlICE9IG51bGxwdHIgJiYg
+cHJlc2VudE1vZGVbMF0gIT0gJ1wwJykgPyBwcmVzZW50TW9kZSA6ICJuL2EiKTsKIH0KIAorLy8g
+QWN0dWFsIHByZXNlbnRhdGlvbiBmcm9udGVuZDsgZGlzdGluY3QgZnJvbSB0aGUgZGVjb2RlciBi
+YWNrZW5kIGFib3ZlLgoraW5saW5lIGludCBmb3JtYXRQcmVzZW50YXRpb25MaW5lKGNoYXIqIG91
+dHB1dCwgaW50IGxlbmd0aCwgY29uc3QgY2hhciogcmVuZGVyZXIpCit7CisgICAgcmV0dXJuIHNu
+cHJpbnRmKG91dHB1dCwgbGVuZ3RoLCAiUmVuZGVyZXI6ICUuKnNcbiIsIE1heFJlbmRlcmVyQ2hh
+cnMsCisgICAgICAgICAgICAgICAgICAgIHJlbmRlcmVyICE9IG51bGxwdHIgJiYgcmVuZGVyZXJb
+MF0gIT0gJ1wwJyA/IHJlbmRlcmVyIDogInVua25vd24iKTsKK30KK2NvbnN0IGludCBNYXhQcmVz
+ZW50YXRpb25MaW5lQ2hhcnMgPSAxMCArIE1heFJlbmRlcmVyQ2hhcnMgKyAxOworCiAvLyBXb3Jz
+dC1jYXNlIHJlbmRlcmVkIGxlbmd0aCBvZiB0aGUgRklSU1QgbGluZSBvZiBmb3JtYXRMaW5lKCks
+IGV4Y2x1ZGluZyB0aGUKIC8vIE5VTC4gVGhpcyBpcyB0aGUgbnVtYmVyIHRoYXQgaGFzIHRvIHN0
+YXkgc21hbGwgZW5vdWdoIHRvIGZpdCBhIGhhbmRoZWxkCiAvLyBzY3JlZW47IHRoZSBidWZmZXIg
+YnVkZ2V0IGJlbG93IGNhcmVzIGFib3V0IHRoZSB0b3RhbC4KZGlmZiAtLWdpdCBhL2FwcC9zdHJl
+YW1pbmcvdmlkZW8vZmZtcGVnLXJlbmRlcmVycy9kM2QxMXZhLmNwcCBiL2FwcC9zdHJlYW1pbmcv
+dmlkZW8vZmZtcGVnLXJlbmRlcmVycy9kM2QxMXZhLmNwcAppbmRleCAzODhlMzA3Li5mODUzMjM5
+IDEwMDY0NAotLS0gYS9hcHAvc3RyZWFtaW5nL3ZpZGVvL2ZmbXBlZy1yZW5kZXJlcnMvZDNkMTF2
+YS5jcHAKKysrIGIvYXBwL3N0cmVhbWluZy92aWRlby9mZm1wZWctcmVuZGVyZXJzL2QzZDExdmEu
+Y3BwCkBAIC05NjQsNyArOTY0LDcgQEAgdm9pZCBEM0QxMVZBUmVuZGVyZXI6Om5vdGlmeU92ZXJs
+YXlVcGRhdGVkKE92ZXJsYXk6Ok92ZXJsYXlUeXBlIHR5cGUpCiAgICAgICAgIHJlbmRlclJlY3Qu
+eCA9IDA7CiAgICAgICAgIHJlbmRlclJlY3QueSA9IDA7CiAgICAgfQotICAgIGVsc2UgaWYgKHR5
+cGUgPT0gT3ZlcmxheTo6T3ZlcmxheURlYnVnKSB7CisgICAgZWxzZSBpZiAodHlwZSA9PSBPdmVy
+bGF5OjpPdmVybGF5RGVidWcgfHwgdHlwZSA9PSBPdmVybGF5OjpPdmVybGF5TG9jYWxIYXJkd2Fy
+ZSkgewogICAgICAgICAvLyBUb3AgbGVmdAogICAgICAgICByZW5kZXJSZWN0LnggPSAwOwogICAg
+ICAgICByZW5kZXJSZWN0LnkgPSBtX0Rpc3BsYXlIZWlnaHQgLSBuZXdTdXJmYWNlLT5oOwpkaWZm
+IC0tZ2l0IGEvYXBwL3N0cmVhbWluZy92aWRlby9mZm1wZWctcmVuZGVyZXJzL2R4dmEyLmNwcCBi
+L2FwcC9zdHJlYW1pbmcvdmlkZW8vZmZtcGVnLXJlbmRlcmVycy9keHZhMi5jcHAKaW5kZXggMzI2
+MThkOC4uMDRiNWQxNyAxMDA2NDQKLS0tIGEvYXBwL3N0cmVhbWluZy92aWRlby9mZm1wZWctcmVu
+ZGVyZXJzL2R4dmEyLmNwcAorKysgYi9hcHAvc3RyZWFtaW5nL3ZpZGVvL2ZmbXBlZy1yZW5kZXJl
+cnMvZHh2YTIuY3BwCkBAIC04NjIsNyArODYyLDcgQEAgdm9pZCBEWFZBMlJlbmRlcmVyOjpub3Rp
+ZnlPdmVybGF5VXBkYXRlZChPdmVybGF5OjpPdmVybGF5VHlwZSB0eXBlKQogICAgICAgICByZW5k
+ZXJSZWN0LnggPSAwOwogICAgICAgICByZW5kZXJSZWN0LnkgPSBtX0Rpc3BsYXlIZWlnaHQgLSBu
+ZXdTdXJmYWNlLT5oOwogICAgIH0KLSAgICBlbHNlIGlmICh0eXBlID09IE92ZXJsYXk6Ok92ZXJs
+YXlEZWJ1ZykgeworICAgIGVsc2UgaWYgKHR5cGUgPT0gT3ZlcmxheTo6T3ZlcmxheURlYnVnIHx8
+IHR5cGUgPT0gT3ZlcmxheTo6T3ZlcmxheUxvY2FsSGFyZHdhcmUpIHsKICAgICAgICAgLy8gVG9w
+IGxlZnQKICAgICAgICAgcmVuZGVyUmVjdC54ID0gMDsKICAgICAgICAgcmVuZGVyUmVjdC55ID0g
+MDsKZGlmZiAtLWdpdCBhL2FwcC9zdHJlYW1pbmcvdmlkZW8vZmZtcGVnLXJlbmRlcmVycy9lZ2x2
+aWQuY3BwIGIvYXBwL3N0cmVhbWluZy92aWRlby9mZm1wZWctcmVuZGVyZXJzL2VnbHZpZC5jcHAK
+aW5kZXggOTU4N2EzNS4uMjA2ODBkOCAxMDA2NDQKLS0tIGEvYXBwL3N0cmVhbWluZy92aWRlby9m
+Zm1wZWctcmVuZGVyZXJzL2VnbHZpZC5jcHAKKysrIGIvYXBwL3N0cmVhbWluZy92aWRlby9mZm1w
+ZWctcmVuZGVyZXJzL2VnbHZpZC5jcHAKQEAgLTIzNCwxMCArMjM0LDEwIEBAIHZvaWQgRUdMUmVu
+ZGVyZXI6OnJlbmRlck92ZXJsYXkoT3ZlcmxheTo6T3ZlcmxheVR5cGUgdHlwZSwgaW50IHZpZXdw
+b3J0V2lkdGgsIGluCiAgICAgICAgICAgICBvdmVybGF5UmVjdC54ID0gMDsKICAgICAgICAgICAg
+IG92ZXJsYXlSZWN0LnkgPSAwOwogICAgICAgICB9Ci0gICAgICAgIGVsc2UgaWYgKHR5cGUgPT0g
+T3ZlcmxheTo6T3ZlcmxheURlYnVnKSB7CisgICAgICAgIGVsc2UgaWYgKHR5cGUgPT0gT3Zlcmxh
+eTo6T3ZlcmxheURlYnVnIHx8IHR5cGUgPT0gT3ZlcmxheTo6T3ZlcmxheUxvY2FsSGFyZHdhcmUp
+IHsKICAgICAgICAgICAgIC8vIFZpYmVtaXM6IHVzZXItY29uZmlndXJhYmxlIGNvcm5lci4gTkI6
+IE9wZW5HTCBvcmlnaW4gaXMgbG93ZXItbGVmdCwKICAgICAgICAgICAgIC8vIHNvICJ0b3AiIGlz
+IHRoZSBoaWdoLVkgZWRnZSBoZXJlLgotICAgICAgICAgICAgaW50IGFuY2hvciA9IFNlc3Npb246
+OmdldCgpLT5nZXRPdmVybGF5TWFuYWdlcigpLmdldERlYnVnT3ZlcmxheUFuY2hvcigpOworICAg
+ICAgICAgICAgaW50IGFuY2hvciA9IFNlc3Npb246OmdldCgpLT5nZXRPdmVybGF5TWFuYWdlcigp
+LmdldE92ZXJsYXlBbmNob3IodHlwZSk7CiAgICAgICAgICAgICBib29sIHJpZ2h0ID0gKGFuY2hv
+ciA9PSAxIHx8IGFuY2hvciA9PSAzKTsgIC8vIFRSIG9yIEJSCiAgICAgICAgICAgICBib29sIGJv
+dHRvbSA9IChhbmNob3IgPT0gMiB8fCBhbmNob3IgPT0gMyk7IC8vIEJMIG9yIEJSCiAgICAgICAg
+ICAgICBvdmVybGF5UmVjdC54ID0gcmlnaHQgPyAodmlld3BvcnRXaWR0aCAtIG5ld1N1cmZhY2Ut
+PncpIDogMDsKZGlmZiAtLWdpdCBhL2FwcC9zdHJlYW1pbmcvdmlkZW8vZmZtcGVnLXJlbmRlcmVy
+cy9wbHZrLmNwcCBiL2FwcC9zdHJlYW1pbmcvdmlkZW8vZmZtcGVnLXJlbmRlcmVycy9wbHZrLmNw
+cAppbmRleCBiYzE2ZmYyLi5iYWMxODViIDEwMDY0NAotLS0gYS9hcHAvc3RyZWFtaW5nL3ZpZGVv
+L2ZmbXBlZy1yZW5kZXJlcnMvcGx2ay5jcHAKKysrIGIvYXBwL3N0cmVhbWluZy92aWRlby9mZm1w
+ZWctcmVuZGVyZXJzL3BsdmsuY3BwCkBAIC0xMzgyLDEwICsxMzgyLDEwIEBAIHZvaWQgUGxWa1Jl
+bmRlcmVyOjpyZW5kZXJGcmFtZShBVkZyYW1lICpmcmFtZSkKICAgICAgICAgICAgICAgICBvdmVy
+bGF5UGFydHNbaV0uZHN0LngwID0gMDsNCiAgICAgICAgICAgICAgICAgb3ZlcmxheVBhcnRzW2ld
+LmRzdC55MCA9IFNETF9tYXgoMCwgdGFyZ2V0RnJhbWUuY3JvcC55MSAtIG92ZXJsYXlQYXJ0c1tp
+XS5zcmMueTEpOw0KICAgICAgICAgICAgIH0NCi0gICAgICAgICAgICBlbHNlIGlmIChpID09IE92
+ZXJsYXk6Ok92ZXJsYXlEZWJ1Zykgew0KLSAgICAgICAgICAgICAgICAvLyBUb3AgbGVmdA0KLSAg
+ICAgICAgICAgICAgICBvdmVybGF5UGFydHNbaV0uZHN0LngwID0gMDsNCi0gICAgICAgICAgICAg
+ICAgb3ZlcmxheVBhcnRzW2ldLmRzdC55MCA9IDA7DQorICAgICAgICAgICAgZWxzZSBpZiAoaSA9
+PSBPdmVybGF5OjpPdmVybGF5RGVidWcgfHwgaSA9PSBPdmVybGF5OjpPdmVybGF5TG9jYWxIYXJk
+d2FyZSkgew0KKyAgICAgICAgICAgICAgICBpbnQgYW5jaG9yPVNlc3Npb246OmdldCgpLT5nZXRP
+dmVybGF5TWFuYWdlcigpLmdldE92ZXJsYXlBbmNob3Ioc3RhdGljX2Nhc3Q8T3ZlcmxheTo6T3Zl
+cmxheVR5cGU+KGkpKTsNCisgICAgICAgICAgICAgICAgb3ZlcmxheVBhcnRzW2ldLmRzdC54MD0o
+YW5jaG9yPT0xIHx8IGFuY2hvcj09MykgPyBTRExfbWF4KDAsdGFyZ2V0RnJhbWUuY3JvcC54MS1v
+dmVybGF5UGFydHNbaV0uc3JjLngxKSA6IDA7DQorICAgICAgICAgICAgICAgIG92ZXJsYXlQYXJ0
+c1tpXS5kc3QueTA9KGFuY2hvcj09MiB8fCBhbmNob3I9PTMpID8gU0RMX21heCgwLHRhcmdldEZy
+YW1lLmNyb3AueTEtb3ZlcmxheVBhcnRzW2ldLnNyYy55MSkgOiAwOw0KICAgICAgICAgICAgIH0N
+CiAgICAgICAgICAgICBlbHNlIGlmIChpID09IE92ZXJsYXk6Ok92ZXJsYXlUb3VjaEJ1dHRvbk1l
+bnUgfHwgaSA9PSBPdmVybGF5OjpPdmVybGF5VG91Y2hCdXR0b25LYmQgfHwNCiAgICAgICAgICAg
+ICAgICAgICAgICBpID09IE92ZXJsYXk6Ok92ZXJsYXlUb3VjaEJ1dHRvblRvdWNoTW9kZSkgew0K
+ZGlmZiAtLWdpdCBhL2FwcC9zdHJlYW1pbmcvdmlkZW8vZmZtcGVnLXJlbmRlcmVycy9zZGx2aWQu
+Y3BwIGIvYXBwL3N0cmVhbWluZy92aWRlby9mZm1wZWctcmVuZGVyZXJzL3NkbHZpZC5jcHAKaW5k
+ZXggNTY3YmYxOS4uZjEzMjVlZCAxMDA2NDQKLS0tIGEvYXBwL3N0cmVhbWluZy92aWRlby9mZm1w
+ZWctcmVuZGVyZXJzL3NkbHZpZC5jcHAKKysrIGIvYXBwL3N0cmVhbWluZy92aWRlby9mZm1wZWct
+cmVuZGVyZXJzL3NkbHZpZC5jcHAKQEAgLTI0MSwxMSArMjQxLDExIEBAIHZvaWQgU2RsUmVuZGVy
+ZXI6OnJlbmRlck92ZXJsYXkoT3ZlcmxheTo6T3ZlcmxheVR5cGUgdHlwZSkKICAgICAgICAgICAg
+ICAgICBtX092ZXJsYXlSZWN0c1t0eXBlXS54ID0gMDsKICAgICAgICAgICAgICAgICBtX092ZXJs
+YXlSZWN0c1t0eXBlXS55ID0gdmlld3BvcnRSZWN0LmggLSBuZXdTdXJmYWNlLT5oOwogICAgICAg
+ICAgICAgfQotICAgICAgICAgICAgZWxzZSBpZiAodHlwZSA9PSBPdmVybGF5OjpPdmVybGF5RGVi
+dWcpIHsKKyAgICAgICAgICAgIGVsc2UgaWYgKHR5cGUgPT0gT3ZlcmxheTo6T3ZlcmxheURlYnVn
+IHx8IHR5cGUgPT0gT3ZlcmxheTo6T3ZlcmxheUxvY2FsSGFyZHdhcmUpIHsKICAgICAgICAgICAg
+ICAgICAvLyBWaWJlbWlzOiB1c2VyLWNvbmZpZ3VyYWJsZSBjb3JuZXIgKFNETCBvcmlnaW4gaXMg
+dXBwZXItbGVmdCkuCiAgICAgICAgICAgICAgICAgU0RMX1JlY3Qgdmlld3BvcnRSZWN0OwogICAg
+ICAgICAgICAgICAgIFNETF9SZW5kZXJHZXRWaWV3cG9ydChtX1JlbmRlcmVyLCAmdmlld3BvcnRS
+ZWN0KTsKLSAgICAgICAgICAgICAgICBpbnQgYW5jaG9yID0gU2Vzc2lvbjo6Z2V0KCktPmdldE92
+ZXJsYXlNYW5hZ2VyKCkuZ2V0RGVidWdPdmVybGF5QW5jaG9yKCk7CisgICAgICAgICAgICAgICAg
+aW50IGFuY2hvciA9IFNlc3Npb246OmdldCgpLT5nZXRPdmVybGF5TWFuYWdlcigpLmdldE92ZXJs
+YXlBbmNob3IodHlwZSk7CiAgICAgICAgICAgICAgICAgYm9vbCByaWdodCA9IChhbmNob3IgPT0g
+MSB8fCBhbmNob3IgPT0gMyk7ICAvLyBUUiBvciBCUgogICAgICAgICAgICAgICAgIGJvb2wgYm90
+dG9tID0gKGFuY2hvciA9PSAyIHx8IGFuY2hvciA9PSAzKTsgLy8gQkwgb3IgQlIKICAgICAgICAg
+ICAgICAgICBtX092ZXJsYXlSZWN0c1t0eXBlXS54ID0gcmlnaHQgPyAodmlld3BvcnRSZWN0Lncg
+LSBuZXdTdXJmYWNlLT53KSA6IDA7CmRpZmYgLS1naXQgYS9hcHAvc3RyZWFtaW5nL3ZpZGVvL2Zm
+bXBlZy1yZW5kZXJlcnMvdmFhcGkuY3BwIGIvYXBwL3N0cmVhbWluZy92aWRlby9mZm1wZWctcmVu
+ZGVyZXJzL3ZhYXBpLmNwcAppbmRleCBhYjY1ZTBiLi4yODQzZmQ2IDEwMDY0NAotLS0gYS9hcHAv
+c3RyZWFtaW5nL3ZpZGVvL2ZmbXBlZy1yZW5kZXJlcnMvdmFhcGkuY3BwCisrKyBiL2FwcC9zdHJl
+YW1pbmcvdmlkZW8vZmZtcGVnLXJlbmRlcmVycy92YWFwaS5jcHAKQEAgLTc0MSw5ICs3NDEsOSBA
+QCB2b2lkIFZBQVBJUmVuZGVyZXI6Om5vdGlmeU92ZXJsYXlVcGRhdGVkKE92ZXJsYXk6Ok92ZXJs
+YXlUeXBlIHR5cGUpCiAgICAgICAgICAgICBvdmVybGF5UmVjdC54ID0gMDsKICAgICAgICAgICAg
+IG92ZXJsYXlSZWN0LnkgPSAtbmV3U3VyZmFjZS0+aDsKICAgICAgICAgfQotICAgICAgICBlbHNl
+IGlmICh0eXBlID09IE92ZXJsYXk6Ok92ZXJsYXlEZWJ1ZykgeworICAgICAgICBlbHNlIGlmICh0
+eXBlID09IE92ZXJsYXk6Ok92ZXJsYXlEZWJ1ZyB8fCB0eXBlID09IE92ZXJsYXk6Ok92ZXJsYXlM
+b2NhbEhhcmR3YXJlKSB7CiAgICAgICAgICAgICAvLyBWaWJlbWlzOiB1c2VyLWNvbmZpZ3VyYWJs
+ZSBjb3JuZXIgKHVwcGVyLWxlZnQgb3JpZ2luKS4KLSAgICAgICAgICAgIGludCBhbmNob3IgPSBT
+ZXNzaW9uOjpnZXQoKS0+Z2V0T3ZlcmxheU1hbmFnZXIoKS5nZXREZWJ1Z092ZXJsYXlBbmNob3Io
+KTsKKyAgICAgICAgICAgIGludCBhbmNob3IgPSBTZXNzaW9uOjpnZXQoKS0+Z2V0T3ZlcmxheU1h
+bmFnZXIoKS5nZXRPdmVybGF5QW5jaG9yKHR5cGUpOwogICAgICAgICAgICAgYm9vbCByaWdodCA9
+IChhbmNob3IgPT0gMSB8fCBhbmNob3IgPT0gMyk7ICAvLyBUUiBvciBCUgogICAgICAgICAgICAg
+Ym9vbCBib3R0b20gPSAoYW5jaG9yID09IDIgfHwgYW5jaG9yID09IDMpOyAvLyBCTCBvciBCUgog
+ICAgICAgICAgICAgb3ZlcmxheVJlY3QueCA9IHJpZ2h0ID8gKG1fRGlzcGxheVdpZHRoIC0gbmV3
+U3VyZmFjZS0+dykgOiAwOwpkaWZmIC0tZ2l0IGEvYXBwL3N0cmVhbWluZy92aWRlby9mZm1wZWct
+cmVuZGVyZXJzL3ZkcGF1LmNwcCBiL2FwcC9zdHJlYW1pbmcvdmlkZW8vZmZtcGVnLXJlbmRlcmVy
+cy92ZHBhdS5jcHAKaW5kZXggMmY5ZTBjMy4uOTA2YWNjYyAxMDA2NDQKLS0tIGEvYXBwL3N0cmVh
+bWluZy92aWRlby9mZm1wZWctcmVuZGVyZXJzL3ZkcGF1LmNwcAorKysgYi9hcHAvc3RyZWFtaW5n
+L3ZpZGVvL2ZmbXBlZy1yZW5kZXJlcnMvdmRwYXUuY3BwCkBAIC00MzYsOSArNDM2LDkgQEAgdm9p
+ZCBWRFBBVVJlbmRlcmVyOjpub3RpZnlPdmVybGF5VXBkYXRlZChPdmVybGF5OjpPdmVybGF5VHlw
+ZSB0eXBlKQogICAgICAgICAgICAgb3ZlcmxheVJlY3QueDAgPSAwOwogICAgICAgICAgICAgb3Zl
+cmxheVJlY3QueTAgPSBtX0Rpc3BsYXlIZWlnaHQgLSBuZXdTdXJmYWNlLT5oOwogICAgICAgICB9
+Ci0gICAgICAgIGVsc2UgaWYgKHR5cGUgPT0gT3ZlcmxheTo6T3ZlcmxheURlYnVnKSB7CisgICAg
+ICAgIGVsc2UgaWYgKHR5cGUgPT0gT3ZlcmxheTo6T3ZlcmxheURlYnVnIHx8IHR5cGUgPT0gT3Zl
+cmxheTo6T3ZlcmxheUxvY2FsSGFyZHdhcmUpIHsKICAgICAgICAgICAgIC8vIFZpYmVtaXM6IHVz
+ZXItY29uZmlndXJhYmxlIGNvcm5lciAodXBwZXItbGVmdCBvcmlnaW4pLgotICAgICAgICAgICAg
+aW50IGFuY2hvciA9IFNlc3Npb246OmdldCgpLT5nZXRPdmVybGF5TWFuYWdlcigpLmdldERlYnVn
+T3ZlcmxheUFuY2hvcigpOworICAgICAgICAgICAgaW50IGFuY2hvciA9IFNlc3Npb246OmdldCgp
+LT5nZXRPdmVybGF5TWFuYWdlcigpLmdldE92ZXJsYXlBbmNob3IodHlwZSk7CiAgICAgICAgICAg
+ICBib29sIHJpZ2h0ID0gKGFuY2hvciA9PSAxIHx8IGFuY2hvciA9PSAzKTsgIC8vIFRSIG9yIEJS
+CiAgICAgICAgICAgICBib29sIGJvdHRvbSA9IChhbmNob3IgPT0gMiB8fCBhbmNob3IgPT0gMyk7
+IC8vIEJMIG9yIEJSCiAgICAgICAgICAgICBvdmVybGF5UmVjdC54MCA9IHJpZ2h0ID8gKG1fRGlz
+cGxheVdpZHRoIC0gbmV3U3VyZmFjZS0+dykgOiAwOwpkaWZmIC0tZ2l0IGEvYXBwL3N0cmVhbWlu
+Zy92aWRlby9mZm1wZWctcmVuZGVyZXJzL3Z0X2F2c2FtcGxlbGF5ZXIubW0gYi9hcHAvc3RyZWFt
+aW5nL3ZpZGVvL2ZmbXBlZy1yZW5kZXJlcnMvdnRfYXZzYW1wbGVsYXllci5tbQppbmRleCBiZDU1
+MjgxLi4xM2Q4OGM2IDEwMDY0NAotLS0gYS9hcHAvc3RyZWFtaW5nL3ZpZGVvL2ZmbXBlZy1yZW5k
+ZXJlcnMvdnRfYXZzYW1wbGVsYXllci5tbQorKysgYi9hcHAvc3RyZWFtaW5nL3ZpZGVvL2ZmbXBl
+Zy1yZW5kZXJlcnMvdnRfYXZzYW1wbGVsYXllci5tbQpAQCAtNDk2LDYgKzQ5Niw3IEBAIHB1Ymxp
+YzoKICAgICAgICAgICAgIFttX092ZXJsYXlUZXh0RmllbGRzW3R5cGVdIHNldFNlbGVjdGFibGU6
+Tk9dOwogCiAgICAgICAgICAgICBzd2l0Y2ggKHR5cGUpIHsKKyAgICAgICAgICAgIGNhc2UgT3Zl
+cmxheTo6T3ZlcmxheUxvY2FsSGFyZHdhcmU6CiAgICAgICAgICAgICBjYXNlIE92ZXJsYXk6Ok92
+ZXJsYXlEZWJ1ZzoKICAgICAgICAgICAgICAgICBbbV9PdmVybGF5VGV4dEZpZWxkc1t0eXBlXSBz
+ZXRBbGlnbm1lbnQ6TlNUZXh0QWxpZ25tZW50TGVmdF07CiAgICAgICAgICAgICAgICAgYnJlYWs7
+CmRpZmYgLS1naXQgYS9hcHAvc3RyZWFtaW5nL3ZpZGVvL2ZmbXBlZy1yZW5kZXJlcnMvdnRfbWV0
+YWwubW0gYi9hcHAvc3RyZWFtaW5nL3ZpZGVvL2ZmbXBlZy1yZW5kZXJlcnMvdnRfbWV0YWwubW0K
+aW5kZXggNzliMTY1ZC4uMzM0ZWVmZiAxMDA2NDQKLS0tIGEvYXBwL3N0cmVhbWluZy92aWRlby9m
+Zm1wZWctcmVuZGVyZXJzL3Z0X21ldGFsLm1tCisrKyBiL2FwcC9zdHJlYW1pbmcvdmlkZW8vZmZt
+cGVnLXJlbmRlcmVycy92dF9tZXRhbC5tbQpAQCAtNjAwLDcgKzYwMCw3IEBAIHB1YmxpYzoKICAg
+ICAgICAgICAgICAgICAgICAgcmVuZGVyUmVjdC54ID0gMDsKICAgICAgICAgICAgICAgICAgICAg
+cmVuZGVyUmVjdC55ID0gMDsKICAgICAgICAgICAgICAgICB9Ci0gICAgICAgICAgICAgICAgZWxz
+ZSBpZiAoaSA9PSBPdmVybGF5OjpPdmVybGF5RGVidWcpIHsKKyAgICAgICAgICAgICAgICBlbHNl
+IGlmIChpID09IE92ZXJsYXk6Ok92ZXJsYXlEZWJ1ZyB8fCBpID09IE92ZXJsYXk6Ok92ZXJsYXlM
+b2NhbEhhcmR3YXJlKSB7CiAgICAgICAgICAgICAgICAgICAgIC8vIFRvcCBsZWZ0CiAgICAgICAg
+ICAgICAgICAgICAgIHJlbmRlclJlY3QueCA9IDA7CiAgICAgICAgICAgICAgICAgICAgIHJlbmRl
+clJlY3QueSA9IG1fTGFzdERyYXdhYmxlSGVpZ2h0IC0gb3ZlcmxheVRleHR1cmUuaGVpZ2h0Owpk
+aWZmIC0tZ2l0IGEvYXBwL3N0cmVhbWluZy92aWRlby9mZm1wZWcuY3BwIGIvYXBwL3N0cmVhbWlu
+Zy92aWRlby9mZm1wZWcuY3BwCmluZGV4IDJhYzFhNmUuLjk5NjFhMTIgMTAwNjQ0Ci0tLSBhL2Fw
+cC9zdHJlYW1pbmcvdmlkZW8vZmZtcGVnLmNwcAorKysgYi9hcHAvc3RyZWFtaW5nL3ZpZGVvL2Zm
+bXBlZy5jcHAKQEAgLTEsNSArMSw2IEBACiAjaW5jbHVkZSA8TGltZWxpZ2h0Lmg+CiAjaW5jbHVk
+ZSAiZmZtcGVnLmgiCisjaW5jbHVkZSAibW9vbmxpZ2h0b3MvbG9jYWxoYXJkd2FyZS5oIgogI2lu
+Y2x1ZGUgInN0cmVhbWluZy9zZXNzaW9uLmgiCiAjaW5jbHVkZSAiYmFja2VuZC9zeXN0ZW1wcm9w
+ZXJ0aWVzLmgiCiAjaW5jbHVkZSAic2V0dGluZ3Mvc3RyZWFtaW5ncHJlZmVyZW5jZXMuaCIKQEAg
+LTg5Nyw2ICs4OTgsNyBAQCB2b2lkIEZGbXBlZ1ZpZGVvRGVjb2Rlcjo6Y2FjaGVEZWNvZGVySWRl
+bnRpdHkoKQogICAgIH0KIAogICAgIGlmIChtX0Zyb250ZW5kUmVuZGVyZXIgIT0gbnVsbHB0cikg
+eworICAgICAgICBtX1ByZXNlbnRhdGlvblJlbmRlcmVyTmFtZSA9IFFCeXRlQXJyYXkobV9Gcm9u
+dGVuZFJlbmRlcmVyLT5nZXRSZW5kZXJlck5hbWUoKSk7CiAgICAgICAgIGNvbnN0IGNoYXIqIHBy
+ZXNlbnRNb2RlID0gbV9Gcm9udGVuZFJlbmRlcmVyLT5nZXRQcmVzZW50YXRpb25Nb2RlTmFtZSgp
+OwogICAgICAgICBpZiAocHJlc2VudE1vZGUgIT0gbnVsbHB0cikgewogICAgICAgICAgICAgbV9Q
+cmVzZW50TW9kZU5hbWUgPSBRQnl0ZUFycmF5KHByZXNlbnRNb2RlKTsKQEAgLTEyOTgsNiArMTMw
+MCwxNiBAQCB2b2lkIEZGbXBlZ1ZpZGVvRGVjb2Rlcjo6c3RyaW5naWZ5VmlkZW9TdGF0cyhWSURF
+T19TVEFUUyYgc3RhdHMsIGNoYXIqIG91dHB1dCwgaQogCiAgICAgb2Zmc2V0ICs9IHJldDsKIAor
+ICAgIC8vIFRoZSBkZWNvZGVyJ3MgInZpYSIgbGFiZWwgbmFtZXMgdGhlIGJhY2tlbmQsIG5vdCB3
+aG8gZHJhd3MgdGhlIGZyYW1lLgorICAgIC8vIEV4cG9zZSB0aGUgY2FjaGVkIHByZXNlbnRhdGlv
+biBmcm9udGVuZCBmb3IgRUdML1ZBQVBJL1Z1bGthbiBjb21wYXJpc29ucy4KKyAgICByZXQgPSBE
+ZWNvZGVyU3RhdHVzOjpmb3JtYXRQcmVzZW50YXRpb25MaW5lKCZvdXRwdXRbb2Zmc2V0XSwgbGVu
+Z3RoIC0gb2Zmc2V0LAorICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg
+ICAgICAgbV9QcmVzZW50YXRpb25SZW5kZXJlck5hbWUuY29uc3REYXRhKCkpOworICAgIGlmIChy
+ZXQgPCAwIHx8IHJldCA+PSBsZW5ndGggLSBvZmZzZXQpIHsKKyAgICAgICAgU0RMX2Fzc2VydChm
+YWxzZSk7CisgICAgICAgIHJldHVybjsKKyAgICB9CisgICAgb2Zmc2V0ICs9IHJldDsKKwogICAg
+IGlmIChzdGF0cy5mcmFtZXNXaXRoSG9zdFByb2Nlc3NpbmdMYXRlbmN5ID4gMCkgewogICAgICAg
+ICByZXQgPSBzbnByaW50Zigmb3V0cHV0W29mZnNldF0sCiAgICAgICAgICAgICAgICAgICAgICAg
+IGxlbmd0aCAtIG9mZnNldCwKQEAgLTI0NDAsNiArMjQ1MiwxMSBAQCBpbnQgRkZtcGVnVmlkZW9E
+ZWNvZGVyOjpzdWJtaXREZWNvZGVVbml0KFBERUNPREVfVU5JVCBkdSkKICAgICAgICAgICAgIFNl
+c3Npb246OmdldCgpLT5nZXRPdmVybGF5TWFuYWdlcigpLnNldE92ZXJsYXlUZXh0VXBkYXRlZChP
+dmVybGF5OjpPdmVybGF5RGVidWcpOwogICAgICAgICB9CiAKKyAgICAgICAgaWYoU2Vzc2lvbjo6
+Z2V0KCktPmdldE92ZXJsYXlNYW5hZ2VyKCkuaXNPdmVybGF5RW5hYmxlZChPdmVybGF5OjpPdmVy
+bGF5TG9jYWxIYXJkd2FyZSkpIHsKKyAgICAgICAgICAgIFFCeXRlQXJyYXkgdGV4dD1Mb2NhbEhh
+cmR3YXJlOjpvdmVybGF5VGV4dCgpLnRvVXRmOCgpOworICAgICAgICAgICAgU2Vzc2lvbjo6Z2V0
+KCktPmdldE92ZXJsYXlNYW5hZ2VyKCkudXBkYXRlT3ZlcmxheVRleHQoT3ZlcmxheTo6T3Zlcmxh
+eUxvY2FsSGFyZHdhcmUsdGV4dC5jb25zdERhdGEoKSk7CisgICAgICAgIH0KKwogICAgICAgICAv
+LyBBY2N1bXVsYXRlIHRoZXNlIHZhbHVlcyBpbnRvIHRoZSBnbG9iYWwgc3RhdHMKICAgICAgICAg
+YWRkVmlkZW9TdGF0cyhtX0FjdGl2ZVduZFZpZGVvU3RhdHMsIG1fR2xvYmFsVmlkZW9TdGF0cyk7
+CiAKZGlmZiAtLWdpdCBhL2FwcC9zdHJlYW1pbmcvdmlkZW8vZmZtcGVnLmggYi9hcHAvc3RyZWFt
+aW5nL3ZpZGVvL2ZmbXBlZy5oCmluZGV4IDllYmNlNDIuLjM0OGVkZTMgMTAwNjQ0Ci0tLSBhL2Fw
+cC9zdHJlYW1pbmcvdmlkZW8vZmZtcGVnLmgKKysrIGIvYXBwL3N0cmVhbWluZy92aWRlby9mZm1w
+ZWcuaApAQCAtMTMwLDYgKzEzMCw3IEBAIHByaXZhdGU6CiAgICAgLy8gdGhlIGxpZmUgb2YgdGhl
+IGRlY29kZXIuCiAgICAgUUJ5dGVBcnJheSBtX1BhY2luZ01vZGVOYW1lOwogICAgIFFCeXRlQXJy
+YXkgbV9QcmVzZW50TW9kZU5hbWU7CisgICAgUUJ5dGVBcnJheSBtX1ByZXNlbnRhdGlvblJlbmRl
+cmVyTmFtZTsKIAogICAgIFBhY2VyKiBtX1BhY2VyOwogICAgIFBhY2VyVGVsZW1ldHJ5U25hcHNo
+b3QgbV9MYXN0UGFjZXJUZWxlbWV0cnk7CmRpZmYgLS1naXQgYS9hcHAvc3RyZWFtaW5nL3ZpZGVv
+L292ZXJsYXltYW5hZ2VyLmNwcCBiL2FwcC9zdHJlYW1pbmcvdmlkZW8vb3ZlcmxheW1hbmFnZXIu
+Y3BwCmluZGV4IDkyZTZjNmQuLjFhYTA4NGIgMTAwNjQ0Ci0tLSBhL2FwcC9zdHJlYW1pbmcvdmlk
+ZW8vb3ZlcmxheW1hbmFnZXIuY3BwCisrKyBiL2FwcC9zdHJlYW1pbmcvdmlkZW8vb3ZlcmxheW1h
+bmFnZXIuY3BwCkBAIC0xLDYgKzEsMTIgQEAKICNpbmNsdWRlICJvdmVybGF5bWFuYWdlci5oIgog
+I2luY2x1ZGUgInBhdGguaCIKICNpbmNsdWRlICJzZXR0aW5ncy9zdHJlYW1pbmdwcmVmZXJlbmNl
+cy5oIgorI2luY2x1ZGUgIm1vb25saWdodG9zL2xvY2FsaGFyZHdhcmUuaCIKKyNpbmNsdWRlICJt
+b29ubGlnaHRvcy9vdmVybGF5c3R5bGUuaCIKKyNpbmNsdWRlIDxRU2V0dGluZ3M+CisjaW5jbHVk
+ZSA8UUltYWdlPgorI2luY2x1ZGUgPFFQYWludGVyPgorI2luY2x1ZGUgPFFDb2xvcj4KIAogdXNp
+bmcgbmFtZXNwYWNlIE92ZXJsYXk7CiAKQEAgLTksNiArMTUsMTMgQEAgaW50IE92ZXJsYXlNYW5h
+Z2VyOjpnZXREZWJ1Z092ZXJsYXlBbmNob3IoKQogICAgIHJldHVybiBzdGF0aWNfY2FzdDxpbnQ+
+KFN0cmVhbWluZ1ByZWZlcmVuY2VzOjpnZXQoKS0+cGVyZk92ZXJsYXlQb3NpdGlvbik7CiB9CiAK
+K2ludCBPdmVybGF5TWFuYWdlcjo6Z2V0T3ZlcmxheUFuY2hvcihPdmVybGF5VHlwZSB0eXBlKSB7
+CisgICAgaW50IHN0cmVhbT1nZXREZWJ1Z092ZXJsYXlBbmNob3IoKTsKKyAgICBpZih0eXBlIT1P
+dmVybGF5TG9jYWxIYXJkd2FyZSkgcmV0dXJuIHN0cmVhbTsKKyAgICBpbnQgbG9jYWw9cUJvdW5k
+KDAsUVNldHRpbmdzKCkudmFsdWUoImVjbGlwc2UvbG9jYWxQb3NpdGlvbiIsMSkudG9JbnQoKSwz
+KTsKKyAgICByZXR1cm4gaXNPdmVybGF5RW5hYmxlZChPdmVybGF5RGVidWcpICYmIGxvY2FsPT1z
+dHJlYW0gPyAobG9jYWwgXiAxKSA6IGxvY2FsOworfQorCiBPdmVybGF5TWFuYWdlcjo6T3Zlcmxh
+eU1hbmFnZXIoKSA6CiAgICAgbV9SZW5kZXJlcihudWxscHRyKSwKICAgICBtX0ZvbnREYXRhKFBh
+dGg6OnJlYWREYXRhRmlsZSgiTW9kZVNldmVuLnR0ZiIpKQpAQCAtMzIsOCArNDUsMTAgQEAgT3Zl
+cmxheU1hbmFnZXI6Ok92ZXJsYXlNYW5hZ2VyKCkgOgogICAgICAgICBicmVhazsKICAgICB9CiAK
+LSAgICBtX092ZXJsYXlzW092ZXJsYXlUeXBlOjpPdmVybGF5RGVidWddLmNvbG9yID0gezB4RDAs
+IDB4RDAsIDB4MDAsIDB4RkZ9OworICAgIG1fT3ZlcmxheXNbT3ZlcmxheVR5cGU6Ok92ZXJsYXlE
+ZWJ1Z10uY29sb3IgPSB7MHhFQywgMHhFRSwgMHhGMSwgMHhGRn07CiAgICAgbV9PdmVybGF5c1tP
+dmVybGF5VHlwZTo6T3ZlcmxheURlYnVnXS5mb250U2l6ZSA9IGRlYnVnRm9udFNpemU7CisgICAg
+bV9PdmVybGF5c1tPdmVybGF5TG9jYWxIYXJkd2FyZV0uY29sb3IgPSB7MHhFQywweEVFLDB4RjEs
+MHhGRn07CisgICAgbV9PdmVybGF5c1tPdmVybGF5TG9jYWxIYXJkd2FyZV0uZm9udFNpemUgPSBk
+ZWJ1Z0ZvbnRTaXplOwogCiAgICAgbV9PdmVybGF5c1tPdmVybGF5VHlwZTo6T3ZlcmxheVN0YXR1
+c1VwZGF0ZV0uY29sb3IgPSB7MHhDQywgMHgwMCwgMHgwMCwgMHhGRn07CiAgICAgbV9PdmVybGF5
+c1tPdmVybGF5VHlwZTo6T3ZlcmxheVN0YXR1c1VwZGF0ZV0uZm9udFNpemUgPSAzNjsKQEAgLTEy
+Niw2ICsxNDEsMTQgQEAgU0RMX1N1cmZhY2UqIE92ZXJsYXlNYW5hZ2VyOjpnZXRVcGRhdGVkT3Zl
+cmxheVN1cmZhY2UoT3ZlcmxheVR5cGUgdHlwZSkKIAogdm9pZCBPdmVybGF5TWFuYWdlcjo6c2V0
+T3ZlcmxheVRleHRVcGRhdGVkKE92ZXJsYXlUeXBlIHR5cGUpCiB7CisgICAgaWYobV9PdmVybGF5
+c1t0eXBlXS5lbmFibGVkICYmICh0eXBlPT1PdmVybGF5RGVidWcgfHwgdHlwZT09T3ZlcmxheUxv
+Y2FsSGFyZHdhcmUpKSB7CisgICAgICAgIC8vIFNhbXBsaW5nIG1heSB0b3VjaCBzbG93IHN5c2Zz
+IHNlbnNvcnMgYW5kIFVTQi1iYWNrZWQgZmlsZXN5c3RlbSBzdGF0cy4KKyAgICAgICAgLy8gRG8g
+aXQgYmVmb3JlIHRoZSBoaXN0b3J5IGxvY2s6IHRoZSByZW5kZXIgdGhyZWFkIG11c3QgYmUgYWJs
+ZSB0byBjb3B5CisgICAgICAgIC8vIGl0cyBsYXN0IGdyYXBoIHNuYXBzaG90IHdpdGhvdXQgd2Fp
+dGluZyBmb3IgdGhvc2UgcmVhZHMgdG8gZmluaXNoLgorICAgICAgICBjb25zdCBhdXRvIHZhbHVl
+cz1Dcmltc29uR3JhcGhzOjp2YWx1ZXMoUVN0cmluZzo6ZnJvbVV0ZjgobV9PdmVybGF5c1t0eXBl
+XS50ZXh0KSx0eXBlPT1PdmVybGF5TG9jYWxIYXJkd2FyZSxMb2NhbEhhcmR3YXJlOjpzYW1wbGUo
+KSk7CisgICAgICAgIFFNdXRleExvY2tlciBncmFwaExvY2soJm1fR3JhcGhMb2NrKTsKKyAgICAg
+ICAgQ3JpbXNvbkdyYXBoczo6cHVzaChtX0dyYXBoSGlzdG9yeVt0eXBlXSx2YWx1ZXMpOworICAg
+IH0KICAgICAvLyBPbmx5IHVwZGF0ZSB0aGUgb3ZlcmxheSBzdGF0ZSBpZiBpdCdzIGVuYWJsZWQu
+IElmIGl0J3Mgbm90IGVuYWJsZWQsCiAgICAgLy8gdGhlIHJlbmRlcmVyIGhhcyBhbHJlYWR5IGJl
+ZW4gbm90aWZpZWQgYnkgc2V0T3ZlcmxheVN0YXRlKCkuCiAgICAgaWYgKG1fT3ZlcmxheXNbdHlw
+ZV0uZW5hYmxlZCkgewpAQCAtMTQzLDYgKzE2Niw3IEBAIHZvaWQgT3ZlcmxheU1hbmFnZXI6OnNl
+dE92ZXJsYXlTdGF0ZShPdmVybGF5VHlwZSB0eXBlLCBib29sIGVuYWJsZWQpCiAgICAgICAgIGlm
+ICghZW5hYmxlZCkgewogICAgICAgICAgICAgLy8gU2V0IHRoZSB0ZXh0IHRvIGVtcHR5IHN0cmlu
+ZyBvbiBkaXNhYmxlCiAgICAgICAgICAgICBtX092ZXJsYXlzW3R5cGVdLnRleHRbMF0gPSAwOwor
+ICAgICAgICAgICAgeyBRTXV0ZXhMb2NrZXIgZ3JhcGhMb2NrKCZtX0dyYXBoTG9jayk7bV9HcmFw
+aEhpc3RvcnlbdHlwZV0uY2xlYXIoKTsgfQogICAgICAgICB9CiAKICAgICAgICAgbm90aWZ5T3Zl
+cmxheVVwZGF0ZWQodHlwZSk7CkBAIC0zNjgsMTEgKzM5MiwyNyBAQCB2b2lkIE92ZXJsYXlNYW5h
+Z2VyOjpub3RpZnlPdmVybGF5VXBkYXRlZChPdmVybGF5VHlwZSB0eXBlKQogICAgIH0KIAogICAg
+IGlmIChtX092ZXJsYXlzW3R5cGVdLmVuYWJsZWQpIHsKLSAgICAgICAgLy8gVGhlIF9XcmFwcGVk
+IHZhcmlhbnQgaXMgcmVxdWlyZWQgZm9yIGxpbmUgYnJlYWtzIHRvIHdvcmsKLSAgICAgICAgU0RM
+X1N1cmZhY2UqIHN1cmZhY2UgPSBUVEZfUmVuZGVyVGV4dF9CbGVuZGVkX1dyYXBwZWQobV9PdmVy
+bGF5c1t0eXBlXS5mb250LAotICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg
+ICAgICAgICAgICAgICAgICAgICAgICBtX092ZXJsYXlzW3R5cGVdLnRleHQsCi0gICAgICAgICAg
+ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIG1fT3Zl
+cmxheXNbdHlwZV0uY29sb3IsCi0gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg
+ICAgICAgICAgICAgICAgICAgICAgICAgIDEwMjQpOworICAgICAgICBRQnl0ZUFycmF5IHRleHQo
+bV9PdmVybGF5c1t0eXBlXS50ZXh0KTsKKyAgICAgICAgY29uc3QgYm9vbCBjYXJkPXR5cGU9PU92
+ZXJsYXlEZWJ1ZyB8fCB0eXBlPT1PdmVybGF5TG9jYWxIYXJkd2FyZTsKKyAgICAgICAgY29uc3Qg
+Ym9vbCBkZXRhaWxlZD1RU2V0dGluZ3MoKS52YWx1ZSh0eXBlPT1PdmVybGF5RGVidWc/ImVjbGlw
+c2Uvc3RyZWFtRGV0YWlsZWQiOiJlY2xpcHNlL2xvY2FsRGV0YWlsZWQiLGZhbHNlKS50b0Jvb2wo
+KTsKKyAgICAgICAgaWYoY2FyZCAmJiAhZGV0YWlsZWQpIHRleHQ9KHR5cGU9PU92ZXJsYXlEZWJ1
+Zz8iRWNsaXBzZU9TIHwgU1RSRUFNIjoiRWNsaXBzZU9TIHwgTE9DQUwiKTsKKyAgICAgICAgZWxz
+ZSBpZih0eXBlPT1PdmVybGF5RGVidWcpIHRleHQucHJlcGVuZCgiRWNsaXBzZU9TIHwgU1RSRUFN
+XG4iKTsKKyAgICAgICAgU0RMX1N1cmZhY2UqIHN1cmZhY2U9VFRGX1JlbmRlclVURjhfQmxlbmRl
+ZF9XcmFwcGVkKG1fT3ZlcmxheXNbdHlwZV0uZm9udCx0ZXh0LmNvbnN0RGF0YSgpLG1fT3Zlcmxh
+eXNbdHlwZV0uY29sb3IsY2FyZD80ODA6MTAyNCk7CisgICAgICAgIGlmKGNhcmQgJiYgc3VyZmFj
+ZSkgeworICAgICAgICAgICAgaW50IGZvbnRTaXplPW1fT3ZlcmxheXNbdHlwZV0uZm9udFNpemU7
+CisgICAgICAgICAgICBpbnQgZ3JhcGhIZWlnaHQ9NCooZm9udFNpemUrMjIpKzEyOworICAgICAg
+ICAgICAgaW50IHdpZHRoPXFNYXgoc3VyZmFjZS0+dyszMiw0ODApOworICAgICAgICAgICAgUUlt
+YWdlIGltYWdlPUVjbGlwc2VPdmVybGF5U3R5bGU6OnBhbmVsKFFTaXplKHdpZHRoLHN1cmZhY2Ut
+PmgrMzIrZ3JhcGhIZWlnaHQpLFN0cmVhbWluZ1ByZWZlcmVuY2VzOjpnZXQoKS0+dWlBY2NlbnRJ
+bmRleCxRU2V0dGluZ3MoKS52YWx1ZSgiZWNsaXBzZS9vdmVybGF5T3BhY2l0eSIsODUpLnRvSW50
+KCkpOworICAgICAgICAgICAgQ3JpbXNvbkdyYXBoczo6SGlzdG9yeSBoaXN0b3J5OworICAgICAg
+ICAgICAgeyBRTXV0ZXhMb2NrZXIgZ3JhcGhMb2NrKCZtX0dyYXBoTG9jayk7aGlzdG9yeT1tX0dy
+YXBoSGlzdG9yeVt0eXBlXTsgfQorICAgICAgICAgICAgaWYoIWltYWdlLmlzTnVsbCgpKSBDcmlt
+c29uR3JhcGhzOjpwYWludChpbWFnZSxzdXJmYWNlLT5oKzI0LHFNaW4oZm9udFNpemUsMjApLFN0
+cmVhbWluZ1ByZWZlcmVuY2VzOjpnZXQoKS0+dWlBY2NlbnRJbmRleCxoaXN0b3J5LHR5cGU9PU92
+ZXJsYXlMb2NhbEhhcmR3YXJlKTsKKyAgICAgICAgICAgIFNETF9TdXJmYWNlKiBwYW5lbD1pbWFn
+ZS5pc051bGwoKT9udWxscHRyOlNETF9DcmVhdGVSR0JTdXJmYWNlV2l0aEZvcm1hdCgwLGltYWdl
+LndpZHRoKCksaW1hZ2UuaGVpZ2h0KCksMzIsU0RMX1BJWEVMRk9STUFUX1JHQkEzMik7CisgICAg
+ICAgICAgICBpZihwYW5lbCkgeworICAgICAgICAgICAgICAgIGZvcihpbnQgcm93PTA7cm93PGlt
+YWdlLmhlaWdodCgpOysrcm93KSBtZW1jcHkoc3RhdGljX2Nhc3Q8Y2hhcio+KHBhbmVsLT5waXhl
+bHMpK3JvdypwYW5lbC0+cGl0Y2gsaW1hZ2UuY29uc3RTY2FuTGluZShyb3cpLGltYWdlLndpZHRo
+KCkqNCk7CisgICAgICAgICAgICAgICAgU0RMX1JlY3QgZGVzdD17MTYsMTYsc3VyZmFjZS0+dyxz
+dXJmYWNlLT5ofTtTRExfQmxpdFN1cmZhY2Uoc3VyZmFjZSxudWxscHRyLHBhbmVsLCZkZXN0KTsK
+KyAgICAgICAgICAgICAgICBTRExfRnJlZVN1cmZhY2Uoc3VyZmFjZSk7c3VyZmFjZT1wYW5lbDsK
+KyAgICAgICAgICAgIH0KKyAgICAgICAgfQogCiAgICAgICAgIFNETF9BdG9taWNTZXRQdHIoKHZv
+aWQqKikmbV9PdmVybGF5c1t0eXBlXS5zdXJmYWNlLCBzdXJmYWNlKTsKICAgICB9CmRpZmYgLS1n
+aXQgYS9hcHAvc3RyZWFtaW5nL3ZpZGVvL292ZXJsYXltYW5hZ2VyLmggYi9hcHAvc3RyZWFtaW5n
+L3ZpZGVvL292ZXJsYXltYW5hZ2VyLmgKaW5kZXggZTE5ZmMwYy4uNDExMmExZCAxMDA2NDQKLS0t
+IGEvYXBwL3N0cmVhbWluZy92aWRlby9vdmVybGF5bWFuYWdlci5oCisrKyBiL2FwcC9zdHJlYW1p
+bmcvdmlkZW8vb3ZlcmxheW1hbmFnZXIuaApAQCAtMiw2ICsyLDcgQEAKIAogI2luY2x1ZGUgPFFT
+dHJpbmc+CiAjaW5jbHVkZSA8UU11dGV4PgorI2luY2x1ZGUgIm1vb25saWdodG9zL2NyaW1zb25n
+cmFwaHMuaCIKIAogI2luY2x1ZGUgIlNETF9jb21wYXQuaCIKICNpbmNsdWRlIDxTRExfdHRmLmg+
+CkBAIC0xMCw2ICsxMSw3IEBAIG5hbWVzcGFjZSBPdmVybGF5IHsKIAogZW51bSBPdmVybGF5VHlw
+ZSB7CiAgICAgT3ZlcmxheURlYnVnLAorICAgIE92ZXJsYXlMb2NhbEhhcmR3YXJlLAogICAgIE92
+ZXJsYXlTdGF0dXNVcGRhdGUsCiAgICAgT3ZlcmxheVNlcnZlckNvbW1hbmRzLAogICAgIE92ZXJs
+YXlRdWlja01lbnUsCkBAIC03MCw2ICs3Miw3IEBAIHB1YmxpYzoKICAgICAvLyBwcmVmZXJlbmNl
+LiBSZXR1cm5zIFN0cmVhbWluZ1ByZWZlcmVuY2VzOjpQZXJmT3ZlcmxheVBvc2l0aW9uIGFzIGFu
+IGludAogICAgIC8vICgwPVRMLCAxPVRSLCAyPUJMLCAzPUJSKS4gUmVuZGVyZXJzIG1hcCB0aGlz
+IHRvIHRoZWlyIG93biBjb29yZGluYXRlIHNwYWNlLgogICAgIGludCBnZXREZWJ1Z092ZXJsYXlB
+bmNob3IoKTsKKyAgICBpbnQgZ2V0T3ZlcmxheUFuY2hvcihPdmVybGF5VHlwZSB0eXBlKTsKIAog
+ICAgIHZvaWQgc2V0T3ZlcmxheVJlbmRlcmVyKElPdmVybGF5UmVuZGVyZXIqIHJlbmRlcmVyKTsK
+IApAQCAtMTE3LDYgKzEyMCw4IEBAIHByaXZhdGU6CiAgICAgSU92ZXJsYXlSZW5kZXJlciogbV9S
+ZW5kZXJlcjsKICAgICBRTXV0ZXggbV9SZW5kZXJlckxvY2s7ICAgLy8gZ3VhcmRzIG1fUmVuZGVy
+ZXIgc3dhcCB2cyBjcm9zcy10aHJlYWQgbm90aWZ5CiAgICAgUUJ5dGVBcnJheSBtX0ZvbnREYXRh
+OworICAgIFFNdXRleCBtX0dyYXBoTG9jazsKKyAgICBDcmltc29uR3JhcGhzOjpIaXN0b3J5IG1f
+R3JhcGhIaXN0b3J5W092ZXJsYXlNYXhdOwogfTsKIAogfQpkaWZmIC0tZ2l0IGEvcGFja2FnaW5n
+L2ZsYXRwYWsvaW8uZ2l0aHViLm5hdnlhczMyMS5WaWJlbWlzLmRlc2t0b3AgYi9wYWNrYWdpbmcv
+ZmxhdHBhay9pby5naXRodWIubmF2eWFzMzIxLlZpYmVtaXMuZGVza3RvcAppbmRleCAwNDVhZGJl
+Li5mMTJkYTVkIDEwMDY0NAotLS0gYS9wYWNrYWdpbmcvZmxhdHBhay9pby5naXRodWIubmF2eWFz
+MzIxLlZpYmVtaXMuZGVza3RvcAorKysgYi9wYWNrYWdpbmcvZmxhdHBhay9pby5naXRodWIubmF2
+eWFzMzIxLlZpYmVtaXMuZGVza3RvcApAQCAtMSw2ICsxLDYgQEAKIFtEZXNrdG9wIEVudHJ5XQog
+VHlwZT1BcHBsaWNhdGlvbgotTmFtZT1WaWJlbWlzCitOYW1lPUVjbGlwc2UKIEdlbmVyaWNOYW1l
+PUdhbWUgU3RyZWFtaW5nIENsaWVudAogQ29tbWVudD1TdHJlYW0gZ2FtZXMgYW5kIGFwcGxpY2F0
+aW9ucyBmcm9tIGEgU3Vuc2hpbmUgLyBBcG9sbG8gLyBWaWJlcG9sbG8gaG9zdAogRXhlYz12aWJl
+bWlzCmRpZmYgLS1naXQgYS90ZXN0cy9vdmVybGF5L3RzdF9kZWNvZGVyc3RhdHVzLmNwcCBiL3Rl
+c3RzL292ZXJsYXkvdHN0X2RlY29kZXJzdGF0dXMuY3BwCmluZGV4IGI0ZDc2ODIuLjUwYjA3MGMg
+MTAwNjQ0Ci0tLSBhL3Rlc3RzL292ZXJsYXkvdHN0X2RlY29kZXJzdGF0dXMuY3BwCisrKyBiL3Rl
+c3RzL292ZXJsYXkvdHN0X2RlY29kZXJzdGF0dXMuY3BwCkBAIC0zOCw2ICszOCwzMCBAQCBwcml2
+YXRlOgogICAgIH0KIAogcHJpdmF0ZSBzbG90czoKKyAgICB2b2lkIHByZXNlbnRhdGlvblJlbmRl
+cmVySXNTZXBhcmF0ZUZyb21EZWNvZGVyQmFja2VuZCgpCisgICAgeworICAgICAgICBjaGFyIGJ1
+ZlsxMjhdOworICAgICAgICBEZWNvZGVyU3RhdHVzOjpmb3JtYXRQcmVzZW50YXRpb25MaW5lKGJ1
+Ziwgc2l6ZW9mKGJ1ZiksICJFR0wiKTsKKyAgICAgICAgUUNPTVBBUkUoUUJ5dGVBcnJheShidWYp
+LCBRQnl0ZUFycmF5KCJSZW5kZXJlcjogRUdMXG4iKSk7CisgICAgICAgIFFWRVJJRlkoIVFCeXRl
+QXJyYXkoYnVmKS5jb250YWlucygiVkFBUEkiKSk7CisgICAgfQorICAgIHZvaWQgbWlzc2luZ1By
+ZXNlbnRhdGlvblJlbmRlcmVySXNVbmtub3duKCkKKyAgICB7CisgICAgICAgIGNoYXIgYnVmWzEy
+OF07CisgICAgICAgIERlY29kZXJTdGF0dXM6OmZvcm1hdFByZXNlbnRhdGlvbkxpbmUoYnVmLCBz
+aXplb2YoYnVmKSwgbnVsbHB0cik7CisgICAgICAgIFFDT01QQVJFKFFCeXRlQXJyYXkoYnVmKSwg
+UUJ5dGVBcnJheSgiUmVuZGVyZXI6IHVua25vd25cbiIpKTsKKyAgICB9CisgICAgdm9pZCBwcmVz
+ZW50YXRpb25SZW5kZXJlcklzQm91bmRlZEFuZFRlcm1pbmF0ZXNUaW55QnVmZmVycygpCisgICAg
+eworICAgICAgICBRQnl0ZUFycmF5IGxvbmdOYW1lKDEwMDAsICdYJyk7CisgICAgICAgIGNoYXIg
+YnVmWzEyOF07CisgICAgICAgIGludCByZXQ9RGVjb2RlclN0YXR1czo6Zm9ybWF0UHJlc2VudGF0
+aW9uTGluZShidWYsIHNpemVvZihidWYpLCBsb25nTmFtZS5jb25zdERhdGEoKSk7CisgICAgICAg
+IFFDT01QQVJFKHJldCwgRGVjb2RlclN0YXR1czo6TWF4UHJlc2VudGF0aW9uTGluZUNoYXJzKTsK
+KyAgICAgICAgY2hhciB0aW55WzJdPXsnWScsJ1knfTsKKyAgICAgICAgcmV0PURlY29kZXJTdGF0
+dXM6OmZvcm1hdFByZXNlbnRhdGlvbkxpbmUodGlueSwgc2l6ZW9mKHRpbnkpLCAiRUdMIik7Cisg
+ICAgICAgIFFWRVJJRlkocmV0PjEpOworICAgICAgICBRQ09NUEFSRSh0aW55WzFdLCBjaGFyKDAp
+KTsKKyAgICB9CiAgICAgLy8gLS0tLSBUaGUgcmVhc29uIHRoZSBsaW5lIGV4aXN0cyAtLS0tLS0t
+LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0KIAogICAgIC8vIFRoZSBleGFjdCBCTC0yNDA4
+IHNoYXBlOiBhIEdhbGxpdW0gVkFBUEkgYmFja2VuZCB3aG9zZSBSRkkgY2FwYWJpbGl0eSB3YXMK
 VIBEMIS_PATCH_B64
 cat > /usr/local/share/moonlight-os/install-frontends.sh <<'FRONTENDS_INSTALL'
 #!/usr/bin/env bash
@@ -10471,6 +10596,7 @@ TARGETS = {
     'system-controls': ('/usr/local/libexec/moonlight-os/system-controls.py', 0o755, None),
     'control-center': ('/usr/local/libexec/moonlight-os/control-center.py', 0o755, None),
     'bluetooth-menu': ('/usr/local/bin/moonlight-bluetooth', 0o755, None),
+    'streaming-tune': ('/usr/local/bin/eclipseos-streaming', 0o755, None),
     'wifi-menu': ('/usr/local/bin/moonlight-wifi', 0o755, None),
     'wifi-config': ('/etc/NetworkManager/conf.d/99-moonlight-wifi.conf', 0o644, 'NetworkManager.service'),
     'bluetooth-config': ('/etc/bluetooth/main.conf', 0o644, 'bluetooth.service'),
@@ -10730,7 +10856,7 @@ class Updater:
                 pass
 
     def validate_payload(self, name, data, staged):
-        if name in ('system-controls', 'control-center', 'bluetooth-menu'):
+        if name in ('system-controls', 'control-center', 'bluetooth-menu', 'streaming-tune'):
             compile(data, name, 'exec')
         elif name == 'wifi-menu':
             self.runner(['/usr/bin/bash', '-n', str(staged)])
@@ -10964,6 +11090,262 @@ if __name__ == '__main__':
         print(json.dumps({'error': str(error)[:512]}))
         sys.exit(1)
 ECLIPSE_UPDATER
+cat > /usr/local/bin/eclipseos-streaming <<'STREAMING_TUNE'
+#!/usr/bin/python3
+"""Reversible Eclipse presets and bounded, read-only Mac streaming diagnostics."""
+import argparse
+import fcntl
+import json
+import os
+from pathlib import Path
+import re
+import subprocess
+import tempfile
+import time
+
+PROFILES = {
+    'balanced': {'width':'1920','height':'1080','fps':'60','bitrate':'20000','videocfg':'2','videodec':'1','yuv444':'false','hdr':'false','enablevrr':'false','framepacing':'false','vsync':'true','showperfoverlay':'false'},
+    'latency': {'width':'1920','height':'1080','fps':'60','bitrate':'20000','videocfg':'2','videodec':'1','yuv444':'false','hdr':'false','enablevrr':'false','framepacing':'false','vsync':'false','showperfoverlay':'false'},
+    'vulkan-test': {'rendererbackend':'1'},
+    'opengl-test': {'rendererbackend':'2'},
+    'auto-renderer': {'rendererbackend':'0'},
+}
+
+def atomic(path, data):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fd,tmp=tempfile.mkstemp(dir=path.parent)
+    try:
+        with os.fdopen(fd,'wb') as out:
+            os.fchmod(out.fileno(),0o600);out.write(data);out.flush();os.fsync(out.fileno())
+        os.replace(tmp,path)
+        fd=os.open(path.parent,os.O_RDONLY|os.O_DIRECTORY)
+        try:os.fsync(fd)
+        finally:os.close(fd)
+    finally:
+        if os.path.exists(tmp):os.unlink(tmp)
+
+def read(path):
+    try:return Path(path).read_text(errors='replace')[:32768].strip()
+    except OSError:return None
+
+def settings_parse(text):
+    general=False;result={}
+    for line in text.splitlines():
+        if line.strip().startswith('['):general=line.strip()=='[General]'
+        elif general and '=' in line and not line.lstrip().startswith(('#',';')):
+            key,value=line.split('=',1);key=key.strip()
+            if key in result:raise ValueError('Duplicate General setting; use Eclipse settings to resolve it')
+            result[key]=value.strip()
+    return result
+
+def settings_edit(text, changes):
+    lines=text.splitlines(keepends=True);output=[];general=False;seen=set();has_general=False
+    def finish():
+        for key,value in changes.items():
+            if key not in seen and value is not None:
+                if output and not output[-1].endswith('\n'):output[-1]+='\n'
+                output.append(key+'='+value+'\n');seen.add(key)
+    for line in lines:
+        if line.strip().startswith('['):
+            if general:finish()
+            general=line.strip()=='[General]';has_general |= general
+        if general and '=' in line and not line.lstrip().startswith(('#',';')):
+            key=line.split('=',1)[0].strip()
+            if key in changes:
+                seen.add(key)
+                if changes[key] is not None:output.append(key+'='+changes[key]+'\n')
+                continue
+        output.append(line)
+    if general:finish()
+    if not has_general:
+        prefix=['[General]\n']+[k+'='+v+'\n' for k,v in changes.items() if v is not None]
+        output=prefix+output
+    return ''.join(output)
+
+def idle():
+    for directory in Path('/proc').glob('[0-9]*'):
+        try:
+            if directory.stat().st_uid!=os.getuid():continue
+            executable=os.readlink(directory/'exe').removesuffix(' (deleted)')
+            if Path(executable).name.lower() in ('vibemis','eclipse'):
+                raise ValueError('Close Eclipse before changing its saved settings. Diagnostics can run while streaming.')
+        except (FileNotFoundError,ProcessLookupError):pass
+
+def tune(config, state_dir, mode):
+    idle()
+    if config.is_symlink():raise ValueError('Refusing a symlinked settings file')
+    text=config.read_text() if config.exists() else ''
+    if len(text)>1024*1024:raise ValueError('Settings file too large')
+    current=settings_parse(text)
+    receipt_path=state_dir/'preset.json'
+    receipt=json.loads(receipt_path.read_text()) if receipt_path.exists() else {'before':{},'applied':{}}
+    if receipt.get('pending'):
+        pending=receipt['pending']
+        matches=lambda values:all(current.get(key)==value for key,value in values.items())
+        if matches(pending['new']):
+            if pending['restore']:
+                receipt_path.unlink()
+                return {'message':'Interrupted restore completed.'}
+            receipt['applied'].update(pending['new'])
+        elif not matches(pending['old']):
+            raise ValueError('Settings differ from both sides of an interrupted preset. Resolve them in Eclipse.')
+        receipt.pop('pending')
+        atomic(receipt_path,json.dumps(receipt).encode())
+    # Protect changes made in Eclipse since this tool last wrote the owned keys.
+    for key,value in receipt['applied'].items():
+        if current.get(key)!=value:raise ValueError('Settings changed since tuning: '+key+'. Resolve in Eclipse rather than overwrite them.')
+    if mode=='restore':
+        if not receipt['applied']:raise ValueError('No preset snapshot to restore')
+        receipt['pending']={'old':{k:current.get(k) for k in receipt['before']},'new':receipt['before'],'restore':True}
+        atomic(receipt_path,json.dumps(receipt).encode())
+        atomic(config,settings_edit(text,receipt['before']).encode())
+        receipt_path.unlink()
+        return {'message':'Previous streaming settings restored; unrelated settings preserved.'}
+    changes=PROFILES[mode]
+    for key in changes:
+        if key not in receipt['before']:receipt['before'][key]=current.get(key)
+    receipt['pending']={'old':{k:current.get(k) for k in changes},'new':changes,'restore':False}
+    # Keep a recoverable snapshot before updating QSettings. No full-file replacement on restore.
+    atomic(receipt_path,json.dumps(receipt).encode())
+    atomic(config,settings_edit(text,changes).encode())
+    receipt['applied'].update(changes);receipt.pop('pending')
+    atomic(receipt_path,json.dumps(receipt).encode())
+    return {'message':'Preset saved for next launch. Test on the Mac; this is not a measured performance result.','profile':mode,'values':changes}
+
+def number(path):
+    try:return int(read(path))
+    except (TypeError,ValueError):return None
+
+def snapshot(root=Path('/')):
+    result={'cpus':{},'temperatures_c':{},'thermal_throttle_counts':{},'gpu':{},'power':{},'cpu_ticks':None,'core_ticks':{}}
+    for path in sorted((root/'sys/devices/system/cpu').glob('cpu[0-9]*')):
+        frequency={key:read(path/'cpufreq'/key) for key in ('scaling_driver','scaling_governor','scaling_cur_freq','scaling_min_freq','scaling_max_freq','energy_performance_preference')}
+        if any(v is not None for v in frequency.values()):result['cpus'][path.name]=frequency
+        for key in ('core_throttle_count','package_throttle_count'):
+            value=number(path/'thermal_throttle'/key)
+            if value is not None:result['thermal_throttle_counts'][path.name+'/'+key]=value
+    for hw in (root/'sys/class/hwmon').glob('hwmon*'):
+        name=read(hw/'name') or hw.name
+        for sensor in hw.glob('temp*_input'):
+            value=number(sensor)
+            if value is not None and 0<=value<=150000:result['temperatures_c'][name+'/'+sensor.name]=value/1000
+    for card in (root/'sys/class/drm').glob('card[0-9]*'):
+        if '-' in card.name:continue
+        values={key:read(card/key) for key in ('gt_cur_freq_mhz','gt_act_freq_mhz','gt_min_freq_mhz','gt_max_freq_mhz')}
+        values.update({key:read(card/'device'/key) for key in ('vendor','device','gpu_busy_percent')})
+        for gt in (card/'gt').glob('gt*'):
+            for key in ('rps_act_freq_mhz','rps_cur_freq_mhz','rps_min_freq_mhz','rps_max_freq_mhz'):
+                values[gt.name+'/'+key]=read(gt/key)
+        result['gpu'][card.name]=values
+    for device in (root/'sys/class/power_supply').glob('*'):
+        result['power'][device.name]={key:read(device/key) for key in ('type','online','status','capacity','power_now')}
+    text=read(root/'proc/stat')
+    if text:
+        fields=text.splitlines()[0].split()
+        if len(fields)>=9 and fields[0]=='cpu':
+            ticks=[int(x) for x in fields[1:9]]
+            result['cpu_ticks']={'total':sum(ticks),'idle':ticks[3]+ticks[4]}
+    if text:
+        for line in text.splitlines():
+            p=line.split()
+            if len(p)>=9 and re.fullmatch(r'cpu[0-9]+',p[0]):
+                ticks=[int(x) for x in p[1:9]]
+                result['core_ticks'][p[0]]={'total':sum(ticks),'idle':ticks[3]+ticks[4]}
+    memory=read(root/'proc/meminfo') or ''
+    result['memory_kib']={line.split(':',1)[0]:int(line.split()[1]) for line in memory.splitlines() if line.split(':',1)[0] in ('MemAvailable','SwapTotal','SwapFree','Dirty','Writeback')}
+    result['loadavg']=read(root/'proc/loadavg')
+    return result
+
+def command(args):
+    try:
+        env=dict(os.environ,LC_ALL='C',LANG='C',DISPLAY=os.environ.get('DISPLAY',':0'))
+        if Path('/usr/lib64/dri-nonfree/iHD_drv_video.so').is_file():env['LIBVA_DRIVERS_PATH']='/usr/lib64/dri-nonfree'
+        completed=subprocess.run(args,env=env,text=True,capture_output=True,timeout=8)
+        return completed.returncode,(completed.stdout+completed.stderr)[:65536]
+    except (OSError,subprocess.SubprocessError):return None,'Unavailable'
+
+def assess(samples):
+    findings=[]
+    if not samples:return ['No samples; hardware/power status unknown.']
+    first,last=samples[0],samples[-1]
+    deltas={key:last['thermal_throttle_counts'][key]-value for key,value in first['thermal_throttle_counts'].items() if key in last['thermal_throttle_counts'] and last['thermal_throttle_counts'][key]>=value}
+    if any(value>0 for value in deltas.values()):findings.append('CPU thermal throttle counters increased during capture.')
+    if not deltas:findings.append('Thermal throttle counters unavailable; throttling has not been ruled out.')
+    hottest=max((v for sample in samples for v in sample['temperatures_c'].values()),default=None)
+    if hottest is not None and hottest>=90:findings.append('At least one sensor reached 90 C; inspect temperature/frequency trends, not temperature alone.')
+    if any(p.get('type')=='Battery' and p.get('status')=='Discharging' for s in samples for p in s['power'].values()):findings.append('Battery discharging observed; compare the same stream on a working charger.')
+    if not any(p.get('online')=='1' for s in samples for p in s['power'].values()):findings.append('No online external power source reported; charging/input power is unconfirmed.')
+    if not findings:findings.append('No throttle-counter increase or hot-sensor warning observed in this interval. This does not certify hardware health or exclude transient power/driver limits.')
+    return findings
+
+def diagnose(seconds, root=Path('/'), sleeper=time.sleep, sampler=snapshot):
+    samples=[]
+    for index in range(seconds//2+1):
+        sample=sampler(root);sample['elapsed_seconds']=index*2
+        if samples and sample['cpu_ticks'] and samples[-1]['cpu_ticks']:
+            old,new=samples[-1]['cpu_ticks'],sample['cpu_ticks'];delta=new['total']-old['total']
+            if delta>0:sample['cpu_percent']=round(100*(1-(new['idle']-old['idle'])/delta),2)
+        if samples:
+            sample['core_cpu_percent']={}
+            for core,new in sample.get('core_ticks',{}).items():
+                old=samples[-1].get('core_ticks',{}).get(core)
+                if old and new['total']>old['total']:
+                    sample['core_cpu_percent'][core]=round(100*(1-(new['idle']-old['idle'])/(new['total']-old['total'])),2)
+        samples.append(sample)
+        if index<seconds//2:sleeper(2)
+    report={'schema':1,'kernel':os.uname().release,'architecture':os.uname().machine,'seconds':seconds,'samples':samples,'findings':assess(samples)}
+    code,display=command(['xrandr','--current'])
+    report['active_display_modes']=[line.strip() for line in display.splitlines() if '*' in line and re.search(r'\d+\.\d+\*',line)] if code==0 else 'Unavailable'
+    code,gl=command(['glxinfo','-B'])
+    report['graphics']={key:line.split(':',1)[1].strip() for key in ('OpenGL vendor string','OpenGL renderer string','OpenGL version string') for line in gl.splitlines() if line.startswith(key+':')} if code==0 else {'status':'Unavailable'}
+    if re.search(r'llvmpipe|softpipe',gl,re.I):report['findings'].append('Software OpenGL renderer detected; hardware rendering is not established.')
+    render_nodes=sorted((root/'dev/dri').glob('renderD*'))
+    if render_nodes:
+        code,va=command(['vainfo','--display','drm','--device',str(render_nodes[0])])
+        report['video_capabilities']=[line.strip() for line in va.splitlines() if ('Driver version' in line or 'VAProfile' in line)] if code==0 else 'Unavailable'
+    else:report['video_capabilities']='No accessible render node'
+    code,wifi=command(['nmcli','-t','-f','IN-USE,FREQ,CHAN,SIGNAL,SECURITY','device','wifi','list','--rescan','no'])
+    report['active_wifi_radio']=[line for line in wifi.splitlines() if line.startswith('*:')][:8] if code==0 else 'Unavailable'
+    report['services']={service:command(['systemctl','is-active',service])[1].strip()[:64] for service in ('thermald.service','power-profiles-daemon.service','tuned.service')}
+    return report
+
+def main():
+    parser=argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('mode',choices=[*PROFILES,'restore','status','diagnose','menu'])
+    parser.add_argument('--seconds',type=int,default=30,help='Even number from 2 to 120; sample while a stream is running')
+    args=parser.parse_args()
+    if os.geteuid()==0:parser.error('Run as moonlight, without sudo; presets belong to that user')
+    if args.mode=='menu':
+        choices={'1':'status','2':'balanced','3':'latency','4':'opengl-test','5':'vulkan-test','6':'auto-renderer','7':'restore','8':'diagnose'}
+        print('Eclipse streaming tuning\nPresets save 1080p60 HEVC hardware decode at 20 Mbps; previous settings can be restored.\nLowest latency may tear. Renderer tests change only the renderer preference.\nClose Eclipse before changing saved settings; diagnostics run during a stream.\n1) Status  2) Balanced  3) Lowest latency  4) OpenGL test\n5) Vulkan test  6) Auto renderer  7) Restore  8) 30-second diagnostic  0) Exit')
+        choice=input('Choose: ').strip()
+        if choice not in choices:return
+        args.mode=choices[choice]
+    config=Path.home()/'.config/Vibemis Project/Vibemis.conf'
+    folder=Path.home()/'.local/state/eclipseos/streaming'
+    folder.mkdir(parents=True,exist_ok=True,mode=0o700)
+    with open(folder/'lock','a') as lock:
+        fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
+        if args.mode=='diagnose':
+            if not 2<=args.seconds<=120 or args.seconds%2:parser.error('--seconds must be even and between 2 and 120')
+            result=diagnose(args.seconds)
+            target=folder/'diagnostics.json';atomic(target,json.dumps(result,indent=2).encode())
+            result={'report':str(target),'findings':result['findings']}
+        elif args.mode=='status':
+            saved=settings_parse(config.read_text()) if config.exists() else {}
+            keys=set().union(*(p.keys() for p in PROFILES.values()))
+            result={'settings':{key:saved.get(key,'default') for key in sorted(keys)},'restore_available':(folder/'preset.json').exists()}
+        else:result=tune(config,folder,args.mode)
+        print(json.dumps(result))
+
+if __name__=='__main__':
+    try:main()
+    except (KeyboardInterrupt, EOFError):
+        print('Cancelled.');raise SystemExit(130)
+    except Exception as error:
+        print(json.dumps({'error':str(error)[:512]}));raise SystemExit(1)
+STREAMING_TUNE
+chmod 0755 /usr/local/bin/eclipseos-streaming
 cat > /usr/local/bin/eclipseos-updates <<'ECLIPSE_UPDATE_MENU'
 #!/usr/bin/env bash
 set -u

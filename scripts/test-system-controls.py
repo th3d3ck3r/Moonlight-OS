@@ -24,6 +24,12 @@ class ControlsTests(unittest.TestCase):
         self.assertEqual(rows[0]['name'], 'Cafe:Space')
         self.assertTrue(rows[0]['connected'])
         self.assertEqual(m.wifi_rows(text+'\n'+text), rows)
+    def test_shared_ssid_access_points_show_their_band(self):
+        text=r'*:Shared:AA\:BB\:CC\:DD\:EE\:01:95:WPA2:wlan0:2412'+'\n'+r':Shared:AA\:BB\:CC\:DD\:EE\:02:90:WPA2:wlan0:5180'
+        rows=m.wifi_rows(text)
+        self.assertEqual(len(rows),2)
+        self.assertIn('2.4 GHz',rows[0]['detail']);self.assertIn('5 GHz',rows[1]['detail'])
+        self.assertNotEqual(rows[0]['id'],rows[1]['id'])
     def test_invalid_device_and_hidden_network(self):
         for line in [r'*:name:AA\:BB\:CC\:DD\:EE\:FF:50:WPA2:--help', r'*::AA\:BB\:CC\:DD\:EE\:FF:50:WPA2:wlan0']:
             self.assertEqual(m.wifi_rows(line), [])

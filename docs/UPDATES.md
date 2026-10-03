@@ -1,6 +1,6 @@
 # Fixed-base EclipseOS updates — prepared source, not a new build
 
-Work branch: `wip/eclipseos-updater`. The current Crimson Glass image and comparison downloads remain unchanged. This branch introduces a terminal updater and its future-image payload. No OS image, release update package, signing identity, live installation or native frontend build was produced for this change.
+Work branch: `wip/eclipseos-updater`. The current Crimson Glass image and comparison downloads remain unchanged. This branch introduces a terminal updater and its future-image payload. Subsequent [software/connection work](STREAMING_SOFTWARE.md) is prepared on the same branch. No OS image, release update package, signing identity, live installation or native frontend build was produced for this change.
 
 ## Scope and kernel lock
 
@@ -11,6 +11,7 @@ Keep the existing Fedora 44 / MacBookPro14,1 foundation and **6.19.10-300.fc44.x
 | `frontend` | Native x86_64 Eclipse executable in a new root-owned slot; original AppRun/binary retained |
 | `system-controls`, `control-center` | The two existing Python helpers under `/usr/local/libexec/moonlight-os/` |
 | `bluetooth-menu` | `/usr/local/bin/moonlight-bluetooth` |
+| `streaming-tune` | `/usr/local/bin/eclipseos-streaming`; reversible user-owned presets and diagnostics |
 | `wifi-menu` | `/usr/local/bin/moonlight-wifi` |
 | `wifi-config` | Existing NetworkManager file; only `connection.wifi.powersave` (2 or 3) |
 | `bluetooth-config` | Existing BlueZ main.conf; only `General.AutoEnable` (true or false) |

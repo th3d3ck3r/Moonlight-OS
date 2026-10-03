@@ -179,6 +179,8 @@ cp "$work/root/boot/initramfs-$INSTALLER_KERNEL.img" "$diag_dir/diagnostic-initr
 blkid -p -s UUID -o value "$root" > "$diag_dir/diagnostic-root-uuid"
 chroot "$work/root" /usr/bin/lsblk --version
 
+cmp "$ROOT/scripts/streaming-tune.py" "$work/root/usr/local/bin/eclipseos-streaming"
+cmp "$ROOT/scripts/wifi-menu.sh" "$work/root/usr/local/bin/moonlight-wifi"
 # Updater source and recovery policy must match; signing trust is provisioned separately.
 cmp "$ROOT/scripts/eclipseos-update.py" "$work/root/usr/local/libexec/moonlight-os/eclipseos-update.py"
 cmp "$ROOT/scripts/update-menu.sh" "$work/root/usr/local/bin/eclipseos-updates"

@@ -28,4 +28,4 @@ PEGASUS_URL=https://github.com/mmatyas/pegasus-frontend/releases/download/contin
 PEGASUS_SHA256=85842b658796a67aeaefd2eeef8d3ee1999c675661bf443fa34e999e394bc550
 
 # Reviewed EclipseOS Vibemis theme/status patch.
-VIBEMIS_PATCH_SHA256=c7b47a846f7c449b225a811d2a89fc3e98c5f4a0fe40945a27560456bf16cbbf
+VIBEMIS_PATCH_SHA256=3996a95cb132b302c74007585abf090f171f41841a81b1a8067009814ac5d238

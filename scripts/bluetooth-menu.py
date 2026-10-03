@@ -83,10 +83,12 @@ class BlueZ:
         if not adapters:
             raise RuntimeError('No Bluetooth adapter found. Check Adapter status in the recovery console.')
         self.adapter = next((path for path, p in adapters if p.get('Powered')), adapters[0][0])
+        # introspect=False means dbus-python cannot infer Properties.Set's ssv.
+        # Explicitly wrap the Boolean in a variant, otherwise it sends ssb.
         props = self.interface(self.adapter, 'org.freedesktop.DBus.Properties')
         try:
             for key in ('Powered', 'Pairable'):
-                props.Set('org.bluez.Adapter1', key, self.dbus.Boolean(True), timeout=5)
+                props.Set('org.bluez.Adapter1', key, self.dbus.Boolean(True, variant_level=1), timeout=5)
         except self.dbus.DBusException as error:
             raise RuntimeError('Bluetooth radio unavailable: '+error.get_dbus_name()) from None
 
@@ -121,10 +123,10 @@ class BlueZ:
         try:
             if action == 'forget':
                 adapter = str(self.objects()[path]['org.bluez.Device1']['Adapter'])
-                self.interface(adapter, 'org.bluez.Adapter1').RemoveDevice(path, timeout=5)
+                self.interface(adapter, 'org.bluez.Adapter1').RemoveDevice(self.dbus.ObjectPath(path), timeout=5)
             else:
                 if action == 'connect':
-                    self.interface(path, 'org.freedesktop.DBus.Properties').Set('org.bluez.Device1', 'Trusted', self.dbus.Boolean(True), timeout=5)
+                    self.interface(path, 'org.freedesktop.DBus.Properties').Set('org.bluez.Device1', 'Trusted', self.dbus.Boolean(True, variant_level=1), timeout=5)
                 if action != 'connect' or not self.device(address)[1].get('Connected'):
                     getattr(self.interface(path, 'org.bluez.Device1'), 'Connect' if action == 'connect' else 'Disconnect')(timeout=20 if action == 'connect' else 5)
         except self.dbus.DBusException as error:

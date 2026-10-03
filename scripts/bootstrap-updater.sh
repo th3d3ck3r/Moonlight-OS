@@ -11,7 +11,10 @@ grep -Fxq 'FEDORA="44"' /etc/moonlight-os-release
 grep -Fxq 'TARGET="MacBookPro14,1"' /etc/moonlight-os-release
 # Check exact shipped frontend foundation, rather than enrolling an arbitrary installation.
 grep -Fxq 'VIBEMIS_COMMIT=c3032fc8ee56188a91c1f5a3a8aeae6cf36fb6de' /usr/local/libexec/moonlight-os/frontends/versions.conf
-grep -Fxq 'VIBEMIS_PATCH_SHA256=c7b47a846f7c449b225a811d2a89fc3e98c5f4a0fe40945a27560456bf16cbbf' /usr/local/libexec/moonlight-os/frontends/versions.conf
+current_patch=$(sed -n 's/^VIBEMIS_PATCH_SHA256=//p' "$ROOT/SOURCES.lock")
+[[ $current_patch =~ ^[0-9a-f]{64}$ ]]
+# Accept the published image foundation or this reviewed source's frontend patch.
+grep -Eq "^VIBEMIS_PATCH_SHA256=(c7b47a846f7c449b225a811d2a89fc3e98c5f4a0fe40945a27560456bf16cbbf|$current_patch)$" /usr/local/libexec/moonlight-os/frontends/versions.conf
 openssl pkey -pubin -in "$KEY_FILE" -text -noout | grep -Fq ED25519
 install -d -m 0755 /etc/eclipseos-update /usr/local/libexec/eclipseos
 install -d -m 0700 /var/lib/eclipseos-updates
@@ -27,6 +30,7 @@ if [[ ! -f /var/lib/eclipseos-updates/original-launcher ]]; then
 fi
 install -m 0755 "$ROOT/scripts/frontend-launch.sh" /usr/local/bin/moonlight-launch
 install -m 0755 "$ROOT/scripts/update-menu.sh" /usr/local/bin/eclipseos-updates
+install -m 0755 "$ROOT/scripts/streaming-tune.py" /usr/local/bin/eclipseos-streaming
 systemctl daemon-reload
 systemctl enable eclipseos-update-recovery.service
 /usr/local/libexec/moonlight-os/eclipseos-update.py status

@@ -7519,6 +7519,25 @@ index 58feb96..791ef4c 100644
  
      // Vibemis: opt-in on-screen touch controls overlay —
      // three icon-only buttons (MENU opens the Quick Menu, KBD requests the SteamOS
+diff --git a/app/streaming/video/decoderstatus.h b/app/streaming/video/decoderstatus.h
+index 111b83b..bdccbbf 100644
+--- a/app/streaming/video/decoderstatus.h
++++ b/app/streaming/video/decoderstatus.h
+@@ -163,6 +163,14 @@ inline int formatPacingLine(char* output, int length,
+                     (presentMode != nullptr && presentMode[0] != '\0') ? presentMode : "n/a");
+ }
+ 
++// Actual presentation frontend; distinct from the decoder backend above.
++inline int formatPresentationLine(char* output, int length, const char* renderer)
++{
++    return snprintf(output, length, "Renderer: %.*s\n", MaxRendererChars,
++                    renderer != nullptr && renderer[0] != '\0' ? renderer : "unknown");
++}
++const int MaxPresentationLineChars = 10 + MaxRendererChars + 1;
++
+ // Worst-case rendered length of the FIRST line of formatLine(), excluding the
+ // NUL. This is the number that has to stay small enough to fit a handheld
+ // screen; the buffer budget below cares about the total.
 diff --git a/app/streaming/video/ffmpeg-renderers/d3d11va.cpp b/app/streaming/video/ffmpeg-renderers/d3d11va.cpp
 index 388e307..f853239 100644
 --- a/app/streaming/video/ffmpeg-renderers/d3d11va.cpp
@@ -7657,7 +7676,7 @@ index 79b165d..334eeff 100644
                      renderRect.x = 0;
                      renderRect.y = m_LastDrawableHeight - overlayTexture.height;
 diff --git a/app/streaming/video/ffmpeg.cpp b/app/streaming/video/ffmpeg.cpp
-index 2ac1a6e..4a6e0c0 100644
+index 2ac1a6e..9961a12 100644
 --- a/app/streaming/video/ffmpeg.cpp
 +++ b/app/streaming/video/ffmpeg.cpp
 @@ -1,5 +1,6 @@
@@ -7667,7 +7686,32 @@ index 2ac1a6e..4a6e0c0 100644
  #include "streaming/session.h"
  #include "backend/systemproperties.h"
  #include "settings/streamingpreferences.h"
-@@ -2440,6 +2441,11 @@ int FFmpegVideoDecoder::submitDecodeUnit(PDECODE_UNIT du)
+@@ -897,6 +898,7 @@ void FFmpegVideoDecoder::cacheDecoderIdentity()
+     }
+ 
+     if (m_FrontendRenderer != nullptr) {
++        m_PresentationRendererName = QByteArray(m_FrontendRenderer->getRendererName());
+         const char* presentMode = m_FrontendRenderer->getPresentationModeName();
+         if (presentMode != nullptr) {
+             m_PresentModeName = QByteArray(presentMode);
+@@ -1298,6 +1300,16 @@ void FFmpegVideoDecoder::stringifyVideoStats(VIDEO_STATS& stats, char* output, i
+ 
+     offset += ret;
+ 
++    // The decoder's "via" label names the backend, not who draws the frame.
++    // Expose the cached presentation frontend for EGL/VAAPI/Vulkan comparisons.
++    ret = DecoderStatus::formatPresentationLine(&output[offset], length - offset,
++                                                m_PresentationRendererName.constData());
++    if (ret < 0 || ret >= length - offset) {
++        SDL_assert(false);
++        return;
++    }
++    offset += ret;
++
+     if (stats.framesWithHostProcessingLatency > 0) {
+         ret = snprintf(&output[offset],
+                        length - offset,
+@@ -2440,6 +2452,11 @@ int FFmpegVideoDecoder::submitDecodeUnit(PDECODE_UNIT du)
              Session::get()->getOverlayManager().setOverlayTextUpdated(Overlay::OverlayDebug);
          }
  
@@ -7679,8 +7723,20 @@ index 2ac1a6e..4a6e0c0 100644
          // Accumulate these values into the global stats
          addVideoStats(m_ActiveWndVideoStats, m_GlobalVideoStats);
  
+diff --git a/app/streaming/video/ffmpeg.h b/app/streaming/video/ffmpeg.h
+index 9ebce42..348ede3 100644
+--- a/app/streaming/video/ffmpeg.h
++++ b/app/streaming/video/ffmpeg.h
+@@ -130,6 +130,7 @@ private:
+     // the life of the decoder.
+     QByteArray m_PacingModeName;
+     QByteArray m_PresentModeName;
++    QByteArray m_PresentationRendererName;
+ 
+     Pacer* m_Pacer;
+     PacerTelemetrySnapshot m_LastPacerTelemetry;
 diff --git a/app/streaming/video/overlaymanager.cpp b/app/streaming/video/overlaymanager.cpp
-index 92e6c6d..483ffdb 100644
+index 92e6c6d..1aa084b 100644
 --- a/app/streaming/video/overlaymanager.cpp
 +++ b/app/streaming/video/overlaymanager.cpp
 @@ -1,6 +1,12 @@
@@ -7722,18 +7778,22 @@ index 92e6c6d..483ffdb 100644
  
      m_Overlays[OverlayType::OverlayStatusUpdate].color = {0xCC, 0x00, 0x00, 0xFF};
      m_Overlays[OverlayType::OverlayStatusUpdate].fontSize = 36;
-@@ -126,6 +141,10 @@ SDL_Surface* OverlayManager::getUpdatedOverlaySurface(OverlayType type)
+@@ -126,6 +141,14 @@ SDL_Surface* OverlayManager::getUpdatedOverlaySurface(OverlayType type)
  
  void OverlayManager::setOverlayTextUpdated(OverlayType type)
  {
 +    if(m_Overlays[type].enabled && (type==OverlayDebug || type==OverlayLocalHardware)) {
++        // Sampling may touch slow sysfs sensors and USB-backed filesystem stats.
++        // Do it before the history lock: the render thread must be able to copy
++        // its last graph snapshot without waiting for those reads to finish.
++        const auto values=CrimsonGraphs::values(QString::fromUtf8(m_Overlays[type].text),type==OverlayLocalHardware,LocalHardware::sample());
 +        QMutexLocker graphLock(&m_GraphLock);
-+        CrimsonGraphs::push(m_GraphHistory[type],CrimsonGraphs::values(QString::fromUtf8(m_Overlays[type].text),type==OverlayLocalHardware,LocalHardware::sample()));
++        CrimsonGraphs::push(m_GraphHistory[type],values);
 +    }
      // Only update the overlay state if it's enabled. If it's not enabled,
      // the renderer has already been notified by setOverlayState().
      if (m_Overlays[type].enabled) {
-@@ -143,6 +162,7 @@ void OverlayManager::setOverlayState(OverlayType type, bool enabled)
+@@ -143,6 +166,7 @@ void OverlayManager::setOverlayState(OverlayType type, bool enabled)
          if (!enabled) {
              // Set the text to empty string on disable
              m_Overlays[type].text[0] = 0;
@@ -7741,7 +7801,7 @@ index 92e6c6d..483ffdb 100644
          }
  
          notifyOverlayUpdated(type);
-@@ -368,11 +388,27 @@ void OverlayManager::notifyOverlayUpdated(OverlayType type)
+@@ -368,11 +392,27 @@ void OverlayManager::notifyOverlayUpdated(OverlayType type)
      }
  
      if (m_Overlays[type].enabled) {
@@ -7823,3 +7883,38 @@ index 045adbe..f12da5d 100644
  GenericName=Game Streaming Client
  Comment=Stream games and applications from a Sunshine / Apollo / Vibepollo host
  Exec=vibemis
+diff --git a/tests/overlay/tst_decoderstatus.cpp b/tests/overlay/tst_decoderstatus.cpp
+index b4d7682..50b070c 100644
+--- a/tests/overlay/tst_decoderstatus.cpp
++++ b/tests/overlay/tst_decoderstatus.cpp
+@@ -38,6 +38,30 @@ private:
+     }
+ 
+ private slots:
++    void presentationRendererIsSeparateFromDecoderBackend()
++    {
++        char buf[128];
++        DecoderStatus::formatPresentationLine(buf, sizeof(buf), "EGL");
++        QCOMPARE(QByteArray(buf), QByteArray("Renderer: EGL\n"));
++        QVERIFY(!QByteArray(buf).contains("VAAPI"));
++    }
++    void missingPresentationRendererIsUnknown()
++    {
++        char buf[128];
++        DecoderStatus::formatPresentationLine(buf, sizeof(buf), nullptr);
++        QCOMPARE(QByteArray(buf), QByteArray("Renderer: unknown\n"));
++    }
++    void presentationRendererIsBoundedAndTerminatesTinyBuffers()
++    {
++        QByteArray longName(1000, 'X');
++        char buf[128];
++        int ret=DecoderStatus::formatPresentationLine(buf, sizeof(buf), longName.constData());
++        QCOMPARE(ret, DecoderStatus::MaxPresentationLineChars);
++        char tiny[2]={'Y','Y'};
++        ret=DecoderStatus::formatPresentationLine(tiny, sizeof(tiny), "EGL");
++        QVERIFY(ret>1);
++        QCOMPARE(tiny[1], char(0));
++    }
+     // ---- The reason the line exists ------------------------------------
+ 
+     // The exact BL-2408 shape: a Gallium VAAPI backend whose RFI capability was

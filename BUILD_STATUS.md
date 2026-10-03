@@ -5,6 +5,11 @@
 - Work is saved on `wip/eclipseos-updater`; [scope and usage](docs/UPDATES.md), [source verification](docs/UPDATER_VERIFICATION.md). Signed Eclipse executable/helper/config packages, staged activation, fixed kernel/base, offline boot/tty2 rollback and one-time current-image enrollment are prepared.
 - 35 updater tests and existing source/runtime fixtures pass. **No OS image, deployable update package, native frontend compile, production signing key/feed or live installation** was created. Installed-image/Mac acceptance remains pending. The current build and comparison below remain unchanged.
 
+## Connection fixes and streaming software — prepared source, 2026-10-03
+
+- [Physical findings, software fixes, presets and remaining gates](docs/STREAMING_SOFTWARE.md). 90 Python tests and source/runtime checks pass. Bluetooth D-Bus types, graphical Wi-Fi PTY activation, terminal automatic-band recovery and an overlay/render mutex dependency are addressed in source. A separate actual presentation-renderer overlay line is prepared.
+- No build or installation was started. The new native changes still need frontend/Qt/decoder checks and a sustained Mac pacing comparison; do not claim the 4.72% drop issue is resolved. Published downloads remain the older source below.
+
 ## EclipseOS Crimson Glass — 2026-10-03
 
 - [Complete Crimson Glass ZIP](https://github.com/th3d3ck3r/Moonlight-OS/actions/runs/37132195854/artifacts/11277957881) · [Actual previews](docs/CRIMSON_GLASS.md) · [Four-pass verification](docs/CRIMSON_GLASS_VERIFICATION.md) · [Known issues](docs/KNOWN_ISSUES.md).
