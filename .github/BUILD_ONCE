@@ -1,7 +1,9 @@
-2026-10-03: EclipseOS System Controls and local hardware candidate.
-Runtime source c858e836fe35fa84097533feb1cd0373b385ec34.
-Source audits: https://github.com/th3d3ck3r/Moonlight-OS/actions/runs/37105302223
-Sixteen Qt tests, all sixteen exact UI/native-overlay accents, scaled/rounded dialogs, live discovery, metric counters and cancellation fixtures verified.
-Require exact installed-payload inspection and strict OVMF MOONLIGHT_OS_BOOT_OK before image upload.
-Publish EclipseOS-branded .img.xz plus basename-compatible SHA-256; preserve existing fallback downloads.
-Physical Mac controller power-off, Bluetooth firmware, sensor and sustained-streaming acceptance remain required.
+2026-10-03: EclipseOS Crimson Glass candidate.
+Reviewed runtime source b687ecd0710a04d73bac62ebab44fe418927d76e.
+All seven reviewed-source audits: https://github.com/th3d3ck3r/Moonlight-OS/actions/runs/37126618900
+Nineteen Qt tests; seven overlay-placement and twenty-eight decoder-status tests; static, Python and PTY fixtures passed.
+Build workflow requires seven successful audits on this exact image commit before installation.
+Require installed complete-patch/source inspection and strict OVMF MOONLIGHT_OS_BOOT_OK before compression/upload.
+Publish distinctly named eclipseos-crimson-glass-mbp14-1.img.xz plus matching SHA-256.
+Preserve the previous System Controls comparison download and all older fallbacks.
+Physical Mac controller reconnect, sensors, AirPods and sustained-streaming acceptance remain pending.

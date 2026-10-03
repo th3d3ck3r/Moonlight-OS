@@ -17,7 +17,7 @@
 
 Crimson Glass continues the saved Eclipse checkpoint with a responsive library, smoky rounded panels, consistent dialogs/menus/settings, sixteen accents, scaled text, reduced motion and high contrast. Small native overlay graphs show measured FPS/network latency and local CPU/RAM; unavailable sensors remain gaps. The selectable background is copied into app data, with dimming and reset controls.
 
-**Build status:** local source/fixture verification completed; exact-source Fedora audits and the new image/OVMF checks must pass before a Crimson Glass download is announced. The System Controls comparison image below remains available. [Implementation and actual previews](docs/CRIMSON_GLASS.md) · [Verification](docs/CRIMSON_GLASS_VERIFICATION.md) · [Known issues](docs/KNOWN_ISSUES.md).
+**Build status:** local source/fixture verification and all seven source audits passed; the new image build is being verified. Final exact-source audits, installed-image inspection and OVMF must pass before a Crimson Glass download is announced. The System Controls comparison image below remains available. [Implementation and actual previews](docs/CRIMSON_GLASS.md) · [Verification](docs/CRIMSON_GLASS_VERIFICATION.md) · [Known issues](docs/KNOWN_ISSUES.md).
 
 ## 🌘 System Controls comparison build — EclipseOS
 

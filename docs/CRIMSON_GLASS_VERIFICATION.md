@@ -16,7 +16,7 @@ QML engine warnings: zero. The pre-existing deliberately failing TLS fixture can
 
 ## Pass 3 — exact-source Fedora audits
 
-Pending. All seven audit jobs, including native Fedora FFmpeg/VAAPI/EGL client compilation and X11 startup, are required on the exact image commit. The build workflow now blocks installation until those audits succeed. Fixture success does not establish physical hardware support.
+All seven source audits passed for `b687ecd0710a04d73bac62ebab44fe418927d76e`: [audit run](https://github.com/th3d3ck3r/Moonlight-OS/actions/runs/37126618900). Native Fedora compilation selected FFmpeg, VAAPI and EGL; Eclipse, Artemis and Pegasus remained alive through X11 software-rendered startup. The final image commit is also required to pass all seven audits. The build workflow now blocks installation until those audits succeed. Fixture success does not establish physical hardware support.
 
 ## Pass 4 — installed image, UEFI and downloads
 

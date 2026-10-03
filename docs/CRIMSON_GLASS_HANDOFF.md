@@ -1,3 +1,5 @@
+> This checkpoint has been resumed. Crimson Glass implementation and source audits are complete; image verification is in progress. See [current implementation](CRIMSON_GLASS.md) and [current verification](CRIMSON_GLASS_VERIFICATION.md). The original paused state below is archived context, not the current production status.
+
 # Crimson Glass — paused WIP handoff, October 3, 2026
 
 Production main remains e01d9b5629de32246a5e33e496428021bce5ce48. No new image was started. This branch is a checkpoint, NOT a verified build.

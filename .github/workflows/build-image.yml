@@ -128,6 +128,9 @@ jobs:
         run: |
           mv out/moonlight-os-mbp14-1.img.xz out/eclipseos-crimson-glass-mbp14-1.img.xz
           (cd out && sha256sum eclipseos-crimson-glass-mbp14-1.img.xz > eclipseos-crimson-glass-mbp14-1.img.xz.sha256)
+          cat out/eclipseos-crimson-glass-mbp14-1.img.xz.sha256
+          stat --format='%n %s bytes' out/eclipseos-crimson-glass-mbp14-1.img.xz out/eclipseos-crimson-glass-mbp14-1.img.xz.sha256
+          xz --robot --list out/eclipseos-crimson-glass-mbp14-1.img.xz
       - name: Upload image artifact
         uses: actions/upload-artifact@v4
         with:
