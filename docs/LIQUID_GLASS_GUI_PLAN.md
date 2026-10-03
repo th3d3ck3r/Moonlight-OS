@@ -1,6 +1,6 @@
 # 💎 Crimson Glass — EclipseOS interface plan
 
-**Current baseline:** [experimental release](https://github.com/th3d3ck3r/Moonlight-OS/releases/tag/v0.1-experimental.20261002) adds five frontend choices (initial default/fallback Moonlight), generic Bluetooth and Crimson Apollo. This plan remains independent and unimplemented; preserve all five choices and their existing settings. Earlier source findings below apply to the inspected CocoOS/Moonlight revisions, not automatically to the added forks.
+**Historical baseline:** [experimental release](https://github.com/th3d3ck3r/Moonlight-OS/releases/tag/v0.1-experimental.20261002) adds five frontend choices (initial default/fallback Moonlight), generic Bluetooth and Crimson Apollo. The proposal below predates the Eclipse frontend implementation; all five frontend choices and their settings are preserved. Earlier source findings below apply to the inspected CocoOS/Moonlight revisions, not automatically to the added forks.
 Status: historical proposal. Crimson Glass is now implemented for Eclipse; see [current implementation](CRIMSON_GLASS.md) and [verification](CRIMSON_GLASS_VERIFICATION.md). Other frontends retain their existing interfaces.
 Prepared October 1, 2026. Begin after physical USB boot and basic streaming validation.
 
