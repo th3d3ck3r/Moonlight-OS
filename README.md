@@ -3,7 +3,7 @@
 # 🌙 Moonlight-OS
 ### Your MacBook. A dedicated streaming console. 🎮
 
-**Fedora 44 · Five frontend choices · Intel x86_64 · Native UEFI**
+**Fedora 44 · Eclipse frontend · Five frontend choices · Intel x86_64 · Native UEFI**
 
 A controller-friendly USB appliance for the **2017 13-inch non-Touch-Bar MacBook Pro — MacBookPro14,1**, connecting to **Vibepollo / Sunshine-compatible hosts**.
 
@@ -37,7 +37,7 @@ Includes the **black/crimson animated Apollo moon boot screen**, a remembered se
 
 **[🧪 Experimental release](https://github.com/th3d3ck3r/Moonlight-OS/releases/tag/v0.2-experimental.20261002) · [📦 One-file image ZIP](https://github.com/th3d3ck3r/Moonlight-OS/actions/runs/37022392821/artifacts/11235677661) · [📖 Download / flashing guide](docs/releases/v0.2-experimental.20261002.md)**
 
-Full-app black/crimson palette, sixteen accent colors and three matching top-bar buttons for **network**, **battery** and **Vibepollo host CPU/RAM/GPU hardware stats**. Generic Bluetooth starts with a shorter six-second scan. [Implementation and host-stats setup](docs/VIBEMIS_CRIMSON.md). **All seven source audits, installed-image inspection and strict OVMF boot passed** for source `ebce257c6429f5b363ba0ec6a17815e524d87f29`. The complete ZIP is about **3.86 GiB**, raw image **12.24 GiB**, with a 16 GB drive requirement; the artifact expires October 16. Physical testing of this new image remains pending. The regular release above stays available.
+Full-app black/crimson palette, sixteen accent colors and three matching top-bar buttons for **network**, **battery** and **Vibepollo host CPU/RAM/GPU hardware stats**. Generic Bluetooth starts with a shorter six-second scan. [Implementation and host-stats setup](docs/VIBEMIS_CRIMSON.md). **All seven source audits, installed-image inspection and strict OVMF boot passed** for source `ebce257c6429f5b363ba0ec6a17815e524d87f29`. The complete ZIP is about **3.86 GiB**, raw image **12.24 GiB**, with a 16 GB drive requirement; the artifact expires October 16. Physical testing of this older experimental image remains pending. The previous regular release above stays available.
 
 ## ✅ Previous v0.1 repair — built, inspected, boot validated
 
@@ -67,7 +67,7 @@ Full-app black/crimson palette, sixteen accent colors and three matching top-bar
 | 🇬🇧 English UI | Checked English labels compiled into the repaired image; confirm the UI after flashing it |
 | 🧪 Still to test | Mute, media keys during active streaming, reboot persistence, AirPods, DualSense and sustained performance |
 
-The new download passed image inspection and OVMF. Your physical test results came from the existing USB with the applied fixes; they do not replace a boot test of the newly flashed download.
+The Eclipse download passed image inspection and OVMF. The physical results above came from earlier images and the existing USB with applied fixes; Eclipse still needs its own Mac hardware and streaming acceptance checks.
 
 <a id="features"></a>
 
@@ -76,12 +76,17 @@ The new download passed image inspection and OVMF. Your physical test results ca
 | Feature | Included configuration |
 | --- | --- |
 | 🌘 Eclipse frontend | Latest build: black/crimson interface, control center, Wi-Fi/Bluetooth selectors, saved profiles, appearance options and host panels |
+| 🎛️ Control center | Launcher audio volume/mute/output selection, screen/keyboard brightness, confirmed restart/shutdown; unavailable hardware controls are disabled |
+| 💾 Stream profiles | Saved global/per-host resolution, FPS and bitrate; desktop/low-bandwidth presets; explicit apply before streaming |
+| ♿ Appearance | Sixteen accents, 100%/110%/125% text sizes, higher contrast and reduced motion |
+| 🩺 Support report | On-demand redacted report with user-only permissions; excludes credentials, addresses and device names |
+| 🔄 Custom-client updates | Upstream standalone replacement disabled; update through matching Moonlight-OS images |
 | 🎮 Frontend choices | Latest build: **Eclipse, Artemis, Pegasus, Moonlight, CocoOS**; older builds call Eclipse's predecessor Vibemis |
 | 🌑 Boot animation | Latest build: minimal **Eclipse** and orbiting light; older releases: **Crimson Apollo**; Escape for details |
-| 🛜 Bluetooth pairing | Regular and experimental: generic scan/pair/reconnect/disconnect/confirmed forget, with live confirmation agent |
+| 🛜 Bluetooth pairing | Eclipse selector plus guided CLI recovery: scan/pair/reconnect/disconnect/confirmed forget, with live confirmation prompts |
 | ⚡ Intel acceleration | Kernel `i915`, Intel VA-API H.264/HEVC decode stack, Mesa, and GPU diagnostics for Iris Plus 640 |
 | 🖥️ Lean graphics session | Native **X11**, with no desktop environment or compositor |
-| 📶 Wi-Fi setup | NetworkManager, guided first-boot connection, saved networks, and Wi-Fi power saving disabled |
+| 📶 Wi-Fi setup | Eclipse scan/connect/disconnect selector, NetworkManager first-boot setup, saved networks and disabled Wi-Fi power saving |
 | ⌨️ Input support | Apple SPI keyboard/trackpad modules, libinput, and USB/Bluetooth mouse and keyboard tooling |
 | 🕹️ DualSense | USB/Bluetooth input via `hid-playstation`, pairing helper, joystick rules, and diagnostics |
 | 🔇 Controller audio policy | DualSense USB speaker, microphone, and headset endpoints disabled while retaining input |
@@ -94,7 +99,7 @@ The new download passed image inspection and OVMF. Your physical test results ca
 
 **Boot flow:** Apple EFI → Fedora 44 / Eclipse → Wi-Fi setup → remembered frontend chooser → X11/Openbox → selected client → streaming host. Initial default is Moonlight. The previous repair starts CocoOS.
 
-CocoOS is a Moonlight-Qt fork whose interface is still evolving. After repeated client failures, the launcher falls back to upstream Moonlight. The selector remembers all five choices. Pegasus launches the four clients; it does not stream by itself. Vibemis and Artemis require their own host pairing.
+CocoOS is a Moonlight-Qt fork whose interface is still evolving. After repeated client failures, the launcher falls back to upstream Moonlight. The selector remembers all five choices. Pegasus launches the four clients; it does not stream by itself. Eclipse and Artemis require their own host pairing.
 
 **Performance targets:** idle memory below 2 GB and a low-latency streaming session. These are targets, not measured physical-hardware results. An 8 GB MacBook is the intended class of device.
 
@@ -157,6 +162,8 @@ The appliance is designed to run from USB without installing to the internal SSD
 | --- | --- |
 | **Ctrl+Alt+F1** | Return to the appliance session |
 | **Ctrl+Alt+F2** | Open the black-and-red settings/recovery console |
+| **Ctrl+Shift+C** | Open Eclipse control center from the launcher/app list |
+| `sudo moonlight-os-client vibemis` | Select Eclipse (compatible internal command name) |
 | `moonlight-settings` | Launch the guided settings menu manually |
 | `sudo moonlight-os-client cocoos` | Select CocoOS |
 | `sudo moonlight-os-client moonlight` | Select upstream Moonlight |
@@ -197,7 +204,7 @@ Run only the command for the frontend you want. End the stream, then `sudo reboo
 
 | Symptom / limitation | What to check or do |
 | --- | --- |
-| Vibemis host stats unavailable | Configure a read-only Vibepollo stats token and verify the HTTPS certificate; GameStream pairing alone is insufficient. Unsupported sensors show N/A. |
+| Eclipse host stats unavailable | Configure a read-only Vibepollo stats token and verify the HTTPS certificate; GameStream pairing alone is insufficient. Unsupported sensors show N/A. |
 | Bluetooth missing after switching from macOS | BCM4350C0 may retain macOS' UART baud rate. Shut down, perform the standard SMC reset for this MacBook once, and retry. |
 | Wi-Fi missing or unstable | Open tty2 settings and run `sudo moonlight-os-verify`. BCM4350 firmware/driver behavior still needs physical validation; compare a supported Ethernet adapter if available. |
 | Black screen, slow decode, or stutter | Compare upstream Moonlight with CocoOS. Start at 1080p60/H.264; inspect VA-API and the performance overlay. Run the verifier and observe video-engine activity with `intel_gpu_top`. |
@@ -211,7 +218,7 @@ Run only the command for the frontend you want. End the stream, then `sudo reboo
 | FaceTime camera unavailable | Intentionally omitted; its separate driver/firmware path is outside this streaming appliance. |
 | Optional CocoOS Companion features | Not required or claimed. Standard Sunshine/GameStream-compatible discovery, pairing, app listing, streaming, and input are the baseline. |
 
-**Fixed during this build:** container partition probing, read-only inspection mount order, Fedora OVMF firmware discovery, and first-boot root partition-number detection. Root growth now has real GPT/XFS expansion, NOCHANGE, and failure/retry audit coverage.
+**Fixed for Eclipse:** missing icon resources, installed desktop/icon branding, power-dialog sizing, audio-output filtering and the backend screen-brightness floor. Earlier partition probing, image inspection, OVMF discovery and root-growth fixes remain included; real GPT/XFS expansion, NOCHANGE and failure/retry audits pass.
 
 **Kernel updates:** this image does not auto-update the kernel. Build a new image when changing kernels so the MacBook audio module stays aligned.
 
@@ -231,7 +238,7 @@ The overlay preserves the release raw image. The root-growth audit also checks a
 | Branch | Purpose |
 | --- | --- |
 | [`main`](https://github.com/th3d3ck3r/Moonlight-OS/tree/main) | Current release baseline and shared fixes |
-| [`mac-minimal`](https://github.com/th3d3ck3r/Moonlight-OS/tree/mac-minimal) | Future Vibemis-focused MacBookPro14,1 minimization after physical validation |
+| [`mac-minimal`](https://github.com/th3d3ck3r/Moonlight-OS/tree/mac-minimal) | Future Eclipse-focused MacBookPro14,1 minimization after physical validation |
 | [`generic-hardware`](https://github.com/th3d3ck3r/Moonlight-OS/tree/generic-hardware) | Preserve the current broader package/driver baseline for future generic x86-64 work |
 
 Both development branches start with the same current source. **The generic branch is a baseline, not a hardware-compatible release yet:** Mac-specific boot options, audio/input policies and validation must be generalized separately. No drivers/packages were removed during this split. [Branch workflow and validation](docs/DEVELOPMENT_BRANCHES.md).
@@ -267,6 +274,8 @@ The development image stays **under 14,000 MiB raw** while retaining Git, GCC, D
 ## 📚 Project notes
 
 - [Build status](BUILD_STATUS.md)
+- [Eclipse frontend features and limits](docs/ECLIPSE_FRONTEND.md)
+- [Eclipse verification record](docs/ECLIPSE_VERIFICATION.md)
 - [Hardware and streaming test plan](docs/TEST_PLAN.md)
 - [Planned host stats overlay and dashboard button](docs/HOST_OVERLAY_PLAN.md) — follow-up after physical boot validation
 - [Liquid Glass–inspired GUI plan](docs/LIQUID_GLASS_GUI_PLAN.md) — cohesive client and appliance settings redesign
@@ -285,7 +294,7 @@ Moonlight-OS build scripts are **GPL-3.0**. Included third-party software retain
 
 | Action | Mac keyboard |
 | --- | --- |
-| Return to CocoOS/Moonlight | Control + Option + F1 (add Fn if needed) |
+| Return to the selected frontend | Control + Option + F1 (add Fn if needed) |
 | Open settings/diagnostic console | Control + Option + F2 (add Fn if needed) |
 | Toggle direct desktop pointer / captured game mouse during a stream | **Control + Option + Shift + M** |
 | Stop a console command | Control + C |
@@ -338,11 +347,11 @@ The latest Eclipse build uses a minimal crimson eclipse, a glowing orbiting ligh
 | Project | Status | Self-contained plan |
 | --- | --- | --- |
 | 🖤🔴 Crimson Console | Planned terminal settings interface; not implemented | [CODEX_CLI_INTERFACE_PROMPT.md](CODEX_CLI_INTERFACE_PROMPT.md) |
-| 🌑🚀 Crimson Apollo | Included in both release channels; native script/image/OVMF checks pass; user confirmed the regular image animation | [CODEX_BOOT_ANIMATION_PROMPT.md](CODEX_BOOT_ANIMATION_PROMPT.md) |
-| 💎 Crimson Glass | Planned black/crimson graphical redesign; not implemented | [GUI plan](docs/LIQUID_GLASS_GUI_PLAN.md) |
-| 📊 Host overlay / dashboard | Planned remote stats and host dashboard feature; not implemented | [Host plan](docs/HOST_OVERLAY_PLAN.md) |
+| 🌑 Eclipse / Crimson Apollo | Eclipse animation ships in the latest candidate; older releases retain Apollo; native theme/installed-image/OVMF checks pass | [CODEX_BOOT_ANIMATION_PROMPT.md](CODEX_BOOT_ANIMATION_PROMPT.md) |
+| 💎 Crimson Glass | Eclipse includes the themed control center and matching icons; broader GUI roadmap remains separate | [GUI plan](docs/LIQUID_GLASS_GUI_PLAN.md) |
+| 📊 Host overlay / dashboard | Launcher host-stat panels are included; the in-stream hardware overlay remains planned | [Host plan](docs/HOST_OVERLAY_PLAN.md) |
 
-Each project stays separate. The terminal and animation prompts explicitly prohibit starting an image build without a later build request. The previous repair activates neither feature. Both release channels include Crimson Apollo; Crimson Console remains planning only.
+Each project stays separate. The terminal and animation prompts explicitly prohibit starting an image build without a later build request. The previous repair activates neither feature. Older regular and experimental images include Crimson Apollo; the latest candidate includes Eclipse. Crimson Console remains planning only.
 
 ---
 
