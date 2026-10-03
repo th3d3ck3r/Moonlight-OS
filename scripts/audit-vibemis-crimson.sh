@@ -13,6 +13,9 @@ else
   git -C "$SRC" checkout --detach "$VIBEMIS_COMMIT"
   git -C "$SRC" apply "$ROOT/patches/vibemis-crimson.patch"
 fi
+# The production resource bundle embeds this pinned controller database.
+# Fetch only that submodule; the focused Qt tests need no streaming libraries.
+git -C "$SRC" submodule update --init --depth 1 app/SDL_GameControllerDB
 export VIBEMIS_TEST_SOURCE=$SRC
 export HOME=$TASK/home
 mkdir -p "$HOME"
